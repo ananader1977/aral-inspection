@@ -203,7 +203,8 @@ export function createApp({ publicDir, bodyLimit = 8 * 1024 * 1024, onError } = 
       if (wantsJson) {
         res.json({ error: status === 500 ? 'Internal server error' : err.message, ...(err.extra || {}) }, status);
       } else {
-        res.send(status === 404 ? 'Page not found' : err.message, 'text/plain; charset=utf-8', status);
+        const msg = status === 404 ? 'This page does not exist. Please check the link, or contact us and we will send you a new one.' : err.message;
+        res.send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${status === 404 ? 'Page not found' : 'Error'}</title><link rel="stylesheet" href="/css/app.css"></head><body><header class="top"><div class="wrap"><span class="brand"><img src="/mark.png" alt="" width="38" height="38"><span><b>ARAL</b><small>Property Inspection Service</small></span></span></div></header><main class="wrap narrow"><div class="card"><h1>${status === 404 ? 'Page not found' : 'Something went wrong'}</h1><p>${String(msg).replace(/[<>&]/g, '')}</p><p><a class="btn" href="/">Go to the website</a></p></div></main></body></html>`, 'text/html; charset=utf-8', status);
       }
     }
   };

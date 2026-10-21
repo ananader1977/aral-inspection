@@ -1,8 +1,7 @@
 // Runtime configuration, read from environment variables (see .env.example).
 export function loadConfig(env = process.env) {
   const port = Number(env.PORT) || 3000;
-  // Render sets RENDER_EXTERNAL_URL automatically, so links in emails work even if BASE_URL was left empty
-  const baseUrl = (env.BASE_URL || env.RENDER_EXTERNAL_URL || `http://localhost:${port}`).replace(/\/+$/, '');
+  const baseUrl = resolveBaseUrl(env, port);
   return {
     nodeEnv: env.NODE_ENV || 'development',
     port,
@@ -41,6 +40,24 @@ export function loadConfig(env = process.env) {
     disableRateLimit: env.DISABLE_RATE_LIMIT === 'true',
     trustProxy: env.TRUST_PROXY === 'true',
   };
+}
+
+/**
+ * The public address used in every link we email (quotation, signing, payment, report).
+ * - Only the origin is kept: "https://x.onrender.com/app/" becomes "https://x.onrender.com".
+ * - Render sets RENDER_EXTERNAL_URL itself. It is used when BASE_URL is empty, and also when BASE_URL names a
+ *   different *.onrender.com address (a typo or the example from the README), which would open Render's 404 page.
+ *   A custom domain in BASE_URL (e.g. https://app.aral.ae) is always kept.
+ */
+export function resolveBaseUrl(env, port) {
+  const origin = (u) => { try { return new URL(String(u).trim()).origin; } catch { return ''; } };
+  const set = origin(env.BASE_URL || '');
+  const render = origin(env.RENDER_EXTERNAL_URL || '');
+  if (render && (!set || (/\.onrender\.com$/i.test(new URL(set).hostname) && set !== render))) {
+    if (set) console.warn(`[config] BASE_URL (${set}) is not this service's address; using ${render} for links. Update BASE_URL on Render.`);
+    return render;
+  }
+  return set || `http://localhost:${port}`;
 }
 
 export function validateConfig(cfg) {

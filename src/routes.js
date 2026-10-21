@@ -142,7 +142,11 @@ export function registerRoutes(app, ctx) {
   // ---------- dashboard (Phase 2: set-up checklist and counts) ----------
   app.get('/api/app/dashboard', U, (req, res) => {
     const n = (sql) => db.prepare(sql).get().n;
+    const host = String(req.headers['x-forwarded-host'] || req.headers.host || '');
+    const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0] || (config.baseUrl.startsWith('https') ? 'https' : 'http');
+    const using = host ? `${proto}://${host}` : '';
     res.json({
+      links: can(req.user.role, 'settings.edit') ? { base_url: config.baseUrl, using, mismatch: !!using && new URL(using).host !== new URL(config.baseUrl).host } : null,
       setup: can(req.user.role, 'settings.edit') ? admin.setupChecklist() : [],
       leads: can(req.user.role, 'leads.manage') ? ctx.leads.stats() : null,
       counts: { users: n('SELECT COUNT(*) n FROM users WHERE active=1'), inspectors: n('SELECT COUNT(*) n FROM inspectors WHERE active=1'), services: n('SELECT COUNT(*) n FROM services WHERE active=1'), comments: n('SELECT COUNT(*) n FROM comment_library WHERE active=1') },
