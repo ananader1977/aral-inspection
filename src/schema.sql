@@ -462,6 +462,20 @@ CREATE TABLE IF NOT EXISTS media (                 -- photos / videos / thermal 
 );
 CREATE INDEX IF NOT EXISTS ix_media_obs ON media(observation_id);
 
+CREATE TABLE IF NOT EXISTS report_attachments (    -- documents attached to the report: lab results, floor plans, DEWA bills, developer snag lists...
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  report_id INTEGER NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+  file_id INTEGER NOT NULL REFERENCES files(id),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL CHECK (kind IN ('image','pdf')),
+  in_pdf INTEGER NOT NULL DEFAULT 1,               -- printed in the report appendix
+  send_with_report INTEGER NOT NULL DEFAULT 1,     -- attached to the report email
+  sort INTEGER NOT NULL DEFAULT 0,
+  uploaded_by INTEGER REFERENCES users(id),
+  created_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS report_versions (       -- immutable issued PDFs
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id INTEGER NOT NULL REFERENCES reports(id) ON DELETE CASCADE,

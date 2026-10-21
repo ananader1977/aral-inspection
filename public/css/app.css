@@ -123,3 +123,5 @@ tr.total td{border-top:2px solid var(--navy)}
 a.kpi{text-decoration:none;color:inherit;display:block}a.kpi:hover{border-color:var(--sky)}
 .actions select{width:auto;max-width:100%}
 .pill::first-letter{text-transform:uppercase}
+.attlist{display:grid;gap:8px;margin:8px 0}.att{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:#fff}.att .spacer{min-width:0}.att .spacer b{word-break:break-word}
+.attno{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:8px;background:var(--copper-tint);color:var(--copper);font-weight:800;font-size:.8rem}

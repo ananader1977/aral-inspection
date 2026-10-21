@@ -13,6 +13,8 @@ const IMG_MIME = ['image/jpeg', 'image/png'];
 const VID_MIME = ['video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp'];
 export const MAX_PHOTO = 12 * 1024 * 1024;
 export const MAX_VIDEO = 80 * 1024 * 1024;
+export const MAX_ATTACHMENT = 20 * 1024 * 1024;
+const EMAIL_ATTACH_LIMIT = 15 * 1024 * 1024; // Gmail accepts 25 MB per email; keep room for the report PDF
 
 export function createReports(ctx) {
   const { db } = ctx;
@@ -112,7 +114,62 @@ export function createReports(ctx) {
       job: { id: j.id, number: j.number, status: j.status, status_label: j.status_label || J().JOB_STATUS_LABEL[j.status], client_name: j.client_name, client_mobile: j.client_mobile, service_name: j.service_name, service_code: j.service_code, property_type: j.property_type, bedrooms: j.bedrooms, building: j.building, unit_no: j.unit_no, community: j.community, access_notes: j.access_notes, access_contact: j.access_contact, scheduled_start: j.scheduled_start, scheduled_end: j.scheduled_end, inspector_name: j.inspector_name, access_at: j.access_at, sla_due_at: j.sla_due_at, needs_thermal: j.needs_thermal, parent_job_id: j.parent_job_id },
       sections, media: media.map((m) => ({ id: m.id, kind: m.kind, observation_id: m.observation_id, section_id: m.section_id, caption: m.caption, mime: m.mime, size: m.size, has_thumb: !!m.thumb_file_id, in_pdf: m.in_pdf, temp_min_c: m.temp_min_c, temp_max_c: m.temp_max_c, pair_media_id: m.pair_media_id, client_uuid: m.client_uuid })),
       counts: countFindings(r.id),
+      attachments: listAttachments(r.id),
     };
+  }
+  const listAttachments = (rid) => db.prepare('SELECT a.id, a.title, a.description, a.kind, a.in_pdf, a.send_with_report, a.sort, a.created_at, f.name, f.mime, f.size FROM report_attachments a JOIN files f ON f.id=a.file_id WHERE a.report_id=? ORDER BY a.sort, a.id').all(rid);
+
+  // ---------- attachments (documents added to the report) ----------
+  async function addAttachment(user, jobId, { buf, mime, name, title, description }) {
+    own(jobId, user);
+    const r = reportOfJob(jobId); canEdit(r, user);
+    mime = String(mime || '').split(';')[0].toLowerCase();
+    const kind = mime === 'application/pdf' ? 'pdf' : IMG_MIME.includes(mime) ? 'image' : null;
+    if (!kind) throw new HttpError(415, 'Attachments must be PDF, JPEG or PNG files.');
+    if (!buf?.length) throw new HttpError(400, 'The file is empty.');
+    if (buf.length > MAX_ATTACHMENT) throw new HttpError(413, 'Attachments can be up to 20 MB.');
+    if (kind === 'pdf' && buf.subarray(0, 5).toString() !== '%PDF-') throw new HttpError(415, 'This file is not a valid PDF.');
+    const ttl = clampStr(title, 120) || clampStr(String(name || '').replace(/\.[a-z0-9]+$/i, ''), 120);
+    if (!ttl) throw new HttpError(400, 'Give the attachment a title.');
+    if (db.prepare('SELECT COUNT(*) n FROM report_attachments WHERE report_id=?').get(r.id).n >= 30) throw new HttpError(409, 'A report can have up to 30 attachments.');
+    const safeName = clampStr(String(name || ttl).replace(/[^\w.\- ]+/g, '_'), 100) || `attachment.${kind === 'pdf' ? 'pdf' : 'jpg'}`;
+    const fileId = await ctx.storage.save({ name: safeName, mime, buf, jobId, purpose: 'attachment', userId: user?.id });
+    const sort = db.prepare('SELECT COALESCE(MAX(sort),0) m FROM report_attachments WHERE report_id=?').get(r.id).m + 1;
+    const id = Number(db.prepare('INSERT INTO report_attachments(report_id,file_id,title,description,kind,sort,uploaded_by,created_at) VALUES(?,?,?,?,?,?,?,?)').run(r.id, fileId, ttl, clampStr(description, 500), kind, sort, user?.id ?? null, ctx.now()).lastInsertRowid);
+    db.prepare('UPDATE reports SET updated_at=? WHERE id=?').run(ctx.now(), r.id);
+    return id;
+  }
+  const attachmentRow = (id) => {
+    const a = db.prepare('SELECT a.*, r.job_id, r.status rstatus, r.verify_token FROM report_attachments a JOIN reports r ON r.id=a.report_id WHERE a.id=?').get(id);
+    if (!a) throw new HttpError(404, 'Attachment not found');
+    return a;
+  };
+  function updateAttachment(user, id, b) {
+    const a = attachmentRow(id);
+    own(a.job_id, user); canEdit(reportOfJob(a.job_id), user);
+    if (b.title !== undefined) { if (!clampStr(b.title, 120)) throw new HttpError(400, 'Give the attachment a title.'); db.prepare('UPDATE report_attachments SET title=? WHERE id=?').run(clampStr(b.title, 120), id); }
+    if (b.description !== undefined) db.prepare('UPDATE report_attachments SET description=? WHERE id=?').run(clampStr(b.description, 500), id);
+    if (b.in_pdf !== undefined) db.prepare('UPDATE report_attachments SET in_pdf=? WHERE id=?').run(b.in_pdf ? 1 : 0, id);
+    if (b.send_with_report !== undefined) db.prepare('UPDATE report_attachments SET send_with_report=? WHERE id=?').run(b.send_with_report ? 1 : 0, id);
+    if (b.move) {
+      const ids = db.prepare('SELECT id FROM report_attachments WHERE report_id=? ORDER BY sort, id').all(a.report_id).map((x) => x.id);
+      const i = ids.indexOf(id), k = i + (b.move === 'up' ? -1 : 1);
+      if (k >= 0 && k < ids.length) { [ids[i], ids[k]] = [ids[k], ids[i]]; ids.forEach((x, n) => db.prepare('UPDATE report_attachments SET sort=? WHERE id=?').run(n + 1, x)); }
+    }
+  }
+  async function deleteAttachment(user, id) {
+    const a = attachmentRow(id);
+    own(a.job_id, user); canEdit(reportOfJob(a.job_id), user);
+    db.prepare('DELETE FROM report_attachments WHERE id=?').run(id);
+    await ctx.storage.remove(a.file_id);
+  }
+  /** Bytes of an attachment, for staff (user) or for the client through the report link (token). */
+  async function attachmentBytes(id, { user, token: tok } = {}) {
+    const a = attachmentRow(id);
+    if (tok !== undefined) { if (tok !== a.verify_token || !['issued', 'superseded'].includes(a.rstatus)) throw new HttpError(404, 'Not found'); }
+    else own(a.job_id, user);
+    const f = ctx.storage.get(a.file_id);
+    return { buf: await ctx.storage.read(a.file_id), mime: f.mime, name: f.name, title: a.title };
   }
   const countFindings = (rid) => Object.fromEntries(SEVERITIES.map((s) => [s, db.prepare('SELECT COUNT(*) n FROM observations o JOIN report_items it ON it.id=o.item_id JOIN report_sections sc ON sc.id=it.section_id WHERE sc.report_id=? AND o.severity=?').get(rid, s).n]));
 
@@ -396,7 +453,7 @@ export function createReports(ctx) {
         to: j.client_email, jobId, template: 'report_issued', subject: `Your inspection report ${number} – ${[j.building, j.unit_no].filter(Boolean).join(' ')}`,
         text: `Dear ${j.client_name},\n\nYour inspection report ${number} is attached. You can also open it online, with the videos, here: ${link}\n\nCritical: ${c.critical} · Needs attention: ${c.attention}\n\nPlease call us if you have any questions.\n\n${s.company_name}`,
         html: layout(s, `Your report ${number} is ready`, `<p>Dear ${j.client_name},</p><p>Your inspection report is attached. You can also open it online, including the videos.</p>${rows([['Property', [j.building, j.unit_no && `Unit ${j.unit_no}`, j.community].filter(Boolean).join(', ')], ['Critical findings', String(c.critical)], ['Needs attention', String(c.attention)]])}<p>Please call us if you have any questions. We are happy to walk you through the findings.</p>`, { url: link, label: 'Open the online report' }),
-        attachments: [{ filename: `${number}.pdf`, contentType: 'application/pdf', content: pdf.buf }],
+        attachments: [{ filename: `${number}.pdf`, contentType: 'application/pdf', content: pdf.buf }, ...(await emailAttachments(r.id))],
       });
     }
     // invoice straight away unless the client is invoiced monthly
@@ -404,6 +461,19 @@ export function createReports(ctx) {
     if (!cl.monthly_invoicing && !j.parent_job_id && version === 1) await ctx.finance.invoiceJob(user, jobId).catch((e) => console.error('[invoice]', e.message));
     if (j.parent_job_id && version === 1) J().move(user, jobId, 'closed', 'Re-inspection report issued');
     return { number, version, link };
+  }
+
+  /** Report attachments that go with the email, while the email stays under Gmail's size limit. */
+  async function emailAttachments(rid) {
+    const out = [];
+    let total = 0;
+    for (const a of db.prepare('SELECT a.*, f.name, f.mime, f.size FROM report_attachments a JOIN files f ON f.id=a.file_id WHERE a.report_id=? AND a.send_with_report=1 ORDER BY a.sort, a.id').all(rid)) {
+      if (total + a.size > EMAIL_ATTACH_LIMIT) continue; // still available from the online report
+      total += a.size;
+      const ext = a.kind === 'pdf' ? '.pdf' : a.mime === 'image/png' ? '.png' : '.jpg';
+      out.push({ filename: `${a.title.replace(/[^\w.\- ]+/g, '_').slice(0, 80)}${ext}`, contentType: a.mime, content: await ctx.storage.read(a.file_id) });
+    }
+    return out;
   }
 
   /** Books the free re-inspection that some services include (or a paid one). */
@@ -443,6 +513,7 @@ export function createReports(ctx) {
       sections: t.sections.map((s) => ({ name: s.name, kind: s.kind, intro: s.intro, not_inspected_reason: s.not_inspected_reason, items: s.items.map((it) => ({ name: it.name, attr_label: it.attr_label, attr_value: it.attr_value, observations: it.observations.map((o) => ({ text: o.text, severity: o.severity, trade: o.trade, in_summary: o.in_summary, reinspect_status: o.reinspect_status, media: o.media })) })), media: s.media })),
       media: t.media.filter((m) => m.in_pdf).map((m) => ({ id: m.id, kind: m.kind, caption: m.caption, has_thumb: m.has_thumb, temp_min_c: m.temp_min_c, temp_max_c: m.temp_max_c })),
       counts: t.counts, glossary, pdf: `/api/public/report/${encodeURIComponent(tok)}/pdf`,
+      attachments: t.attachments.map((a) => ({ id: a.id, title: a.title, description: a.description, kind: a.kind, size: a.size })),
     };
   }
   async function latestPdf(tok) {
@@ -457,5 +528,5 @@ export function createReports(ctx) {
     FROM reports r JOIN jobs j ON j.id=r.job_id JOIN clients c ON c.id=j.client_id JOIN services s ON s.id=j.service_id JOIN properties p ON p.id=j.property_id LEFT JOIN inspectors i ON i.id=j.inspector_id
     WHERE r.status IN ('submitted','approved','returned') ORDER BY CASE r.status WHEN 'submitted' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END, j.sla_due_at`).all();
 
-  return { ensureReport, tree, checkIn, accessFailed, updateGeneral, addSection, updateSection, deleteSection, addItem, updateItem, deleteItem, addObservation, updateObservation, deleteObservation, suggestions, addMedia, addThumb, updateMedia, deleteMedia, mediaBytes, problems, submit, returnReport, approve, issue, createReinspection, verify, online, latestPdf, queue, reportOfJob, countFindings };
+  return { ensureReport, tree, addAttachment, updateAttachment, deleteAttachment, attachmentBytes, listAttachments, checkIn, accessFailed, updateGeneral, addSection, updateSection, deleteSection, addItem, updateItem, deleteItem, addObservation, updateObservation, deleteObservation, suggestions, addMedia, addThumb, updateMedia, deleteMedia, mediaBytes, problems, submit, returnReport, approve, issue, createReinspection, verify, online, latestPdf, queue, reportOfJob, countFindings };
 }

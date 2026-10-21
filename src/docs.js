@@ -272,25 +272,28 @@ export function createDocs(ctx) {
       const fid = m.kind === 'video' ? m.thumb_file_id : m.file_id;
       if (fid) imgs.set(m.id, await load(fid));
     }
+    const atts = t.attachments.filter((a) => a.in_pdf);
+    const attImgs = new Map();
+    for (const a of atts.filter((x) => x.kind === 'image')) attImgs.set(a.id, await load(db.prepare('SELECT file_id FROM report_attachments WHERE id=?').get(a.id).file_id));
     const cover = r.cover_media_id && imgs.get(r.cover_media_id) ? imgs.get(r.cover_media_id) : [...imgs.entries()].find(([id]) => media.get(id)?.kind === 'photo')?.[1] || null;
     const revSig = reviewer?.signature_file_id ? await load(reviewer.signature_file_id) : null;
     const insUser = ins ? db.prepare('SELECT signature_file_id FROM users WHERE inspector_id=?').get(ins.id) : null;
     const insSig = insUser?.signature_file_id ? await load(insUser.signature_file_id) : null;
     const glossary = db.prepare(`SELECT DISTINCT g.* FROM glossary g JOIN observations o ON o.glossary_id=g.id JOIN report_items it ON it.id=o.item_id JOIN report_sections s ON s.id=it.section_id WHERE s.report_id=? ORDER BY g.term`).all(rid);
     const onDate = r.issued_at ? new Date(r.issued_at + 4 * 3600000).toISOString().slice(0, 10) : undefined;
-    const data = { r, t, j, ins, reviewer, media, imgs, cover, revSig, insSig, glossary, onDate };
+    const data = { r, t, j, ins, reviewer, media, imgs, cover, revSig, insSig, glossary, onDate, atts, attImgs };
     const pass1 = layoutReport(data, null);
     const pass2 = layoutReport(data, pass1.marks);
     return { buf: pass2.buf, pages: pass2.pages };
   }
 
-  function layoutReport({ r, t, j, ins, reviewer, media, imgs, cover, revSig, insSig, glossary, onDate }, marks) {
+  function layoutReport({ r, t, j, ins, reviewer, media, imgs, cover, revSig, insSig, glossary, onDate, atts = [], attImgs = new Map() }, marks) {
     const s = S();
     const base = ctx.config.baseUrl;
     const online = `${base}/report.html?t=${r.verify_token}`;
     const verifyUrl = `${base}/verify.html?t=${r.verify_token}`;
     const foot = `${s.company_short || 'ARAL'} | ${[j.building, j.unit_no && `Unit ${j.unit_no}`, j.community].filter(Boolean).join(', ')}`;
-    const rec = { sections: {}, obs: {}, parts: {} };
+    const rec = { sections: {}, obs: {}, parts: {}, atts: {} };
     const d = new FlowDoc({
       title: `${r.title} ${r.number || ''}`.trim(), author: s.company_name, margin: { top: 78, bottom: 56, left: 46, right: 46 },
       header: (doc) => {
@@ -338,12 +341,12 @@ export function createDocs(ctx) {
 
     // 5. contents (one page; page numbers come from the first pass)
     part('toc', 'Contents');
-    const tocEntries = [['General information', 'general'], ['Understanding the report', 'understanding'], ...t.sections.map((sc, i) => [`${i + 1}. ${sc.name}`, `s${sc.id}`]), ...(glossary.length ? [['Glossary', 'glossary']] : []), ['Report summary', 'summary'], ['Report conclusion', 'conclusion'], ['Terms and conditions', 'terms'], ...(r.thermal_used ? [['Thermal imaging addendum', 'thermal']] : []), ['Sign-off', 'signoff']];
+    const tocEntries = [['General information', 'general'], ['Understanding the report', 'understanding'], ...t.sections.map((sc, i) => [`${i + 1}. ${sc.name}`, `s${sc.id}`]), ...(glossary.length ? [['Glossary', 'glossary']] : []), ['Report summary', 'summary'], ['Report conclusion', 'conclusion'], ['Terms and conditions', 'terms'], ...(r.thermal_used ? [['Thermal imaging addendum', 'thermal']] : []), ['Sign-off', 'signoff'], ...(atts.length ? [['Attachments', 'attachments'], ...atts.map((a, i) => [`   A${i + 1}. ${a.title}`, `a${a.id}`])] : [])];
     const tocSize = tocEntries.length > 46 ? 7.5 : 9.5;
     const tocLine = tocSize * 1.55;
     for (const [label, key] of tocEntries) {
       if (d.y + tocLine > d.bottom) break; // never spill: keeps the page count stable between passes
-      const pg = marks ? String((key.startsWith('s') && /^s\d+$/.test(key) ? marks.sections[key.slice(1)] : marks.parts[key]) ?? '') : '';
+      const pg = marks ? String((/^s\d+$/.test(key) ? marks.sections[key.slice(1)] : /^a\d+$/.test(key) ? marks.atts[key.slice(1)] : marks.parts[key]) ?? '') : '';
       d.pdf.text(label, d.x, d.y + tocSize, { size: tocSize, fill: C.text });
       const lw = d.pdf.textWidth(label, tocSize);
       for (let x = d.x + lw + 6; x < d.x + d.width - 26; x += 4) d.pdf.text('.', x, d.y + tocSize, { size: tocSize, fill: C.line });
@@ -495,6 +498,40 @@ export function createDocs(ctx) {
     d.y += 120;
     d.para([s.company_name, s.rera_reg_no && `RERA registration ${s.rera_reg_no}`, s.det_licence_no && `DET licence ${s.det_licence_no}`].filter(Boolean).join('  ·  '), { size: 8.5, fill: C.muted });
     qrBox(d, online, 'Open the online report (photos and videos)');
+
+    // 15a. attachments (appendix): an index, each image on its own page, PDF documents linked by QR code
+    if (atts.length) {
+      part('attachments', 'Attachments');
+      d.para('The documents below are part of this report. Images are printed in this appendix. PDF documents are sent with the report email and can be downloaded from the online report: scan the code next to each one.', { size: 9.5, fill: C.muted });
+      const attUrl = (a) => `${base}/api/public/report/${r.verify_token}/attachment/${a.id}`;
+      const kb = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+      d.table([{ label: 'No.', w: 0.6 }, { label: 'Title', w: 3.4 }, { label: 'Description', w: 4.2 }, { label: 'Type', w: 1.3 }, { label: 'Page', w: 0.9, align: 'right' }],
+        atts.map((a, i) => [`A${i + 1}`, a.title, a.description || '', a.kind === 'pdf' ? `PDF, ${kb(a.size)}` : 'Image', a.kind === 'pdf' ? 'Online' : String(marks?.atts[a.id] ?? '')]), { size: 8.5 });
+      atts.forEach((a, i) => {
+        if (a.kind !== 'pdf') return;
+        rec.atts[a.id] = d.page;
+        const url = attUrl(a);
+        const descLines = d.pdf.wrap(a.description || '', d.width - 110, 8.5).slice(0, 3);
+        d.need(92);
+        d.pdf.rect(d.x, d.y, d.width, 84, { fill: C.zebra, stroke: C.line });
+        d.pdf.qr(qrMatrix(url), d.x + 8, d.y + 8, 68);
+        d.pdf.link(url, d.x, d.y, d.width, 84);
+        d.pdf.text(`A${i + 1}. ${a.title}`, d.x + 88, d.y + 22, { size: 10.5, bold: true, fill: C.navy });
+        descLines.forEach((ln, k) => d.pdf.text(ln, d.x + 88, d.y + 37 + k * 11, { size: 8.5, fill: C.text }));
+        d.pdf.text(`PDF document, ${kb(a.size)}. Scan or click to download.`, d.x + 88, d.y + 74, { size: 8, fill: C.sky });
+        d.y += 92;
+      });
+      atts.forEach((a, i) => {
+        if (a.kind !== 'image') return;
+        d.newPage();
+        rec.atts[a.id] = d.page;
+        heading(d, `A${i + 1}. ${a.title}`, { size: 12.5, before: 0 });
+        if (a.description) d.para(a.description, { size: 9, fill: C.muted });
+        const img = attImgs.get(a.id);
+        if (img) { const { w, h } = fit(img, d.width, d.bottom - d.y - 6); d.pdf.image(img, d.x + (d.width - w) / 2, d.y, w, h); d.y += h + 6; }
+        else d.para('This image could not be printed. It is available from the online report.', { size: 9, fill: C.red });
+      });
+    }
 
     // 16. back page
     d.newPage({ chrome: false });

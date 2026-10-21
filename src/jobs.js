@@ -174,6 +174,7 @@ export function createJobs(ctx) {
     if (report) {
       report.counts = db.prepare(`SELECT o.severity, COUNT(*) n FROM observations o JOIN report_items it ON it.id=o.item_id JOIN report_sections sc ON sc.id=it.section_id WHERE sc.report_id=? GROUP BY o.severity`).all(report.id);
       report.media = db.prepare('SELECT kind, COUNT(*) n FROM media WHERE job_id=? GROUP BY kind').all(id);
+      report.attachments = db.prepare('SELECT COUNT(*) n FROM report_attachments WHERE report_id=?').get(report.id).n;
       report.versions = db.prepare('SELECT version, issued_at, pdf_file_id, page_count FROM report_versions WHERE report_id=? ORDER BY version DESC').all(report.id);
     }
     return {

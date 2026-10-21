@@ -143,6 +143,7 @@ async function inspectJob(el, jobId) {
   function drawBody() {
     fill(body,
       generalCard(),
+      attachmentsCard(),
       editable ? h('div', { class: 'card' }, h('h2', {}, t('Quick photos')), h('p', { class: 'small muted' }, t('Take photos room by room now and attach them to findings later.')), captureButtons({ section_id: null }), mediaStrip(tree.media.filter((m) => !m.observation_id && !m.section_id).map((m) => m.id), {})) : null,
       tree.sections.map((s, si) => sectionCard(s, si)),
       editable ? h('p', {}, h('button', { class: 'btn alt block', onclick: addArea }, t('+ Add an area or room'))) : null,
@@ -180,6 +181,66 @@ async function inspectJob(el, jobId) {
     f.addEventListener('input', save);
     const det = h('details', { class: 'card', open: !R.time_in }, h('summary', {}, h('b', {}, t('General information'))), f);
     return det;
+  }
+
+  // ---------- documents attached to the report ----------
+  function attachmentsCard() {
+    const list = tree.attachments || [];
+    if (!editable && !list.length) return null;
+    const kb = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+    const inp = h('input', { type: 'file', class: 'hide', multiple: true, accept: 'application/pdf,image/jpeg,image/png' });
+    inp.addEventListener('change', async () => { const files = [...inp.files]; inp.value = ''; for (const f of files) await uploadAttachment(f); });
+    return h('details', { class: 'card', open: list.length > 0 }, h('summary', {}, h('b', {}, t('Attachments')), ' ', list.length ? pill(String(list.length)) : null),
+      h('p', { class: 'small muted' }, t('Documents that belong to the report: lab results, floor plans, DEWA bills, the developer snag list. Images are printed in the report appendix; PDFs are linked by QR code and sent with the report email.')),
+      list.length ? h('div', { class: 'attlist' }, list.map((a, i) => h('div', { class: 'att' },
+        h('span', { class: 'attno' }, `A${i + 1}`),
+        h('div', { class: 'spacer' }, h('a', { href: `/api/app/attachments/${a.id}`, target: '_blank' }, h('b', {}, a.title)), h('div', { class: 'small muted' }, `${a.kind === 'pdf' ? 'PDF' : t('Image')} · ${kb(a.size)}${a.description ? ` · ${a.description}` : ''}${a.in_pdf ? '' : ` · ${t('not printed')}`}${a.send_with_report ? '' : ` · ${t('not emailed')}`}`)),
+        editable ? h('button', { class: 'btn alt sm', onclick: () => attachmentMenu(a, i) }, t('Edit')) : null))) : null,
+      editable ? [inp, h('p', {}, h('button', { class: 'btn alt sm', type: 'button', onclick: () => inp.click() }, '📎 ', t('Add attachment')))] : null);
+  }
+  async function uploadAttachment(file) {
+    if (!navigator.onLine) return toast(t('Connect to the internet to add attachments.'));
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) return toast(t('Attachments must be PDF, JPEG or PNG files.'));
+    const meta = await askAttachment(file.name.replace(/\.[a-z0-9]+$/i, '').replace(/[_-]+/g, ' '));
+    if (!meta) return;
+    let blob = file;
+    if (file.type !== 'application/pdf' && file.size > 4 * 1024 * 1024) { try { blob = await compress(file, 2400, 0.85); } catch { /* send the original */ } }
+    if (blob.size > 20 * 1024 * 1024) return toast(t('Attachments can be up to 20 MB.'));
+    toast(t('Uploading…'));
+    const q = new URLSearchParams({ name: file.name, title: meta.title, description: meta.description });
+    try {
+      const res = await fetch(`/api/app/inspect/${jobId}/attachments?${q}`, { method: 'POST', headers: { 'X-Requested-With': 'aral', 'Content-Type': blob.type || file.type }, body: blob, credentials: 'same-origin' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(t(data.error || res.status));
+      toast(t('Attachment added'));
+      inspectJob(el, jobId);
+    } catch (e) { toast(e.message, 6000); }
+  }
+  function askAttachment(title, description = '') {
+    return new Promise((resolve) => {
+      const f = h('form', { onsubmit: (e) => { e.preventDefault(); closeModal(); resolve({ title: f.ttl.value.trim(), description: f.desc.value.trim() }); } },
+        h('h2', {}, t('Attachment')), field('Title (printed in the report)', h('input', { name: 'ttl', required: true, value: title, maxlength: 120 })),
+        field('Description (optional)', h('textarea', { name: 'desc', rows: 2, maxlength: 500 }, description)),
+        h('p', { class: 'actions' }, h('button', { class: 'btn cu' }, t('Save')), h('button', { class: 'btn alt', type: 'button', onclick: () => { closeModal(); resolve(null); } }, t('Cancel'))));
+      modal(f);
+    });
+  }
+  function attachmentMenu(a, i) {
+    const ttl = h('input', { value: a.title, maxlength: 120 });
+    const desc = h('textarea', { rows: 2, maxlength: 500 }, a.description || '');
+    const inPdf = h('input', { type: 'checkbox', checked: !!a.in_pdf });
+    const mail = h('input', { type: 'checkbox', checked: !!a.send_with_report });
+    const doit = async (fn, msg) => { if (await run(fn, msg)) { closeModal(); inspectJob(el, jobId); } };
+    modal(h('h2', {}, `A${i + 1}. ${a.title}`),
+      field('Title (printed in the report)', ttl), field('Description (optional)', desc),
+      h('label', { class: 'check' }, inPdf, t('Include in the report appendix')),
+      h('label', { class: 'check' }, mail, t('Send with the report email')),
+      h('p', { class: 'actions' },
+        h('button', { class: 'btn cu', onclick: () => doit(() => A('PUT', `/attachments/${a.id}`, { title: ttl.value, description: desc.value, in_pdf: inPdf.checked, send_with_report: mail.checked }), 'Saved') }, t('Save')),
+        h('button', { class: 'btn alt', onclick: () => doit(() => A('PUT', `/attachments/${a.id}`, { move: 'up' })) }, '↑'),
+        h('button', { class: 'btn alt', onclick: () => doit(() => A('PUT', `/attachments/${a.id}`, { move: 'down' })) }, '↓'),
+        h('button', { class: 'btn danger', onclick: async () => { if (await confirmBox('Delete this attachment?', null, 'Delete')) doit(() => A('DELETE', `/attachments/${a.id}`), 'Deleted'); } }, t('Delete')),
+        h('button', { class: 'btn alt', onclick: closeModal }, t('Close'))));
   }
 
   function sectionCard(s, si) {
@@ -412,14 +473,14 @@ async function inspectJob(el, jobId) {
 
 // ---------- image helpers ----------
 /** Resizes to max 1600 px (orientation fixed) and re-encodes as JPEG 80%. */
-async function compress(file) {
+async function compress(file, max = 1600, quality = 0.8) {
   const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(file));
-  const sc = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+  const sc = Math.min(1, max / Math.max(bmp.width, bmp.height));
   const c = document.createElement('canvas');
   c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
   c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
   bmp.close?.();
-  return new Promise((r, j) => c.toBlob((b) => (b ? r(b) : j(new Error('encode'))), 'image/jpeg', 0.8));
+  return new Promise((r, j) => c.toBlob((b) => (b ? r(b) : j(new Error('encode'))), 'image/jpeg', quality));
 }
 
 /** Red arrow / circle / box / text on the photo before it is saved. Resolves {blob, caption} or null. */

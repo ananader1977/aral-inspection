@@ -162,6 +162,19 @@ test('individual client: website lead to issued report, invoice and commission',
     await call('insp', 'PUT', `/api/app/inspect/${jobId}/general`, { persons_present: ['Buyer', 'Agent'], weather: 'Sunny', temperature_c: 33, ac_connected: true, dewa_connected: true, cover_media_id: p1.body.id });
     assert.equal(ctx.db.prepare("SELECT COUNT(*) n FROM files WHERE purpose IN ('photo','thermal','video','thumb')").get().n, 4);
 
+    // attachments: a PDF (lab result) and an image (floor plan); fake PDFs and other types are refused
+    const att = (q, buf, type) => fetch(`${t.url}/api/app/inspect/${jobId}/attachments?${new URLSearchParams(q)}`, { method: 'POST', headers: { Cookie: t.jars.insp, 'X-Requested-With': 'aral', 'Content-Type': type }, body: buf }).then(async (r) => ({ status: r.status, body: await r.json() }));
+    const labPdf = ctx.docs.quotePdf(q.body.id);
+    const a1 = await att({ name: 'lab-result.pdf', title: 'Mould lab result', description: 'Swab test from the kitchen cabinet' }, labPdf, 'application/pdf');
+    assert.equal(a1.status, 200, JSON.stringify(a1.body));
+    const a2 = await att({ name: 'floor_plan.jpg', title: 'Floor plan' }, JPEG, 'image/jpeg');
+    assert.equal(a2.status, 200, JSON.stringify(a2.body));
+    assert.equal((await att({ name: 'x.pdf', title: 'Fake' }, Buffer.from('not a pdf'), 'application/pdf')).status, 415);
+    assert.equal((await att({ name: 'x.docx', title: 'Word' }, Buffer.from('PK'), 'application/msword')).status, 415);
+    assert.equal((await call('insp', 'PUT', `/api/app/attachments/${a2.body.id}`, { move: 'up' })).status, 200);
+    assert.deepEqual((await call('insp', 'GET', `/api/app/inspect/${jobId}`)).body.attachments.map((a) => a.title), ['Floor plan', 'Mould lab result']);
+    assert.equal((await call('insp', 'GET', `/api/app/attachments/${a1.body.id}`, undefined, { raw: true })).status, 200);
+
     sub = await call('insp', 'POST', `/api/app/inspect/${jobId}/submit`);
     assert.equal(sub.status, 200, JSON.stringify(sub.body));
     assert.equal((await call('insp', 'POST', `/api/app/items/${floor.id}/observations`, { text: 'x' })).status, 409, 'locked while in review');
@@ -186,10 +199,11 @@ test('individual client: website lead to issued report, invoice and commission',
     assert.ok(v1.page_count >= 8, `pages ${v1.page_count}`);
     try {
       const txt = execFileSync('pdftotext', ['-layout', '-', '-'], { input: rpt }).toString();
-      for (const s of ['RESALE', 'Contents', 'General information', 'Report summary', 'Glossary', 'Hollow sound', 'Thermal imaging addendum', 'Sign-off', 'Page 2 of', 'No defects observed', 'ARAL | IL Primo, Unit 1205, Downtown Dubai']) assert.ok(txt.includes(s), `PDF should contain "${s}"`);
+      for (const s of ['Attachments', 'A1. Floor plan', 'A2. Mould lab result', 'Swab test from the kitchen cabinet', 'RESALE', 'Contents', 'General information', 'Report summary', 'Glossary', 'Hollow sound', 'Thermal imaging addendum', 'Sign-off', 'Page 2 of', 'No defects observed', 'ARAL | IL Primo, Unit 1205, Downtown Dubai']) assert.ok(txt.includes(s), `PDF should contain "${s}"`);
     } catch (e) { if (e.code !== 'ENOENT') throw e; }
     const mailR = ctx.db.prepare("SELECT * FROM outbox WHERE template_code='report_issued'").get();
     assert.match(mailR.body, /report\.html\?t=/);
+    assert.deepEqual(JSON.parse(mailR.attachments), ['RPT-2026-00001.pdf', 'Floor plan.jpg', 'Mould lab result.pdf']);
 
     // invoice (already paid in advance) → job closed, commission 42% of 2,200
     const inv = ctx.db.prepare('SELECT * FROM invoices').get();
@@ -210,6 +224,12 @@ test('individual client: website lead to issued report, invoice and commission',
     assert.ok(onl.body.media.some((m) => m.kind === 'video'));
     assert.equal((await call(null, 'GET', `/api/public/report/${vt}/media/${v.body.id}`, undefined, { raw: true })).status, 200);
     assert.equal((await call(null, 'GET', `/api/public/report/wrong/media/${v.body.id}`)).status, 404);
+    assert.equal(onl.body.attachments.length, 2);
+    const dl = await call(null, 'GET', `/api/public/report/${vt}/attachment/${a1.body.id}?download=1`, undefined, { raw: true });
+    assert.equal(dl.status, 200);
+    assert.match(dl.headers.get('content-disposition'), /attachment/);
+    assert.equal((await call(null, 'GET', `/api/public/report/wrong/attachment/${a1.body.id}`)).status, 404);
+    assert.equal((await call('insp', 'DELETE', `/api/app/attachments/${a1.body.id}`)).status, 409, 'locked after issue');
     assert.equal((await call(null, 'POST', `/api/public/report/${vt}/feedback`, { score: 5, comment: 'Very thorough' }, { csrf: false })).status, 200);
 
     // re-inspection copies the open findings

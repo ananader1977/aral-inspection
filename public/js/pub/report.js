@@ -40,6 +40,11 @@ function draw() {
         it.observations.map((o) => h('div', { class: `obs ${o.severity}` }, h('div', { class: 'otext' }, o.text, o.trade ? h('span', { class: 'small muted' }, ` · ${t('Recommended')}: ${o.trade}`) : null, o.reinspect_status ? ` [${t(o.reinspect_status)}]` : ''), strip(o.media))))),
       s.items.every((it) => it.observations.every((o) => o.severity === 'info')) && !s.not_inspected_reason ? h('p', { class: 'small muted' }, t('No defects observed at the time of inspection.')) : null,
       strip(s.media))),
+    r.attachments?.length ? card(h('h2', { id: 'attachments' }, t('Attachments')), h('div', { class: 'attlist' }, r.attachments.map((a, i) => h('div', { class: 'att', id: `a${a.id}` },
+      h('span', { class: 'attno' }, `A${i + 1}`),
+      h('div', { class: 'spacer' }, h('b', {}, a.title), h('div', { class: 'small muted' }, `${a.kind === 'pdf' ? 'PDF' : t('Image')} · ${a.size >= 1048576 ? `${(a.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(a.size / 1024))} KB`}${a.description ? ` · ${a.description}` : ''}`)),
+      h('a', { class: 'btn alt sm', href: `/api/public/report/${tok}/attachment/${a.id}`, target: '_blank' }, t('Open')),
+      h('a', { class: 'btn alt sm', href: `/api/public/report/${tok}/attachment/${a.id}?download=1` }, t('Download')))))) : null,
     r.glossary.length ? card(h('h2', {}, t('Glossary')), r.glossary.map((g) => h('div', {}, h('b', {}, g.term), paras(g.definition)))) : null,
     feedback());
 }

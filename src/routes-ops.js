@@ -7,7 +7,7 @@ import { buildXlsx } from './xlsx.js';
 import { buildIcs } from './ics.js';
 import { dateKey, parseDateKey, DAY, round2 } from './time.js';
 import { safeEqual } from './auth.js';
-import { MAX_VIDEO } from './reports.js';
+import { MAX_VIDEO, MAX_ATTACHMENT } from './reports.js';
 
 export function registerOpsRoutes(app, ctx) {
   const { db, auth, config } = ctx;
@@ -169,6 +169,18 @@ export function registerOpsRoutes(app, ctx) {
     const m = await R.mediaBytes(id(req), { thumb: req.query.thumb === '1', user: can(req.user.role, 'jobs.view') ? null : req.user });
     sendMedia(req, res, m);
   });
+  // documents attached to the report (lab results, floor plans, DEWA bills, developer snag lists…)
+  app.post('/api/app/inspect/:id/attachments', U, P('inspect'), async (req, res) => {
+    const q = req.query;
+    const buf = await req.rawBody(MAX_ATTACHMENT + 1024);
+    res.json({ id: await R.addAttachment(req.user, id(req), { buf, mime: req.headers['content-type'], name: q.name, title: q.title, description: q.description }) });
+  });
+  app.put('/api/app/attachments/:id', U, P('inspect'), async (req, res) => { R.updateAttachment(req.user, id(req), await req.json()); res.json({ ok: true }); });
+  app.delete('/api/app/attachments/:id', U, P('inspect'), async (req, res) => { await R.deleteAttachment(req.user, id(req)); res.json({ ok: true }); });
+  app.get('/api/app/attachments/:id', U, async (req, res) => {
+    const a = await R.attachmentBytes(id(req), { user: can(req.user.role, 'jobs.view') ? null : req.user });
+    res.send(a.buf, a.mime, 200, { 'Content-Disposition': `inline; filename="${a.name.replace(/"/g, '')}"`, 'Cache-Control': 'private, max-age=3600' });
+  });
   app.post('/api/app/inspect/:id/submit', U, P('inspect'), async (req, res) => { await R.submit(req.user, id(req)); res.json({ ok: true }); });
   app.get('/api/app/inspect/:id/problems', U, P('inspect'), (req, res) => res.json({ problems: R.problems(R.reportOfJob(id(req))) }));
   app.get('/api/app/inspect/:id/preview.pdf', U, P('inspect', 'jobs.view'), async (req, res) => {
@@ -308,6 +320,11 @@ export function registerOpsRoutes(app, ctx) {
   app.get('/api/public/report/:t/media/:id', async (req, res) => {
     const m = await R.mediaBytes(id(req), { thumb: req.query.thumb === '1', token: req.params.t });
     sendMedia(req, res, m);
+  });
+  app.get('/api/public/report/:t/attachment/:id', async (req, res) => {
+    limit(req, 'pa', 240, 10 * 60 * 1000);
+    const a = await R.attachmentBytes(id(req), { token: req.params.t });
+    res.send(a.buf, a.mime, 200, { 'Content-Disposition': `${req.query.download ? 'attachment' : 'inline'}; filename="${a.name.replace(/"/g, '')}"`, 'Cache-Control': 'private, max-age=3600' });
   });
   app.post('/api/public/report/:t/feedback', async (req, res) => {
     limit(req, 'fb', 10, 60 * 60 * 1000);
