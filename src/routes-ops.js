@@ -227,29 +227,34 @@ export function registerOpsRoutes(app, ctx) {
   });
 
   // ---------- test online payment (demo) from the office ----------
-  async function checkoutFor(kind, rowId) {
+  /** staff = the office is taking the card for the client: the payer returns to the job / invoice screen. */
+  async function checkoutFor(kind, rowId, staff) {
     if (kind === 'quote') {
       const q = J.quoteById(rowId);
       const pq = J.publicQuote(q.public_token);
       if (!['accepted'].includes(q.status)) throw new HttpError(409, 'The quotation must be accepted first.');
-      if (!pq.agreement?.signed) throw new HttpError(409, 'Please sign the service agreement first.');
+      if (!pq.agreement?.signed) throw new HttpError(409, staff ? 'The service agreement is not signed yet. Ask the client to sign, or use "Record signature (signed on paper)" first.' : 'Please sign the service agreement first.');
       if (!(pq.due_now > 0)) throw new HttpError(409, 'Nothing is due on this quotation.');
       const j = J.getJob(q.job_id);
-      return ctx.payments.createCheckout({ kind, id: q.id, number: J.quoteNo(q), amount: pq.due_now, email: j.client_email, back: J.quoteUrl(q) });
+      return ctx.payments.createCheckout({ kind, id: q.id, number: J.quoteNo(q), amount: pq.due_now, email: j.client_email, back: J.quoteUrl(q), returnUrl: staff ? `${config.baseUrl}/app/#jobs/${j.id}` : null, userId: staff?.id });
     }
     const inv = F.invoiceDetail(rowId).invoice;
     if (!(inv.balance > 0)) throw new HttpError(409, 'This invoice is already paid.');
-    return ctx.payments.createCheckout({ kind, id: inv.id, number: inv.number, amount: inv.balance, email: inv.client_email, back: F.invoiceUrl(inv) });
+    return ctx.payments.createCheckout({ kind, id: inv.id, number: inv.number, amount: inv.balance, email: inv.client_email, back: F.invoiceUrl(inv), returnUrl: staff ? `${config.baseUrl}/app/#finance/invoice/${inv.id}` : null, userId: staff?.id });
   }
-  app.post('/api/app/quotes/:id/test-pay', U, P('jobs.manage'), async (req, res) => res.json(await checkoutFor('quote', id(req))));
-  app.post('/api/app/invoices/:id/test-pay', U, P('finance.manage'), async (req, res) => res.json(await checkoutFor('invoice', id(req))));
+  // the office takes a card payment for the client (by phone or at the office); "test-pay" kept for older screens
+  for (const path of ['card-pay', 'test-pay']) {
+    app.post(`/api/app/quotes/:id/${path}`, U, P('jobs.manage', 'finance.manage'), async (req, res) => res.json(await checkoutFor('quote', id(req), req.user)));
+    app.post(`/api/app/invoices/:id/${path}`, U, P('finance.manage'), async (req, res) => res.json(await checkoutFor('invoice', id(req), req.user)));
+  }
   /** Records a paid checkout session (demo, Stripe redirect or Stripe webhook). Safe to call twice. */
   async function settle(session, ref) {
-    if (session.quotation_id) await J.recordQuotePayment(null, session.quotation_id, { method: 'card', amount: session.amount, provider: session.provider, ref });
-    else if (session.invoice_id) await F.recordInvoicePayment(null, session.invoice_id, { method: 'card', amount: session.amount, provider: session.provider, ref });
+    const by = session.initiated_by ? db.prepare('SELECT id, name, email, role FROM users WHERE id=?').get(session.initiated_by) : null;
+    if (session.quotation_id) await J.recordQuotePayment(by, session.quotation_id, { method: 'card', amount: session.amount, provider: session.provider, ref });
+    else if (session.invoice_id) await F.recordInvoicePayment(by, session.invoice_id, { method: 'card', amount: session.amount, provider: session.provider, ref });
     db.prepare("UPDATE payment_sessions SET status='paid', payment_ref=? WHERE id=?").run(ref, session.id);
   }
-  const backUrl = (s) => (s.quotation_id ? J.quoteUrl(J.quoteById(s.quotation_id)) : F.invoiceUrl(db.prepare('SELECT * FROM invoices WHERE id=?').get(s.invoice_id)));
+  const backUrl = (s) => s.return_url || (s.quotation_id ? J.quoteUrl(J.quoteById(s.quotation_id)) : F.invoiceUrl(db.prepare('SELECT * FROM invoices WHERE id=?').get(s.invoice_id)));
 
   // ---------- public: quotation, agreement, payment ----------
   app.get('/api/public/quote/:t', (req, res) => { limit(req, 'pq', 120, 10 * 60 * 1000); res.json(J.publicQuote(req.params.t)); });

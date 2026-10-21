@@ -543,6 +543,8 @@ CREATE TABLE IF NOT EXISTS payment_sessions (      -- same as Dar Al Bunyan (dem
   status TEXT NOT NULL DEFAULT 'open',
   amount REAL NOT NULL,
   payment_ref TEXT,
+  return_url TEXT,                                 -- where the payer goes back to (job page when the office takes the card)
+  initiated_by INTEGER REFERENCES users(id),       -- staff member who took the card payment for the client
   created_at INTEGER NOT NULL
 );
 

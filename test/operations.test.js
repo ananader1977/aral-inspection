@@ -381,8 +381,19 @@ test('after acceptance the client is emailed the signing link; the office can re
     assert.ok(d.agreement.signed_at);
     assert.match(d.agreement.signed_name, /recorded by/);
     assert.equal(d.job.status, 'payment_pending');
-    // next step is open: record the payment, then schedule
-    assert.equal((await call('sa', 'POST', `/api/app/quotes/${q.body.id}/payment`, { method: 'bank_transfer', amount: d.quotes[0].total })).status, 200);
+    // the office takes the card for the client: checkout returns to the job page, payment recorded under the staff user
+    const co = await call('sa', 'POST', `/api/app/quotes/${q.body.id}/card-pay`);
+    assert.equal(co.status, 200, JSON.stringify(co.body));
+    const sid = new URL(co.body.url).searchParams.get('s');
+    assert.match((await call(null, 'GET', `/api/public/pay-demo/${sid}`)).body.back, new RegExp(`/app/#jobs/${job.body.id}$`));
+    const paid = await call(null, 'POST', `/api/public/pay-demo/${sid}`, { card: '4242424242424242', expiry: '12/30', cvc: '123' }, { csrf: false });
+    assert.match(paid.body.back, /\/app\/#jobs\//);
     assert.equal((await call('sa', 'GET', `/api/app/jobs/${job.body.id}`)).body.job.status, 'paid');
+    const pay = ctx.db.prepare('SELECT p.*, u.email FROM payments p LEFT JOIN users u ON u.id=p.recorded_by ORDER BY p.id DESC').get();
+    assert.equal(pay.method, 'card');
+    assert.equal(pay.email, SA.email);
+    // inspectors cannot take payments
+    await t.addUser('i2', 'inspector');
+    assert.equal((await call('i2', 'POST', `/api/app/quotes/${q.body.id}/card-pay`)).status, 403);
   } finally { await t.close(); fs.rmSync(t.uploadDir, { recursive: true, force: true }); }
 });

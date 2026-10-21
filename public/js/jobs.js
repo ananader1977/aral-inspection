@@ -120,8 +120,8 @@ async function jobFile(el, id) {
   if (M && draft) btns.push(h('button', { class: 'btn', onclick: async () => { if (await run(() => A('POST', `/quotes/${draft.id}/send`), 'Quotation emailed to the client')) reload(); } }, t('Send quotation')));
   if (M && live?.status === 'sent') btns.push(h('button', { class: 'btn alt', onclick: () => acceptForClient(live, reload) }, t('Record acceptance (phone / email)')));
   if (accepted && due > 0 && ['payment_pending', 'agreement_signed'].includes(j.status) && (M || can('finance.manage'))) {
-    btns.push(h('button', { class: 'btn cu', onclick: () => paymentForm(`/quotes/${accepted.id}/payment`, due, reload) }, t('Record payment')));
-    if (S.cfg.payments === 'mock') btns.push(h('button', { class: 'btn alt', onclick: async () => { const r = await run(() => A('POST', `/quotes/${accepted.id}/test-pay`)); if (r) window.open(r.url, '_blank', 'noopener'); } }, t('Test online payment (demo)')));
+    btns.push(h('button', { class: 'btn cu', onclick: () => paymentForm(`/quotes/${accepted.id}/payment`, due, reload) }, t('Record payment (transfer, cheque, cash, card machine)')));
+    btns.push(h('button', { class: 'btn', onclick: async () => { const r = await run(() => A('POST', `/quotes/${accepted.id}/card-pay`)); if (r) location.href = r.url; } }, S.cfg.payments === 'mock' ? t('Pay by card (demo)') : t('Pay by card for the client')));
   }
   const canSchedule = ['paid', 'scheduled', 'access_failed'].includes(j.status) || (j.status === 'agreement_signed' && j.client_kind === 'company');
   if (M && canSchedule) btns.push(h('button', { class: 'btn cu', onclick: () => scheduleForm(j, reload) }, t(j.status === 'scheduled' ? 'Reschedule' : 'Schedule the inspection')));
@@ -264,7 +264,7 @@ export function paymentForm(path, due, reload) {
   } }, h('h2', {}, t('Record payment')),
   h('div', { class: 'grid2' },
     field('Amount (AED)', h('input', { name: 'amount', inputmode: 'decimal', class: 'ltr', required: true, value: due })),
-    field('Method', h('select', { name: 'method' }, opt(['bank_transfer', 'cheque', 'cash', 'card'], 'bank_transfer'))),
+    field('Method', h('select', { name: 'method' }, opt(['bank_transfer', 'cheque', 'cash', 'card'], 'bank_transfer', { bank_transfer: 'Bank transfer', cheque: 'Cheque', cash: 'Cash', card: 'Card (card machine)' }))),
     field('Date received', h('input', { name: 'paid_on', type: 'date', value: todayIso() })),
     field('Reference (transfer / cheque no.)', h('input', { name: 'ref', class: 'ltr' }))),
   h('p', { class: 'actions' }, h('button', { class: 'btn cu' }, t('Record payment')), h('button', { class: 'btn alt', type: 'button', onclick: closeModal }, t('Cancel'))));

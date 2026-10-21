@@ -62,7 +62,7 @@ async function invoiceDetail(el, id) {
     h('div', { class: 'card actions' },
       h('a', { class: 'btn alt', href: `/api/app/invoices/${id}/pdf`, target: '_blank' }, 'PDF'),
       M && i.balance > 0 ? h('button', { class: 'btn cu', onclick: () => paymentForm(`/invoices/${id}/payment`, i.balance, reload) }, t('Record payment')) : null,
-      M && i.balance > 0 && S.cfg.payments === 'mock' ? h('button', { class: 'btn alt', onclick: async () => { const r = await run(() => A('POST', `/invoices/${id}/test-pay`)); if (r) window.open(r.url, '_blank', 'noopener'); } }, t('Test online payment (demo)')) : null,
+      M && i.balance > 0 ? h('button', { class: 'btn', onclick: async () => { const r = await run(() => A('POST', `/invoices/${id}/card-pay`)); if (r) location.href = r.url; } }, S.cfg.payments === 'mock' ? t('Pay by card (demo)') : t('Pay by card for the client')) : null,
       M ? h('button', { class: 'btn alt', onclick: async () => { await run(() => A('POST', `/invoices/${id}/send`), 'Emailed to the client'); } }, t('Email again')) : null,
       M ? h('button', { class: 'btn alt', onclick: credit }, t('Credit note')) : null,
       M && !i.paid ? h('button', { class: 'btn danger', onclick: cancel }, t('Cancel invoice')) : null),

@@ -11,8 +11,8 @@ export function createPayments(ctx) {
   return ctx.config.paymentProvider === 'stripe' ? stripeProvider(ctx) : mockProvider(ctx);
 }
 const insertSession = (ctx, id, t, provider) =>
-  ctx.db.prepare('INSERT INTO payment_sessions(id,quotation_id,invoice_id,provider,status,amount,created_at) VALUES(?,?,?,?,?,?,?)')
-    .run(id, t.kind === 'quote' ? t.id : null, t.kind === 'invoice' ? t.id : null, provider, 'open', t.amount, ctx.now());
+  ctx.db.prepare('INSERT INTO payment_sessions(id,quotation_id,invoice_id,provider,status,amount,return_url,initiated_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)')
+    .run(id, t.kind === 'quote' ? t.id : null, t.kind === 'invoice' ? t.id : null, provider, 'open', t.amount, t.returnUrl || null, t.userId || null, ctx.now());
 
 function mockProvider(ctx) {
   const { db, config } = ctx;
@@ -60,7 +60,7 @@ function stripeProvider(ctx) {
     async createCheckout(t) {
       const data = await call('POST', '/checkout/sessions', {
         mode: 'payment', 'payment_method_types[0]': 'card',
-        success_url: `${t.back}${t.back.includes('?') ? '&' : '?'}done=1&s={CHECKOUT_SESSION_ID}`, cancel_url: t.back,
+        success_url: `${t.back}${t.back.includes('?') ? '&' : '?'}done=1&s={CHECKOUT_SESSION_ID}`, cancel_url: t.returnUrl || t.back,
         ...(t.email ? { customer_email: t.email } : {}),
         client_reference_id: `${t.kind}:${t.id}`, 'metadata[kind]': t.kind, 'metadata[id]': String(t.id), 'metadata[number]': t.number,
         'line_items[0][quantity]': '1', 'line_items[0][price_data][currency]': 'aed',
