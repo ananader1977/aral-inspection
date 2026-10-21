@@ -117,7 +117,8 @@ export function registerOpsRoutes(app, ctx) {
   app.get('/api/app/calendar', U, P('calendar.view'), (req, res) => {
     const from = Number(req.query.from) || ctx.now() - 7 * DAY, to = Number(req.query.to) || from + 7 * DAY;
     if (to - from > 62 * DAY) throw new HttpError(400, 'Choose a shorter period.');
-    res.json({ rows: J.calendar(from, to, { inspector_id: req.query.inspector_id, user: req.user }), inspectors: req.user.role === 'inspector' ? [] : db.prepare('SELECT id, name FROM inspectors WHERE active=1 ORDER BY name').all(), work: { start: 8, end: 20 } });
+    res.json({ rows: J.calendar(from, to, { inspector_id: req.query.inspector_id, user: req.user }),
+      upcoming: J.calendar(ctx.now() - 2 * 3600e3, ctx.now() + 60 * DAY, { inspector_id: req.query.inspector_id, user: req.user }).filter((a) => !['report_issued', 'invoiced', 'closed'].includes(a.status)).slice(0, 30), inspectors: req.user.role === 'inspector' ? [] : db.prepare('SELECT id, name FROM inspectors WHERE active=1 ORDER BY name').all(), work: { start: 8, end: 20 } });
   });
   const feedKey = () => {
     let k = db.prepare("SELECT value FROM settings WHERE key='_feed_key'").get()?.value;

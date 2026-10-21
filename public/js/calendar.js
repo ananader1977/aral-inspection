@@ -15,11 +15,14 @@ export const LEGEND = [['booked', 'Booked'], ['progress', 'In progress / review'
 
 const st = { week: null, inspector: '' };
 
-export async function calendarView(el) {
-  st.week ??= mondayOf(Date.now() + (dubai(Date.now()).getUTCDay() === 0 ? DAY : 0));
-  const from = st.week, to = st.week + 6 * DAY;
+export async function calendarView(el, parts = []) {
+  // #calendar/2026-10-26 opens the week of that day (link from the job page)
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(parts[0] || '');
+  if (m) st.week = mondayOf(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 8) - 4 * HOUR);
+  st.week ??= mondayOf(Date.now());
+  const from = st.week, to = st.week + 7 * DAY;
   const d = await A('GET', `/calendar?from=${from}&to=${to}${st.inspector ? `&inspector_id=${st.inspector}` : ''}`);
-  const days = [0, 1, 2, 3, 4, 5].map((i) => from + i * DAY);
+  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => from + i * DAY); // Monday to Sunday
   const { start: ws, end: we } = d.work;
   const hours = [];
   for (let hr = ws; hr < we; hr++) hours.push(hr);
@@ -27,7 +30,7 @@ export async function calendarView(el) {
   const cell = (a) => h('button', { class: `cell ${CLS(a.status)}${a.end < now ? ' past' : ''}`, type: 'button', title: `${a.number} · ${a.client}`, onclick: () => detail(a) },
     h('b', {}, `${hhmm(a.start)} ${a.number.replace(/^JOB-\d{4}-/, '#')}`), h('span', {}, a.where || a.client), st.inspector ? null : h('span', { class: 'ins' }, a.inspector || t('No inspector')));
   // the grid: one row per hour, appointments placed in the hour they start
-  const grid = h('div', { class: 'calgrid' }, h('div', { class: 'h' }), days.map((x) => h('div', { class: `h ${x <= now && now < x + DAY ? 'today' : ''}` }, dayLabel(x))));
+  const grid = h('div', { class: 'calgrid' }, h('div', { class: 'h' }), days.map((x) => h('div', { class: `h ${x <= now && now < x + DAY ? 'today' : ''} ${dubai(x).getUTCDay() === 0 ? 'sun' : ''}` }, dayLabel(x))));
   for (const hr of hours) {
     grid.append(h('div', { class: 't' }, `${String(hr).padStart(2, '0')}:00`));
     for (const x of days) {
@@ -35,7 +38,7 @@ export async function calendarView(el) {
       const inSlot = d.rows.filter((a) => a.start >= slotStart && a.start < slotStart + HOUR);
       const early = hr === ws ? d.rows.filter((a) => a.start >= x && a.start < slotStart) : [];
       const late = hr === we - 1 ? d.rows.filter((a) => a.start >= slotStart + HOUR && a.start < x + DAY) : [];
-      grid.append(h('div', {}, [...early, ...inSlot, ...late].map(cell)));
+      grid.append(h('div', { class: dubai(x).getUTCDay() === 0 ? 'sun' : '' }, [...early, ...inSlot, ...late].map(cell)));
     }
   }
   const mob = h('div', { class: 'calmob' }, days.map((x) => {
@@ -48,11 +51,19 @@ export async function calendarView(el) {
       h('div', { class: 'actions' }, h('h1', {}, t('Calendar')), h('span', { class: 'spacer' }),
         d.inspectors.length ? h('select', { 'aria-label': t('Inspector'), onchange: (e) => { st.inspector = e.target.value; calendarView(el); } }, h('option', { value: '' }, t('All inspectors')), d.inspectors.map((i) => h('option', { value: i.id, selected: String(i.id) === st.inspector }, i.name))) : null,
         can('jobs.manage') ? h('button', { class: 'btn alt sm', onclick: feedDialog }, t('Subscribe in Outlook / Google')) : null),
-      h('div', { class: 'weekbar' }, h('button', { class: 'btn alt sm', onclick: () => step(-1) }, `‹ ${t('Prev')}`), h('b', {}, `${dayLabel(days[0])} – ${dayLabel(days[5])}`),
+      h('div', { class: 'weekbar' }, h('button', { class: 'btn alt sm', onclick: () => step(-1) }, `‹ ${t('Prev')}`), h('b', {}, `${dayLabel(days[0])} – ${dayLabel(days[6])}`),
         h('button', { class: 'btn alt sm', onclick: () => step(0) }, t('Today')), h('button', { class: 'btn alt sm', onclick: () => step(1) }, `${t('Next')} ›`)),
       h('div', { class: 'legend' }, LEGEND.map(([k, l]) => h('span', {}, h('i', { class: `cell ${k}` }), t(l))), h('span', { class: 'muted' }, t('{n} appointments this week', { n: d.rows.length }))),
-      mob, grid));
+      mob, grid),
+    upcomingCard(d.upcoming || []));
 
+  function upcomingCard(list) {
+    const later = list.filter((a) => a.start >= to);
+    if (!later.length) return null;
+    return h('div', { class: 'card' }, h('h2', {}, t('Coming up after this week')),
+      h('div', { class: 'tablewrap' }, h('table', {}, h('tbody', {}, later.map((a) => h('tr', { class: 'click', onclick: () => { st.week = mondayOf(a.start); calendarView(el); window.scrollTo(0, 0); } },
+        h('td', { class: 'nowrap' }, `${dayLabel(a.start)} ${hhmm(a.start)}`), h('td', { class: 'ltr' }, a.number), h('td', {}, a.client, h('div', { class: 'small muted' }, a.where)), h('td', {}, a.inspector || '-')))))));
+  }
   function detail(a) {
     modal(h('h2', { class: 'ltr' }, a.number), h('dl', { class: 'kv' },
       h('dt', {}, t('When')), h('dd', {}, `${fmtStamp(a.start)} – ${hhmm(a.end)}`),

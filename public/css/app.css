@@ -81,7 +81,7 @@ input.mini{width:80px;min-height:32px;padding:4px 6px}
 /* calendar (week grid as in the Consultancy app) */
 .weekbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0}.weekbar b{text-align:center;flex:1}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.8rem;margin:8px 0}.legend i{display:inline-block;width:12px;height:12px;min-height:0;border-radius:3px;margin-inline-end:4px;vertical-align:-1px;padding:0}
-.calgrid{display:none;grid-template-columns:62px repeat(6,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.calgrid{display:none;grid-template-columns:62px repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
 .calgrid>div{border-top:1px solid var(--line);border-inline-start:1px solid var(--line);min-height:46px;padding:3px;font-size:.78rem;min-width:0}
 .calgrid>.h{background:#F8FAFC;font-weight:700;text-align:center;border-top:0;padding:8px 2px;min-height:0}.calgrid>.h.today{background:var(--copper-tint);color:var(--copper)}
 .calgrid>.t{background:#F8FAFC;color:var(--muted);text-align:end;padding:6px}
@@ -127,3 +127,4 @@ a.kpi{text-decoration:none;color:inherit;display:block}a.kpi:hover{border-color:
 .attno{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:8px;background:var(--copper-tint);color:var(--copper);font-weight:800;font-size:.8rem}
 .linkbox{text-align:start;direction:ltr;font-size:.8rem;letter-spacing:0}
 .nextstep{border-inline-start:4px solid var(--copper)}
+.calgrid>.sun{background:#FAFBFD}.calgrid>.h.sun{color:var(--muted)}
