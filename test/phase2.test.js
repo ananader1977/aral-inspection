@@ -222,7 +222,7 @@ test('demo data: users for each role, inspectors and equipment', async () => {
 test('every fixed screen text has an Arabic translation', () => {
   const ar = JSON.parse(fs.readFileSync(new URL('../public/i18n/ar.json', import.meta.url), 'utf8'));
   const missing = [];
-  for (const f of ['app.js', 'settings.js', 'common.js']) {
+  for (const f of ['app.js', 'settings.js', 'common.js', 'leads.js']) {
     const src = fs.readFileSync(new URL(`../public/js/${f}`, import.meta.url), 'utf8');
     for (const m of src.matchAll(/\bt\('((?:[^'\\]|\\.)*)'/g)) {
       const k = m[1].replace(/\\'/g, "'");

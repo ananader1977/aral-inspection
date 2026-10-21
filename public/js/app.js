@@ -1,6 +1,7 @@
 import { api, h, $, fill, toast, pill, t } from '/js/common.js';
 import { setLang, savedLang, getLang } from '/js/i18n.js';
 import { settingsView } from '/js/settings.js';
+import { leadsView } from '/js/leads.js';
 
 const app = $('#app'), dlg = $('#dlg'), nav = $('#nav');
 export const S = { me: null, cfg: null, lk: null };
@@ -114,7 +115,7 @@ async function twoFactorSetup(forced) {
 }
 
 // ---------- routing ----------
-const TABS = () => [['dashboard', 'Dashboard'], ...(can('settings.view') ? [['settings', 'Settings']] : [])];
+const TABS = () => [['dashboard', 'Dashboard'], ...(can('leads.manage') ? [['leads', 'Leads']] : []), ...(can('settings.view') ? [['settings', 'Settings']] : [])];
 async function route() {
   if (!S.me) return;
   const parts = (location.hash.slice(1) || 'dashboard').split('/');
@@ -124,6 +125,7 @@ async function route() {
   fill(app, tabs, body);
   try {
     if (name === 'settings' && can('settings.view')) await settingsView(body, parts.slice(1));
+    else if (name === 'leads' && can('leads.manage')) await leadsView(body);
     else if (name === 'account') await accountView(body);
     else await dashboard(body);
   } catch (e) {
@@ -137,6 +139,7 @@ async function dashboard(el) {
   const done = d.setup.filter((s) => s.done).length;
   fill(el,
     h('div', { class: 'kpis' },
+      d.leads ? h('a', { class: `kpi ${d.leads.overdue ? 'cu' : ''}`, href: '#leads' }, h('b', {}, d.leads.open), h('span', {}, d.leads.overdue ? t('Open leads · {n} waiting over 2 hours', { n: d.leads.overdue }) : t('Open leads'))) : null,
       h('div', { class: 'kpi' }, h('b', {}, d.counts.users), h('span', {}, t('Active users'))),
       h('div', { class: 'kpi' }, h('b', {}, d.counts.inspectors), h('span', {}, t('Active inspectors'))),
       h('div', { class: 'kpi cu' }, h('b', {}, d.counts.services), h('span', {}, t('Services in the catalogue'))),

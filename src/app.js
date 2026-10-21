@@ -6,6 +6,8 @@ import { createAuth, ensureSuperAdmin } from './auth.js';
 import { createAdmin } from './admin.js';
 import { createMailer } from './mailer.js';
 import { seedReference, seedDemo } from './seed.js';
+import { createPricing } from './pricing.js';
+import { createLeads } from './leads.js';
 import { registerRoutes } from './routes.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -19,6 +21,8 @@ export function createContext({ config, now = () => Date.now() }) {
   ctx.mailer = createMailer(ctx);
   ctx.admin = createAdmin(ctx);
   ctx.auth = createAuth(ctx);
+  ctx.pricing = createPricing(ctx);
+  ctx.leads = createLeads(ctx);
   ctx.seeded = seedReference(db, now);
   ctx.createdUsers = ensureSuperAdmin(ctx);
   if (config.seedDemo) ctx.createdUsers.push(...seedDemo(db, now, config.demoPassword));
@@ -27,7 +31,6 @@ export function createContext({ config, now = () => Date.now() }) {
 
 export function createWebApp(ctx) {
   const app = createApp({ publicDir: path.join(here, '..', 'public') });
-  app.get('/', (req, res) => res.redirect('/app/'));
   registerRoutes(app, ctx);
   return app;
 }

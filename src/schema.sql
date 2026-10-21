@@ -586,3 +586,36 @@ CREATE TABLE IF NOT EXISTS feedback (              -- post-job review score (tar
   comment TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL
 );
+
+-- ───────────────────────── 10. LEADS (website and manual enquiries) ─────────────────────────
+CREATE TABLE IF NOT EXISTS leads (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at INTEGER NOT NULL,
+  source TEXT NOT NULL DEFAULT 'website',          -- website, whatsapp, phone, email, broker, bank, repeat
+  name TEXT NOT NULL,
+  mobile TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL DEFAULT '',
+  client_type TEXT NOT NULL DEFAULT 'individual',
+  pref_lang TEXT NOT NULL DEFAULT 'en',
+  service_code TEXT NOT NULL DEFAULT '',
+  property_type TEXT NOT NULL DEFAULT '',
+  bedrooms INTEGER,
+  sqft REAL,
+  community TEXT NOT NULL DEFAULT '',
+  building TEXT NOT NULL DEFAULT '',
+  preferred_date TEXT,
+  addons TEXT NOT NULL DEFAULT '[]',
+  urgent INTEGER NOT NULL DEFAULT 0,
+  estimate_total REAL,                             -- what the website showed, AED
+  referral_code TEXT NOT NULL DEFAULT '',          -- broker / agent code
+  message TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','contacted','qualified','onboarding','converted','lost')),
+  lost_reason TEXT NOT NULL DEFAULT '',
+  assigned_to INTEGER REFERENCES users(id),
+  contacted_at INTEGER,
+  job_id INTEGER REFERENCES jobs(id),
+  consent INTEGER NOT NULL DEFAULT 0,
+  ip TEXT NOT NULL DEFAULT '',
+  notes TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS ix_leads_status ON leads(status, created_at);

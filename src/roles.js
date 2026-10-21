@@ -28,6 +28,7 @@ const P = {
   'field.edit': ['super_admin', 'admin'], // inspectors, equipment
   'audit.view': ['super_admin'],
   'messages.view': ['super_admin', 'admin'],
+  'leads.manage': ['super_admin', 'admin'],
   'export': ['super_admin', 'admin', 'reviewer', 'accountant'],
 };
 

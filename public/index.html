@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A1F4A">
+<title>ARAL Property Inspection Dubai · Snagging, resale and handover inspections</title>
+<meta name="description" content="Independent, engineer-led property inspections in Dubai. Snagging, resale and move-in reports with photos, videos and thermal imaging, delivered within 24 hours. Get an instant price.">
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/mark.png">
+<link rel="stylesheet" href="/site/site.css">
+</head>
+<body>
+<a class="skip" href="#book" data-i18n="skip">Skip to booking</a>
+<header class="bar">
+  <div class="in">
+    <a class="logo" href="#top" aria-label="ARAL Property Inspection Service"><img src="/mark.png" alt="" width="40" height="40"><span><b>ARAL</b><small data-i18n="brandSub">Property Inspection Service</small></span></a>
+    <nav class="menu" aria-label="Main">
+      <a href="#services" data-i18n="navServices">Services</a>
+      <a href="#prices" data-i18n="navPrices">Prices</a>
+      <a href="#how" data-i18n="navHow">How it works</a>
+      <a href="#agents" data-i18n="navAgents">For agents</a>
+    </nav>
+    <div class="tools">
+      <button class="lang" type="button" id="lang" aria-label="Language">العربية</button>
+      <a class="btn cu sm" href="#book" data-i18n="navBook">Get a price</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+<section class="hero">
+  <div class="in">
+    <div class="copy">
+      <p class="kick" data-i18n="heroKick">Dubai property inspections</p>
+      <h1 data-i18n="heroTitle">Know exactly what you're buying before you sign.</h1>
+      <p class="lead" data-i18n="heroLead">Independent, engineer-led inspections for resale homes, new handovers and rentals. Photos, videos and thermal imaging in a clear report within 24 hours.</p>
+      <div class="cta">
+        <a class="btn cu" href="#book" data-i18n="heroCta">Get an instant price</a>
+        <a class="btn ghost wa hide" id="waHero" href="#" target="_blank" rel="noopener" data-i18n="heroWa">WhatsApp us</a>
+      </div>
+      <ul class="trust">
+        <li data-i18n="trust1">We never sell repairs</li>
+        <li data-i18n="trust2">Every report checked by a chartered engineer</li>
+        <li data-i18n="trust3">Report within 24 hours</li>
+        <li class="hide" id="trustRera" data-i18n="trust4">Registered with DLD / RERA</li>
+      </ul>
+    </div>
+    <figure class="sample" aria-label="Example of a finding in an ARAL report">
+      <div class="sheet">
+        <div class="sh-top"><img src="/logo.jpg" alt="" width="96" height="55"><span>RESALE INSPECTION REPORT</span></div>
+        <p class="sh-sec">Master Bathroom</p>
+        <p class="sh-item">3. Traps/Drains/Supply Condition</p>
+        <p class="sh-crit">• The bathtub drain appears blocked: the water level did not drop for over 20 minutes. Please get it checked by a licensed plumber.</p>
+        <p class="sh-att">• Sealant is missing between the wall and the base plate of the shower mixer.</p>
+        <div class="sh-pics"><i></i><i class="th"></i></div>
+        <p class="sh-foot"><span>ARAL | Unit 1205, Downtown</span><span>Page 37 of 64</span></p>
+      </div>
+      <figcaption data-i18n="sampleCap">Every finding comes with photos, a severity colour and who to call to fix it.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="book" id="book">
+  <div class="in">
+    <div class="head">
+      <p class="kick" data-i18n="bookKick">Instant price</p>
+      <h2 data-i18n="bookTitle">Your price in 20 seconds, then book in one step</h2>
+    </div>
+    <form class="grid" id="bookForm" novalidate>
+      <fieldset class="panel">
+        <legend data-i18n="step1">1. Your property</legend>
+        <label for="service" data-i18n="fService">Service</label>
+        <select id="service" name="service_code" required></select>
+        <div class="two">
+          <div><label for="ptype" data-i18n="fType">Property type</label><select id="ptype" name="property_type" required></select></div>
+          <div id="bedsWrap"><label for="beds" data-i18n="fBeds">Bedrooms</label>
+            <select id="beds" name="bedrooms"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6+</option></select></div>
+          <div id="sqftWrap" class="hide"><label for="sqft" data-i18n="fSqft">Size (sq ft)</label><input id="sqft" name="sqft" inputmode="numeric" dir="ltr"></div>
+        </div>
+        <label for="community" data-i18n="fCommunity">Community</label>
+        <input id="community" name="community" list="communities" autocomplete="off">
+        <datalist id="communities"></datalist>
+        <p class="sub" data-i18n="fAddons">Add-ons</p>
+        <div class="checks" id="addons"></div>
+        <label class="chk"><input type="checkbox" name="urgent" id="urgent"> <span data-i18n="fUrgent">Same-day / urgent report</span></label>
+      </fieldset>
+
+      <aside class="panel quote" aria-live="polite">
+        <p class="sub" data-i18n="estTitle">Your estimate</p>
+        <div id="est"><p class="muted" data-i18n="estEmpty">Choose a service and property to see the price.</p></div>
+        <ul class="incl">
+          <li data-i18n="incl1">Room-by-room report with photos and videos</li>
+          <li data-i18n="incl2">AC, electrical, plumbing and moisture checks</li>
+          <li data-i18n="incl3">Reviewed by our Technical Manager</li>
+          <li data-i18n="incl4">Follow-up call to go through the findings</li>
+        </ul>
+      </aside>
+
+      <fieldset class="panel wide">
+        <legend data-i18n="step2">2. Book it</legend>
+        <div class="three">
+          <div><label for="name" data-i18n="fName">Full name</label><input id="name" name="name" autocomplete="name" required></div>
+          <div><label for="mobile" data-i18n="fMobile">Mobile (WhatsApp)</label><input id="mobile" name="mobile" type="tel" autocomplete="tel" dir="ltr" placeholder="+971 50 123 4567" required></div>
+          <div><label for="email" data-i18n="fEmail">Email (optional)</label><input id="email" name="email" type="email" autocomplete="email" dir="ltr"></div>
+          <div><label for="date" data-i18n="fDate">Preferred date</label><input id="date" name="preferred_date" type="date" dir="ltr"></div>
+          <div><label for="building" data-i18n="fBuilding">Building / project and unit</label><input id="building" name="building"></div>
+          <div><label for="ref" data-i18n="fRef">Agent referral code (if any)</label><input id="ref" name="referral_code" dir="ltr"></div>
+        </div>
+        <label for="message" data-i18n="fMsg">Anything we should know? (handover date, access, questions)</label>
+        <textarea id="message" name="message" rows="3"></textarea>
+        <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <label class="chk"><input type="checkbox" name="consent" id="consent" required> <span data-i18n="fConsent">I agree that ARAL may contact me by phone, WhatsApp or email about this enquiry.</span></label>
+        <p class="err hide" id="err" role="alert"></p>
+        <div class="send"><button class="btn cu" type="submit" id="submit" data-i18n="fSubmit">Request booking</button><span class="note" data-i18n="fNote">No payment now. We confirm the date and send the quotation first.</span></div>
+      </fieldset>
+    </form>
+    <div class="done hide" id="done" tabindex="-1">
+      <h3 data-i18n="doneTitle">Thank you, we have your request</h3>
+      <p data-i18n="doneText">We will call or WhatsApp you shortly to confirm the date. Your reference:</p>
+      <p class="refno" id="refno"></p>
+      <a class="btn ghost wa hide" id="waDone" href="#" target="_blank" rel="noopener" data-i18n="doneWa">Message us on WhatsApp now</a>
+    </div>
+  </div>
+</section>
+
+<section class="services" id="services">
+  <div class="in">
+    <p class="kick" data-i18n="svcKick">Residential</p>
+    <h2 data-i18n="svcTitle">Inspections for every stage of owning a home</h2>
+    <div class="cards">
+      <article><h3 data-i18n="s1t">Resale inspection</h3><p data-i18n="s1d">Before you sign the MOU or transfer: a full condition report you can use to negotiate with the seller. Includes one re-inspection.</p><p class="from"><span data-i18n="from">From</span> <b id="p_OWN-PPI">AED 1,200</b></p></article>
+      <article><h3 data-i18n="s2t">Snagging and handover</h3><p data-i18n="s2d">Before you accept the keys to a new unit: 200+ checks and a defect list in the developer's format, with a re-inspection after repairs.</p><p class="from"><span data-i18n="from">From</span> <b id="p_OWN-SNG">AED 1,200</b></p></article>
+      <article><h3 data-i18n="s3t">11th-month warranty</h3><p data-i18n="s3d">Before the developer's defect period ends, so every remaining defect is claimed in time.</p><p class="from"><span data-i18n="from">From</span> <b id="p_OWN-DLP">AED 900</b></p></article>
+      <article><h3 data-i18n="s4t">Move-in / move-out</h3><p data-i18n="s4d">A dated, photo-backed condition record that protects the deposit for tenants and landlords.</p><p class="from"><span data-i18n="from">From</span> <b id="p_OWN-MIO">AED 900</b></p></article>
+    </div>
+    <div class="biz">
+      <div><p class="kick" data-i18n="bizKick">Commercial</p><h3 data-i18n="bizTitle">Banks, developers, offices and warehouses</h3>
+        <p data-i18n="bizText">Collateral and construction-progress inspections for lenders, building and common-area audits for developers and owners associations, and pre-lease inspections for offices, shops and warehouses.</p></div>
+      <a class="btn ghost" href="#book" id="bizBtn" data-i18n="bizBtn">Ask for a business quote</a>
+    </div>
+  </div>
+</section>
+
+<section class="prices" id="prices">
+  <div class="in">
+    <p class="kick" data-i18n="prKick">Prices</p>
+    <h2 data-i18n="prTitle">Clear prices, no surprises</h2>
+    <div class="tw"><table>
+      <thead><tr><th data-i18n="thProp">Property</th><th data-i18n="thResale">Resale</th><th data-i18n="thSnag">Snagging</th><th data-i18n="thWarr">11th-month</th><th data-i18n="thMove">Move-in/out</th></tr></thead>
+      <tbody>
+        <tr><td data-i18n="rStudio">Studio</td><td>1,200</td><td>1,200</td><td>900</td><td>900</td></tr>
+        <tr><td data-i18n="r1">1-bedroom apartment</td><td>1,500</td><td>1,400</td><td>900</td><td>900</td></tr>
+        <tr><td data-i18n="r2">2-bedroom apartment</td><td>1,700</td><td>1,800</td><td>900</td><td>1,300</td></tr>
+        <tr><td data-i18n="r3">3-bedroom apartment</td><td>1,860</td><td>2,400</td><td>1,600</td><td>1,300</td></tr>
+        <tr><td data-i18n="rTh">Townhouse</td><td>2,500</td><td>3,000</td><td>1,600</td><td>1,800</td></tr>
+        <tr><td data-i18n="rV4">Villa, up to 4 bedrooms</td><td>3,000</td><td>4,500</td><td>1,600</td><td>2,200</td></tr>
+        <tr><td data-i18n="rV5">Villa, 5+ bedrooms</td><td>3,500</td><td>6,000</td><td>1,600</td><td>2,200</td></tr>
+      </tbody>
+    </table></div>
+    <p class="fine" id="vatNote" data-i18n="prNote">Prices in AED. Add-ons: thermal imaging 500, HVAC check 850, moisture and leak detection 600, pool and waterproofing 1,000.</p>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="in">
+    <p class="kick" data-i18n="howKick">How it works</p>
+    <h2 data-i18n="howTitle">From booking to report in four steps</h2>
+    <ol class="steps">
+      <li><b data-i18n="h1t">Book</b><span data-i18n="h1d">Get your price here or on WhatsApp. We send the quotation and agreement to sign online.</span></li>
+      <li><b data-i18n="h2t">Prepare</b><span data-i18n="h2d">Make sure the AC and DEWA are connected and we can get the keys. That's all we need.</span></li>
+      <li><b data-i18n="h3t">Inspect</b><span data-i18n="h3d">Our inspector checks every room with thermal camera, moisture meter and socket tester. You are welcome to join.</span></li>
+      <li><b data-i18n="h4t">Report</b><span data-i18n="h4d">Within 24 hours you get the report with photos, videos and a summary to send to the developer or seller.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section class="agents" id="agents">
+  <div class="in">
+    <div>
+      <p class="kick" data-i18n="agKick">For brokers and agents</p>
+      <h2 data-i18n="agTitle">Give your buyers peace of mind. Earn on every referral.</h2>
+      <ul class="ticks">
+        <li data-i18n="ag1">10% referral fee on every paid inspection you send us</li>
+        <li data-i18n="ag2">Your own referral code, so every booking is credited to you</li>
+        <li data-i18n="ag3">Report within 24 hours, so your deal timeline is not delayed</li>
+        <li data-i18n="ag4">Independent: we never sell repairs, so sellers and buyers trust the report</li>
+      </ul>
+    </div>
+    <a class="btn cu" id="agentBtn" href="#book" data-i18n="agBtn">Get your referral code</a>
+  </div>
+</section>
+
+<section class="faq">
+  <div class="in">
+    <h2 data-i18n="faqTitle">Questions</h2>
+    <details><summary data-i18n="q1">What do you need from me on the day?</summary><p data-i18n="a1">Access to the property, with the air conditioning and DEWA connected. Without them we cannot test cooling, electrics or plumbing properly.</p></details>
+    <details><summary data-i18n="q2">How long does an inspection take?</summary><p data-i18n="a2">About 2 to 3 hours for an apartment and 4 to 6 hours for a villa.</p></details>
+    <details><summary data-i18n="q3">Do you do valuations?</summary><p data-i18n="a3">No. We inspect condition. For a valuation we work with a RERA-registered valuation partner and can pass on our inspection to them.</p></details>
+    <details><summary data-i18n="q4">Will you fix the defects?</summary><p data-i18n="a4">No. We never sell repairs, so our report stays independent. We tell you which trade to call for each finding.</p></details>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="in">
+    <div><img src="/logo.jpg" alt="ARAL Property Inspection Service" width="150" height="87"></div>
+    <div class="contact" id="contact"></div>
+    <div class="small"><a href="/app/" data-i18n="staff">Staff sign-in</a></div>
+  </div>
+</footer>
+<script type="module" src="/site/site.js"></script>
+</body>
+</html>

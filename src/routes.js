@@ -6,6 +6,8 @@ import { ROLES, ROLE_LABEL, ROLES_2FA, can, permissionsOf } from './roles.js';
 import { buildXlsx } from './xlsx.js';
 import { isEmail } from './util.js';
 import { dateKey } from './time.js';
+import { LEAD_STATUSES } from './leads.js';
+import { RESIDENTIAL_TYPES, COMMERCIAL_TYPES } from './pricing.js';
 
 export function registerRoutes(app, ctx) {
   const { db, auth, admin, config } = ctx;
@@ -49,6 +51,50 @@ export function registerRoutes(app, ctx) {
     res.json({ ok: true });
   });
   app.post('/api/logout', (req, res) => { auth.endSession(res); res.json({ ok: true }); });
+
+  // ---------- public website: catalogue, instant estimate, enquiry form ----------
+  app.get('/api/public/site', (req, res) => {
+    const s = ctx.settings();
+    const svc = db.prepare("SELECT code, name, name_ar, segment, is_addon, includes_reinspection, default_sla_hours FROM services WHERE active=1 AND (segment='owner' OR is_addon=1) ORDER BY sort").all();
+    const from = (code) => db.prepare("SELECT MIN(r.price) p FROM price_rules r JOIN services s ON s.id=r.service_id WHERE s.code=?").get(code)?.p ?? null;
+    const branch = db.prepare('SELECT address, phone FROM branches WHERE is_default=1 AND active=1').get();
+    const lk = (list) => db.prepare('SELECT value FROM lookups WHERE list=? AND active=1 ORDER BY sort, value').all(list).map((r) => r.value);
+    res.json({
+      company: s.company_name, tagline: s.tagline, phone: s.phone || branch?.phone || '', mobile: s.mobile, email: s.email, website: s.website,
+      address: branch?.address || '', rera: s.rera_reg_no, licence: s.det_licence_no, vat_registered: s.vat_registered === '1', vat_rate: Number(s.vat_rate),
+      services: svc.map((x) => ({ ...x, from: from(x.code) })), communities: lk('community'),
+      residential_types: RESIDENTIAL_TYPES, commercial_types: COMMERCIAL_TYPES,
+      price_table: [['studio', 'studio', 0], ['apt1', 'apartment', 1], ['apt2', 'apartment', 2], ['apt3', 'apartment', 3], ['townhouse', 'townhouse', 3], ['villa4', 'villa', 4], ['villa5', 'villa', 5]].map(([key, type, beds]) => ({
+        key, prices: Object.fromEntries(['OWN-PPI', 'OWN-SNG', 'OWN-DLP', 'OWN-MIO'].map((code) => {
+          const sv = db.prepare('SELECT id FROM services WHERE code=? AND active=1').get(code);
+          return [code, sv ? ctx.pricing.basePrice(sv.id, type, beds, null)?.price ?? null : null];
+        })),
+      })),
+      addon_prices: Object.fromEntries(db.prepare("SELECT s.code, MIN(r.price) p FROM services s JOIN price_rules r ON r.service_id=s.id WHERE s.is_addon=1 AND s.active=1 GROUP BY s.code").all().map((r) => [r.code, r.p])),
+    });
+  });
+  app.post('/api/public/estimate', async (req, res) => {
+    limit(req, 'estimate', 120, 10 * 60 * 1000);
+    const b = await req.json();
+    res.json(ctx.pricing.estimate({ service: b.service, propertyType: b.property_type, bedrooms: b.bedrooms, sqft: b.sqft, addons: b.addons, urgent: !!b.urgent }));
+  });
+  app.post('/api/public/leads', async (req, res) => {
+    limit(req, 'lead', 8, 60 * 60 * 1000);
+    const r = await ctx.leads.createPublic(await req.json(), ip(req));
+    res.json({ ok: true, ref: r.id ? `L-${String(r.id).padStart(5, '0')}` : '' });
+  });
+
+  // ---------- leads (staff) ----------
+  app.get('/api/app/leads', U, P('leads.manage'), (req, res) => res.json({ rows: ctx.leads.list(req.query), statuses: LEAD_STATUSES, stats: ctx.leads.stats() }));
+  app.post('/api/app/leads', U, P('leads.manage'), async (req, res) => res.json({ row: ctx.leads.createManual(req.user, await req.json(), ip(req)) }));
+  app.put('/api/app/leads/:id', U, P('leads.manage'), async (req, res) => res.json({ row: ctx.leads.update(req.user, id(req), await req.json(), ip(req)) }));
+  app.get('/api/app/export/leads.xlsx', U, P('leads.manage'), (req, res) => sendXlsx(res, 'Leads', [{ name: 'Leads', columns: [
+    { header: 'Ref', value: (l) => `L-${String(l.id).padStart(5, '0')}`, width: 10 }, { header: 'Received', key: 'created_at', type: 'date', width: 18 },
+    { header: 'Status', key: 'status', width: 12 }, { header: 'Source', key: 'source', width: 10 }, { header: 'Name', key: 'name', width: 24 },
+    { header: 'Mobile', key: 'mobile', width: 16 }, { header: 'Email', key: 'email', width: 26 }, { header: 'Service', key: 'service_name', width: 30 },
+    { header: 'Property', key: 'property_type', width: 12 }, { header: 'Bedrooms', key: 'bedrooms', type: 'number', width: 9 }, { header: 'Community', key: 'community', width: 20 },
+    { header: 'Estimate (AED)', key: 'estimate_total', type: 'money', width: 14 }, { header: 'Referral code', key: 'referral_code', width: 14 },
+    { header: 'Lost reason', key: 'lost_reason', width: 22 }, { header: 'Assigned to', key: 'assigned_name', width: 20 }, { header: 'Notes', key: 'notes', width: 40 }], rows: ctx.leads.list(req.query) }]));
 
   // ---------- me ----------
   app.get('/api/me', U, (req, res) => res.json({ user: me(req.user) }));
@@ -97,6 +143,7 @@ export function registerRoutes(app, ctx) {
     const n = (sql) => db.prepare(sql).get().n;
     res.json({
       setup: can(req.user.role, 'settings.edit') ? admin.setupChecklist() : [],
+      leads: can(req.user.role, 'leads.manage') ? ctx.leads.stats() : null,
       counts: { users: n('SELECT COUNT(*) n FROM users WHERE active=1'), inspectors: n('SELECT COUNT(*) n FROM inspectors WHERE active=1'), services: n('SELECT COUNT(*) n FROM services WHERE active=1'), comments: n('SELECT COUNT(*) n FROM comment_library WHERE active=1') },
       expiring: db.prepare("SELECT 'inspector' kind, name, MIN(COALESCE(licence_expiry,'9999'), COALESCE(insurance_expiry,'9999'), COALESCE(agreement_expiry,'9999')) due FROM inspectors WHERE active=1 GROUP BY id HAVING due < date('now','+45 days') UNION ALL SELECT 'equipment', name, calibration_due FROM equipment WHERE active=1 AND calibration_due < date('now','+45 days') ORDER BY due").all(),
     });

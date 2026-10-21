@@ -49,6 +49,7 @@ const LOOKUPS = {
   attendance: ['Owner', 'Buyer', 'Seller', 'Agent', 'Tenant', 'Landlord', 'Developer representative', 'None'],
   occupancy: ['Vacant', 'Occupied by owner', 'Tenanted', 'Furnished, vacant'],
   weather: ['Sunny', 'Hot and humid', 'Cloudy', 'Rain', 'Dusty / windy'],
+  lost_reason: ['Price', 'Out of area', 'Timing', 'Valuation only (referred to partner)', 'No response', 'Chose a competitor'],
   referral_source: ['Website', 'Google', 'Instagram', 'WhatsApp', 'Broker / agent', 'Bank', 'Repeat client', 'Friend / referral'],
 };
 
