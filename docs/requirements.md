@@ -99,6 +99,12 @@ Side states: `QUOTE_REJECTED, QUOTE_EXPIRED, ON_HOLD, ACCESS_FAILED, RE_INSPECTI
 - Every transition is logged (who, when, from → to, note). Invalid transitions are blocked.
 - SLA clock starts at **property access** (not at booking), per the business plan. Track and flag SLA breaches.
 
+## 5a. LEAD MANAGEMENT (added in v3, see docs/ARAL_Inspection_App_Build_Prompt_and_Workflows.docx, Workflow 1)
+- Sources: website form (auto), WhatsApp, phone, email, broker, bank, repeat client.
+- Fields: name, mobile, email, client type, service, property type, bedrooms, community, preferred date, source, notes, assigned Admin.
+- Statuses: New → Contacted → Qualified → Converted, plus Onboarding (banks/developers) and Lost (reason picklist: price, out of area, timing, valuation only, no response, competitor).
+- Reminder if not contacted within 2 hours; auto-Lost after 2 follow-ups in 7 days. Instant price estimate. Convert creates client + property + job in one step. Duplicate check on mobile/unit within 90 days.
+
 ## 6. REQUEST INTAKE
 - Channels: public booking form (English/Arabic screens), client portal, bulk upload (Excel/CSV) for banks, internal entry by Admin.
 - Fields: client type, name, company, TRN (optional), email, mobile (+971 validation), preferred language (EN/AR), service(s), purpose, property type (studio, apartment, townhouse, villa, office, retail, warehouse, building, land), emirate, community, project/building, unit no., plot no., title deed no., developer, handover date, built-up area / plot area (sq ft ↔ sq m), bedrooms, occupancy (vacant / owner / tenanted), access contact & key arrangements, preferred dates, documents (title deed, affection plan, Oqood, SPA, handover letter), bank reference no. (for lender jobs).
@@ -141,7 +147,7 @@ Flow: Proposal sent → client accepts → **service agreement e-signed** (separ
 - Confirmation email (and optional WhatsApp/SMS) to client with date, time and inspector name.
 - **Mobile inspection app (PWA, offline-capable):**
   - Configurable checklists per service (200+ point snagging list seeded, editable by admin)
-  - Room-by-room / area-by-area structure; each defect: category, location, description, **severity (Critical / Major / Minor / Cosmetic)**, responsible party (developer / owner / tenant), indicative repair cost (optional), photos with annotations
+  - Room-by-room / area-by-area structure; each defect: category, location, description, **severity (Critical / Attention / Informational, approved in Phase 1)**, responsible party (developer / owner / tenant), indicative repair cost (optional), photos with annotations
   - **Thermal / radiometric images** with min/max temperature and finding note
   - Measurements (moisture %, temperature, airflow, refrigerant pressures for HVAC/VRF)
   - Verified details for valuation-support: actual areas, finishes, floor, view, occupancy
