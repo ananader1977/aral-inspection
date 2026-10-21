@@ -151,7 +151,13 @@ async function jobFile(el, id) {
       h('tbody', {}, d.quotes.map((q) => h('tr', { class: q.status === 'superseded' ? 'off' : '' }, h('td', { class: 'ltr nowrap' }, q.display_number), h('td', {}, fmtDay(q.issue_date)), h('td', { class: 'num' }, num2(q.total)),
         h('td', {}, pill(t(q.status), q.status === 'accepted' ? 'ok' : q.status === 'rejected' ? 'bad' : q.status === 'sent' ? 'attention' : ''), q.decided_name ? h('div', { class: 'small muted' }, `${q.decided_name} · ${fmtStamp(q.decided_at)}`) : null, q.decision_note ? h('div', { class: 'small' }, q.decision_note) : null),
         h('td', { class: 'nowrap' }, h('a', { class: 'btn alt sm', href: `/api/app/quotes/${q.id}/pdf`, target: '_blank' }, 'PDF')))))))) : null,
-    d.agreement ? card('Service agreement', d.agreement.signed_at ? h('p', {}, pill(t('Signed'), 'ok'), ' ', `${d.agreement.signed_name} · ${fmtStamp(d.agreement.signed_at)} `, h('a', { class: 'btn alt sm', href: `/api/app/agreements/${d.agreement.id}/pdf`, target: '_blank' }, 'PDF')) : h('p', {}, pill(t('Waiting for the client to sign'), 'warn'))) : null,
+    d.agreement ? card('Service agreement', d.agreement.signed_at ? h('p', {}, pill(t('Signed'), 'ok'), ' ', `${d.agreement.signed_name} · ${fmtStamp(d.agreement.signed_at)} `, h('a', { class: 'btn alt sm', href: `/api/app/agreements/${d.agreement.id}/pdf`, target: '_blank' }, 'PDF'))
+      : [h('p', {}, pill(t('Waiting for the client to sign'), 'warn'), ' ', d.agreement.sent_at ? h('span', { class: 'small muted' }, `${t('Link sent')} ${fmtStamp(d.agreement.sent_at)}`) : null),
+        h('p', { class: 'small muted' }, t('The client signs on the quotation link. Send it again by email or WhatsApp below, or record a signature the client gave on paper.')),
+        M && accepted ? h('p', { class: 'actions' },
+          h('button', { class: 'btn', onclick: async () => { if (await run(() => A('POST', `/quotes/${accepted.id}/send-link`), 'Signing link emailed to the client')) reload(); } }, t('Email the signing link')),
+          h('button', { class: 'btn alt', onclick: () => signForClient(accepted, reload) }, t('Record signature (signed on paper)'))) : null]) : null,
+    d.client_link && M && ['quoted', 'quote_accepted', 'agreement_signed', 'payment_pending'].includes(j.status) ? card('Client link', clientLink(d.client_link, c, j)) : null,
     d.payments.length || accepted ? card('Payments', d.payments.length ? h('div', { class: 'tablewrap' }, h('table', {}, h('tbody', {}, d.payments.map((x) => h('tr', {}, h('td', {}, x.receipt_no), h('td', {}, fmtDay(x.paid_on)), h('td', {}, t(x.method), x.provider === 'mock' ? ' (demo)' : ''), h('td', { class: 'num' }, num2(x.amount)), h('td', {}, h('a', { class: 'btn alt sm', href: `/api/app/receipts/${x.id}/pdf`, target: '_blank' }, t('Receipt')))))))) : null,
       accepted ? h('p', { class: 'small' }, t('Paid'), ': ', money(d.paid), due > 0 ? ` · ${t('Due now')}: ${money(due)}` : '') : null) : null,
     d.report ? card('Report', kv([['Status', t(d.report.status)], ['Number', d.report.number], ['Findings', d.report.counts.map((x) => `${t(x.severity)}: ${x.n}`).join(' · ')], ['Photos and videos', d.report.media.map((x) => `${t(x.kind)}: ${x.n}`).join(' · ')], ['Attachments', d.report.attachments ? String(d.report.attachments) : ''], ['Returned with', d.report.review_note]]),
@@ -220,6 +226,26 @@ async function quoteEditor(j, draft, reload) {
   h('p', { class: 'actions' }, h('button', { class: 'btn cu' }, t('Save draft')), h('button', { class: 'btn alt', type: 'button', onclick: closeModal }, t('Cancel'))));
   modal(f);
   draw();
+}
+
+/** The secure link the client uses to accept, sign and pay: copy, open, or send by WhatsApp. */
+function clientLink(url, c, j) {
+  const wa = String(c.mobile || '').replace(/\D/g, '').replace(/^00/, '').replace(/^0(5\d{8})$/, '971$1');
+  const msg = `Dear ${c.contact_person || c.name}, please use this secure link to review your inspection quotation, sign the service agreement and pay online: ${url}`;
+  return [h('p', { class: 'small muted' }, t('The client accepts the quotation, signs the agreement and pays on this page.')),
+    h('div', { class: 'secret small linkbox' }, url),
+    h('p', { class: 'actions' },
+      h('button', { class: 'btn alt sm', type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(url); toast(t('Link copied')); } catch { toast(url, 8000); } } }, t('Copy link')),
+      h('a', { class: 'btn alt sm', href: url, target: '_blank', rel: 'noopener' }, t('Open as the client')),
+      wa ? h('a', { class: 'btn alt sm', href: `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`, target: '_blank', rel: 'noopener' }, 'WhatsApp') : null)];
+}
+
+function signForClient(q, reload) {
+  const f = h('form', { onsubmit: async (e) => { e.preventDefault(); if (await run(() => A('POST', `/quotes/${q.id}/sign-for-client`, { name: f.who.value, note: f.note.value }), 'Signature recorded')) { closeModal(); reload(); } } },
+    h('h2', {}, t('Record signature (signed on paper)')), h('p', { class: 'small muted' }, t('Use this only when the client signed the service agreement on paper or confirmed it in writing. Keep the signed copy.')),
+    field('Signed by (name)', h('input', { name: 'who', required: true })), field('Note (e.g. signed on site, email of 21/10)', h('input', { name: 'note' })),
+    h('p', { class: 'actions' }, h('button', { class: 'btn cu' }, t('Record signature')), h('button', { class: 'btn alt', type: 'button', onclick: closeModal }, t('Cancel'))));
+  modal(f);
 }
 
 function acceptForClient(q, reload) {

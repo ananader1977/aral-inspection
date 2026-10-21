@@ -1,7 +1,8 @@
 // Runtime configuration, read from environment variables (see .env.example).
 export function loadConfig(env = process.env) {
   const port = Number(env.PORT) || 3000;
-  const baseUrl = (env.BASE_URL || `http://localhost:${port}`).replace(/\/+$/, '');
+  // Render sets RENDER_EXTERNAL_URL automatically, so links in emails work even if BASE_URL was left empty
+  const baseUrl = (env.BASE_URL || env.RENDER_EXTERNAL_URL || `http://localhost:${port}`).replace(/\/+$/, '');
   return {
     nodeEnv: env.NODE_ENV || 'development',
     port,

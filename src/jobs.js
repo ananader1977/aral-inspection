@@ -191,6 +191,7 @@ export function createJobs(ctx) {
       children: db.prepare('SELECT id, number, status FROM jobs WHERE parent_job_id=?').all(id),
       lead: j.lead_id ? db.prepare('SELECT id, referral_code, source FROM leads WHERE id=?').get(j.lead_id) : null,
       drive: ctx.storage.jobFolderLink(id),
+      client_link: (() => { const q = quotes.find((x) => !['draft', 'superseded'].includes(x.status)); return q ? quoteUrl(q) : null; })(),
       paid: paidForJob(id),
     };
   }
@@ -340,6 +341,7 @@ export function createJobs(ctx) {
         if (!db.prepare('SELECT 1 FROM agreements WHERE quotation_id=?').get(q.id)) db.prepare('INSERT INTO agreements(job_id,quotation_id,tc_block_id,public_token,sent_at) VALUES(?,?,?,?,?)').run(q.job_id, q.id, tc?.id ?? null, q.public_token, ctx.now());
       });
       await notifyOffice(`Quotation ${quoteNo(q)} accepted by ${who}`, `${j.number} · ${j.client_name}`);
+      await sendSigningLink(null, q.id).catch((e) => console.error('[signing link]', e.message));
     } else if (action === 'reject' || action === 'change') {
       tx(db, () => {
         db.prepare('UPDATE quotations SET status=?, decided_at=?, decided_name=?, decided_ip=?, decision_note=? WHERE id=?').run(action === 'reject' ? 'rejected' : 'change_requested', ctx.now(), who, ip, clampStr(note, 1000), q.id);
@@ -377,6 +379,35 @@ export function createJobs(ctx) {
       if (j.client_email) await ctx.mailer.send({ to: j.client_email, jobId: j.id, template: 'agreement', subject: `Signed service agreement – ${quoteNo(q)}`, text: `Dear ${j.client_name},\n\nThank you. Your signed service agreement is attached.${j.client_kind === 'company' ? ' We will contact you to book the inspection.' : ` You can pay online here: ${quoteUrl(q)}`}\n\n${s.company_name}`, html: layout(s, 'Agreement signed', `<p>Dear ${j.client_name},</p><p>Thank you. Your signed service agreement is attached.</p>`, j.client_kind === 'company' ? null : { url: quoteUrl(q), label: 'Pay online' }), attachments: [{ filename: `Agreement-${q.number}.pdf`, contentType: 'application/pdf', content: pdf }] });
     } catch (e) { console.error('[agreement pdf]', e.message); }
     return publicQuote(tok);
+  }
+
+  /** Emails the client the secure link to sign the service agreement (and pay, when payment is due). */
+  async function sendSigningLink(user, qid) {
+    const q = quoteById(qid);
+    const ag = db.prepare('SELECT * FROM agreements WHERE quotation_id=?').get(q.id);
+    if (!ag) throw new HttpError(409, 'The quotation must be accepted first.');
+    const j = getJob(q.job_id);
+    if (!j.client_email) throw new HttpError(400, 'Add the client email first, or send the link by WhatsApp.');
+    const s = S();
+    const url = quoteUrl(q);
+    const signed = !!ag.signed_at;
+    await ctx.mailer.send({
+      to: j.client_email, jobId: j.id, template: signed ? 'payment_link' : 'agreement_link',
+      subject: signed ? `Pay for your inspection – ${quoteNo(q)}` : `Please sign your service agreement – ${quoteNo(q)}`,
+      text: `Dear ${j.client_name},\n\n${signed ? 'Thank you for signing. You can pay online here' : 'Thank you for accepting our quotation. Please sign the service agreement online here'}: ${url}\n\n${j.client_kind === 'company' || signed ? '' : 'After signing you can pay by card on the same page. '}We will then book your inspection.\n\n${s.company_name}`,
+      html: layout(s, signed ? 'Pay for your inspection' : 'Sign your service agreement', `<p>Dear ${j.client_name},</p><p>${signed ? 'Thank you for signing. You can pay online using the button below.' : 'Thank you for accepting our quotation. The next step is to sign the service agreement online. It takes a minute.'}</p>${rows([['Quotation', quoteNo(q)], ['Total', `AED ${money(q.total)}`]])}`, { url, label: signed ? 'Pay online' : 'Sign the agreement' }),
+    });
+    db.prepare('UPDATE agreements SET sent_at=? WHERE id=?').run(ctx.now(), ag.id);
+    if (user) event(user, j.id, signed ? 'Payment link emailed to the client' : 'Signing link emailed to the client');
+  }
+
+  /** The office records an agreement the client signed on paper (or confirmed in writing). */
+  async function signForClient(user, qid, { name, note }) {
+    const q = quoteById(qid);
+    if (!clampStr(name, 120)) throw new HttpError(400, 'Type the name of the person who signed.');
+    const out = await signAgreement(q.public_token, { name: `${clampStr(name, 120)} (recorded by ${user.name}${note ? `: ${clampStr(note, 100)}` : ''})`, agree: true }, `office: ${user.email}`);
+    audit(user, 'agreements', q.id, 'record_signature', null, { name, note });
+    return out;
   }
 
   // ---------- payments ----------
@@ -507,5 +538,5 @@ export function createJobs(ctx) {
     }));
   }
 
-  return { nextNumber, move, event, upsertClient, createJob, convertLead, updateJob, listJobs, getJob, jobDetail, cancelJob, defaultLines, saveQuote, quoteById, quoteLines, quoteNo, quoteUrl, sendQuote, publicQuote, decideQuote, signAgreement, paidForJob, recordQuotePayment, notifyOffice, availableInspectors, freeEquipment, schedule, calendar, feedEvents, icsFor, totals, JOB_STATUS_LABEL };
+  return { nextNumber, move, event, upsertClient, createJob, convertLead, updateJob, listJobs, getJob, jobDetail, cancelJob, defaultLines, saveQuote, quoteById, quoteLines, quoteNo, quoteUrl, sendQuote, publicQuote, decideQuote, signAgreement, sendSigningLink, signForClient, paidForJob, recordQuotePayment, notifyOffice, availableInspectors, freeEquipment, schedule, calendar, feedEvents, icsFor, totals, JOB_STATUS_LABEL };
 }

@@ -90,6 +90,8 @@ export function registerOpsRoutes(app, ctx) {
     await J.decideQuote(q.public_token, { action: 'accept', name: `${name || 'Client'} (recorded by ${req.user.name})` }, ip(req));
     res.json({ ok: true });
   });
+  app.post('/api/app/quotes/:id/send-link', U, P('jobs.manage'), async (req, res) => { await J.sendSigningLink(req.user, id(req)); res.json({ ok: true }); });
+  app.post('/api/app/quotes/:id/sign-for-client', U, P('jobs.manage'), async (req, res) => { await J.signForClient(req.user, id(req), await req.json()); res.json({ ok: true }); });
   app.get('/api/app/agreements/:id/pdf', U, P('jobs.view'), async (req, res) => pdf(res, await ctx.docs.agreementPdf(id(req)), `Agreement-${id(req)}.pdf`));
   app.get('/api/app/receipts/:id/pdf', U, P('jobs.view', 'finance.view'), (req, res) => pdf(res, ctx.docs.receiptPdf(id(req)), `Receipt-${id(req)}.pdf`));
   app.get('/api/app/jobs/:id/availability', U, P('jobs.manage'), (req, res) => {

@@ -360,3 +360,29 @@ test('quotation revisions, rejection, expiry and VAT', async () => {
     pdfOk(ctx.docs.quotePdf(q2.body.id));
   } finally { await t.close(); fs.rmSync(t.uploadDir, { recursive: true, force: true }); }
 });
+
+test('after acceptance the client is emailed the signing link; the office can resend it or record a paper signature', async () => {
+  const t = await setup();
+  const { call, ctx } = t;
+  try {
+    const job = await call('sa', 'POST', '/api/app/jobs', { service_code: 'OWN-MIO', client: { name: 'Huda', email: 'huda@example.com', mobile: '0507778888' }, property: { property_type: 'apartment', bedrooms: 1 } });
+    const q = await call('sa', 'POST', `/api/app/jobs/${job.body.id}/quote`, {});
+    await call('sa', 'POST', `/api/app/quotes/${q.body.id}/send`);
+    await call('sa', 'POST', `/api/app/quotes/${q.body.id}/accept-for-client`, { name: 'Huda' });
+    assert.equal(ctx.db.prepare("SELECT COUNT(*) n FROM outbox WHERE template_code='agreement_link' AND to_addr='huda@example.com'").get().n, 1);
+    let d = (await call('sa', 'GET', `/api/app/jobs/${job.body.id}`)).body;
+    assert.match(d.client_link, /quote\.html\?t=/);
+    assert.ok(d.agreement.sent_at);
+    assert.equal((await call('sa', 'POST', `/api/app/quotes/${q.body.id}/send-link`)).status, 200);
+    assert.equal(ctx.db.prepare("SELECT COUNT(*) n FROM outbox WHERE template_code='agreement_link'").get().n, 2);
+    assert.equal((await call('sa', 'POST', `/api/app/quotes/${q.body.id}/sign-for-client`, {})).status, 400);
+    assert.equal((await call('sa', 'POST', `/api/app/quotes/${q.body.id}/sign-for-client`, { name: 'Huda', note: 'signed on paper' })).status, 200);
+    d = (await call('sa', 'GET', `/api/app/jobs/${job.body.id}`)).body;
+    assert.ok(d.agreement.signed_at);
+    assert.match(d.agreement.signed_name, /recorded by/);
+    assert.equal(d.job.status, 'payment_pending');
+    // next step is open: record the payment, then schedule
+    assert.equal((await call('sa', 'POST', `/api/app/quotes/${q.body.id}/payment`, { method: 'bank_transfer', amount: d.quotes[0].total })).status, 200);
+    assert.equal((await call('sa', 'GET', `/api/app/jobs/${job.body.id}`)).body.job.status, 'paid');
+  } finally { await t.close(); fs.rmSync(t.uploadDir, { recursive: true, force: true }); }
+});
