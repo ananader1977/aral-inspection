@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS users (
     ('super_admin','admin','inspector','reviewer','accountant','client','partner_valuer')),
   password_hash TEXT NOT NULL,
   totp_secret TEXT,                                -- 2FA (required for super_admin/admin/reviewer/accountant)
+  totp_pending TEXT,                               -- secret being set up, confirmed with a first code
   phone TEXT NOT NULL DEFAULT '',
   credentials TEXT NOT NULL DEFAULT '',            -- e.g. "B.Sc. Mech. Eng., InterNACHI CPI" (printed on reports)
   signature_file_id INTEGER REFERENCES files(id),
