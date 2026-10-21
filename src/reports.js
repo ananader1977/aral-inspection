@@ -51,7 +51,7 @@ export function createReports(ctx) {
       for (const name of names) {
         const sid = Number(db.prepare('INSERT INTO report_sections(report_id,name,kind,intro,sort) VALUES(?,?,?,?,?)').run(rid, name, st.kind, intro, ++sort).lastInsertRowid);
         for (const it of db.prepare('SELECT * FROM item_templates WHERE section_template_id=? ORDER BY sort').all(st.id))
-          db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_value,sort) VALUES(?,?,?,?,?)').run(sid, it.name, it.attr_label, '', it.sort);
+          db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_list,attr_value,sort) VALUES(?,?,?,?,?,?)').run(sid, it.name, it.attr_label, it.attr_list, '', it.sort);
       }
     }
     return rid;
@@ -67,7 +67,7 @@ export function createReports(ctx) {
       if (!items.length) continue;
       const sid = Number(db.prepare('INSERT INTO report_sections(report_id,name,kind,intro,sort) VALUES(?,?,?,?,?)').run(rid, sc.name, sc.kind, '', ++sort).lastInsertRowid);
       for (const it of items) {
-        const iid = Number(db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_value,sort) VALUES(?,?,?,?,?)').run(sid, it.name, it.attr_label, it.attr_value, it.sort).lastInsertRowid);
+        const iid = Number(db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_list,attr_value,sort) VALUES(?,?,?,?,?,?)').run(sid, it.name, it.attr_label, it.attr_list, it.attr_value, it.sort).lastInsertRowid);
         for (const o of db.prepare("SELECT * FROM observations WHERE item_id=? AND severity IN ('critical','attention') ORDER BY sort").all(it.id))
           db.prepare('INSERT INTO observations(item_id,text,severity,trade,in_summary,responsible,glossary_id,library_id,sort,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)')
             .run(iid, o.text, o.severity, o.trade, 1, o.responsible, o.glossary_id, o.library_id, o.sort, ctx.now());
@@ -223,8 +223,8 @@ export function createReports(ctx) {
     // copy items from a matching template (e.g. "Bedroom 4" → the Bedroom items)
     const base = clampStr(name, 80).replace(/\s*\d+$/, '');
     const st = db.prepare("SELECT id FROM section_templates WHERE REPLACE(name,' {n}','')=? OR name=? ORDER BY id LIMIT 1").get(base, base);
-    const items = st ? db.prepare('SELECT name, attr_label, sort FROM item_templates WHERE section_template_id=? ORDER BY sort').all(st.id) : [{ name: 'Comments', attr_label: null, sort: 1 }];
-    for (const it of items) db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_value,sort) VALUES(?,?,?,?,?)').run(sid, it.name, it.attr_label, '', it.sort);
+    const items = st ? db.prepare('SELECT name, attr_label, attr_list, sort FROM item_templates WHERE section_template_id=? ORDER BY sort').all(st.id) : [{ name: 'Comments', attr_label: null, attr_list: null, sort: 1 }];
+    for (const it of items) db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_list,attr_value,sort) VALUES(?,?,?,?,?,?)').run(sid, it.name, it.attr_label, it.attr_list, '', it.sort);
     if (after) {
       const ids = db.prepare('SELECT id FROM report_sections WHERE report_id=? ORDER BY sort, id').all(r.id).map((x) => x.id).filter((x) => x !== sid);
       const pos = ids.indexOf(Number(after));

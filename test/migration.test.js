@@ -31,3 +31,30 @@ test('upgrading a Phase 2 database adds the new columns and jobs can be created'
     assert.equal((await t.call('sa', 'GET', `/api/app/jobs/${r.body.id}`)).status, 200);
   } finally { await t.close(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('system sections get their own items and picklists, also on older databases', async () => {
+  const { DatabaseSync: D } = await import('node:sqlite');
+  const t = await startTestApp();
+  try {
+    const db = t.ctx.db;
+    const items = (sec) => db.prepare("SELECT i.name, i.attr_list FROM item_templates i JOIN section_templates s ON s.id=i.section_template_id WHERE s.name=? ORDER BY i.sort").all(sec);
+    const ac = items('Air Conditioning');
+    assert.ok(ac.some((i) => i.name === 'Condensate Drain and Drip Tray'));
+    assert.ok(!ac.some((i) => /Floor|Wall|Tile|Door/.test(i.name)), 'no civil items in AC');
+    assert.equal(ac.find((i) => i.name === 'AC System Type').attr_list, 'ac_type');
+    assert.equal(items('Electrical').find((i) => i.name === 'Breakers and RCD Protection').attr_list, 'protection_device');
+    assert.equal(items('Water Heater').find((i) => i.name === 'Supply Lines Condition').attr_list, 'pipe_material');
+    assert.ok(db.prepare("SELECT COUNT(*) n FROM lookups WHERE list='ac_type'").get().n >= 5);
+    assert.ok(db.prepare("SELECT COUNT(*) n FROM comment_library WHERE item_name='Condensate Drain and Drip Tray'").get().n >= 1);
+    // simulate an older database: old AC items and an existing draft report, then run the upgrade
+    const { upgradeChecklists } = await import('../src/seed.js');
+    const st = db.prepare("SELECT id FROM section_templates WHERE name='Air Conditioning'").get().id;
+    db.prepare('DELETE FROM item_templates WHERE section_template_id=?').run(st);
+    db.prepare("INSERT INTO item_templates(section_template_id,name,attr_label,attr_list,sort) VALUES(?,'Air Conditioning Comments','Type','material',1)").run(st);
+    db.prepare("UPDATE settings SET value='1' WHERE key='_checklist_version'").run();
+    assert.equal(upgradeChecklists(db, () => Date.now()), true);
+    assert.equal(items('Air Conditioning').length, 10);
+    assert.equal(upgradeChecklists(db, () => Date.now()), false, 'runs once');
+    void D;
+  } finally { await t.close(); }
+});

@@ -421,6 +421,7 @@ CREATE TABLE IF NOT EXISTS report_items (
   name TEXT NOT NULL,                              -- "Shower Base Condition"
   attr_label TEXT,                                 -- Type / Materials / Location
   attr_value TEXT NOT NULL DEFAULT '',             -- "Cultured Marble"
+  attr_list TEXT,                                  -- picklist offered for the detail (material, ac_type, pipe_material…)
   sort INTEGER NOT NULL                            -- printed as item number 1,2,3...
 );
 

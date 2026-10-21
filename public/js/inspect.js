@@ -3,6 +3,11 @@
 import { h, fill, toast, pill, t, fmtStamp, todayIso } from '/js/common.js';
 import { S, A, can, run, modal, closeModal, field, confirmBox, go } from '/js/app.js';
 
+const SYS_ITEMS = {
+  'Air Conditioning': ['AC System Type', 'Thermostats and Controls', 'Cooling Performance (supply air temperature)', 'Air Outlets and Return Grilles', 'Indoor Units / Fan Coil Units', 'Condensate Drain and Drip Tray', 'Filters', 'Visible Ductwork and Insulation', 'Outdoor / Condensing Units', 'Air Conditioning Comments'],
+  Electrical: ['Main Service Condition', 'Distribution Board Condition', 'Breakers and RCD Protection', 'Sockets and Switches (sample tested)', 'Earthing and Bonding', 'Lighting', 'Electrical Comments'],
+  'Water Heater': ['Water Heater Type', 'Water Heater Condition', 'Hot Water Temperature', 'Supply Lines Condition', 'Pressure / Temperature Relief Valve', 'Water Heater Room Comments'],
+};
 const SEV = [['critical', 'Critical'], ['attention', 'Needs attention'], ['info', 'For information']];
 const MAX_VIDEO_S = 60;
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
@@ -263,7 +268,8 @@ async function inspectJob(el, jobId) {
   }
 
   function itemBlock(s, it, ii) {
-    const attrList = it.attr_label ? (it.attr_label === 'Materials' || it.attr_label === 'Type' ? S.lk?.material || [] : []) : [];
+    // each item offers its own picklist (AC type, pipe material, tile material…); rooms default to materials
+    const attrList = it.attr_label ? S.lk?.[it.attr_list || (it.attr_label === 'Materials' && s.kind === 'area' ? 'material' : '')] || [] : [];
     const listId = `dl-${it.id}`;
     return h('div', { class: 'item' },
       h('div', { class: 'actions' }, h('b', {}, `${ii + 1}. ${t(it.name)}`), h('span', { class: 'spacer' }),
@@ -438,7 +444,7 @@ async function inspectJob(el, jobId) {
       if (await run(() => A('POST', `/sections/${s.id}/items`, { name: f.n.value, attr_label: f.attr.value }), 'Item added')) { closeModal(); inspectJob(el, jobId); }
     } }, h('h2', {}, `${s.name}: ${t('add an item')}`),
     field('Item', h('input', { name: 'n', required: true, list: 'dl-items' })),
-    h('datalist', { id: 'dl-items' }, ['Floor Condition', 'Walls Condition', 'Ceiling Condition', 'Door Condition', 'Window Condition', 'Electrical Condition', 'Counters/Cabinets Condition', 'Sink Condition', 'Toilet Condition', 'Traps/Drains/Supply Condition', 'Comments'].map((v) => h('option', { value: v }))),
+    h('datalist', { id: 'dl-items' }, (s.kind === 'system' ? (SYS_ITEMS[s.name] || ['Comments']) : ['Floor Condition', 'Walls Condition', 'Ceiling Condition', 'Door Condition', 'Window Condition', 'Electrical Condition', 'Counters/Cabinets Condition', 'Sink Condition', 'Toilet Condition', 'Traps/Drains/Supply Condition', 'Comments']).map((v) => h('option', { value: v }))),
     field('Attribute', h('select', { name: 'attr' }, h('option', { value: '' }, '-'), ['Materials', 'Type', 'Location'].map((v) => h('option', { value: v }, t(v))))),
     h('p', { class: 'actions' }, h('button', { class: 'btn cu' }, t('Add')), h('button', { class: 'btn alt', type: 'button', onclick: closeModal }, t('Cancel'))));
     modal(f);

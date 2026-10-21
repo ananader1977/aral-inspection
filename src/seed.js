@@ -127,12 +127,91 @@ const ITEMS = {
   sink: ['Sink Condition', null, null], sinkfaucet: ['Sink Faucet Condition', null, null], shower: ['Shower Faucet Condition', null, null],
   showerbase: ['Shower Base Condition', 'Materials', 'material'], drains: ['Traps/Drains/Supply Condition', null, null], toilet: ['Toilet Condition', null, null],
 };
+// System sections have their own items and picklists (no floor / wall / tile items here).
+export const SYSTEM_ITEMS = {
+  'Air Conditioning': [
+    ['AC System Type', 'Type', 'ac_type'], ['Thermostats and Controls', null, null], ['Cooling Performance (supply air temperature)', null, null],
+    ['Air Outlets and Return Grilles', null, null], ['Indoor Units / Fan Coil Units', 'Location', null], ['Condensate Drain and Drip Tray', null, null],
+    ['Filters', null, null], ['Visible Ductwork and Insulation', null, null], ['Outdoor / Condensing Units', 'Location', null], ['Air Conditioning Comments', null, null],
+  ],
+  Electrical: [
+    ['Main Service Condition', 'Type', 'electrical_service'], ['Distribution Board Condition', 'Location', null], ['Breakers and RCD Protection', 'Type', 'protection_device'],
+    ['Sockets and Switches (sample tested)', null, null], ['Earthing and Bonding', null, null], ['Lighting', null, null], ['Electrical Comments', null, null],
+  ],
+  'Water Heater': [
+    ['Water Heater Type', 'Type', 'water_heater_type'], ['Water Heater Condition', 'Location', null], ['Hot Water Temperature', null, null],
+    ['Supply Lines Condition', 'Materials', 'pipe_material'], ['Pressure / Temperature Relief Valve', null, null], ['Water Heater Room Comments', null, null],
+  ],
+};
+const SYSTEM_LOOKUPS = {
+  ac_type: ['Split units', 'Ducted split', 'Chilled water fan coil units (district cooling)', 'VRF / VRV', 'Package unit', 'Window unit'],
+  electrical_service: ['DEWA meter, underground supply', 'Building main distribution (apartment)', 'Sub-meter'],
+  protection_device: ['MCB', 'RCBO', 'RCD / ELCB', 'MCCB'],
+  water_heater_type: ['Electric storage (geyser)', 'Central / district hot water', 'Solar water heater', 'Instant electric', 'Heat pump'],
+  pipe_material: ['PPR', 'Copper', 'PEX', 'Galvanized', 'CPVC', 'Multilayer (PEX-AL-PEX)'],
+};
+const SYSTEM_COMMENTS = [
+  ['Cooling Performance (supply air temperature)', 'Supply air temperature is higher than expected (above 16 °C at the outlet) and the room does not cool properly. The unit should be serviced and the refrigerant charge checked.', 'critical', 'licensed HVAC contractor'],
+  ['Cooling Performance (supply air temperature)', 'Supply air temperature measured within the normal range at the outlets tested.', 'info', ''],
+  ['Thermostats and Controls', 'The thermostat does not respond, or the set temperature is not reached. The controls should be checked.', 'attention', 'licensed HVAC contractor'],
+  ['Air Outlets and Return Grilles', 'Dust and dirt on the air outlets and grilles. Cleaning is recommended.', 'attention', 'licensed HVAC contractor'],
+  ['Air Outlets and Return Grilles', 'Condensation dripping from the air outlet, as shown in the photo.', 'critical', 'licensed HVAC contractor'],
+  ['Indoor Units / Fan Coil Units', 'Unusual noise or vibration from the indoor unit while running.', 'attention', 'licensed HVAC contractor'],
+  ['Condensate Drain and Drip Tray', 'Water in the drip tray is not draining. The condensate line may be blocked, which can cause leaks into the ceiling.', 'critical', 'licensed HVAC contractor'],
+  ['Filters', 'Filters are dirty and should be cleaned or replaced.', 'attention', 'licensed HVAC contractor'],
+  ['Visible Ductwork and Insulation', 'Damaged or missing insulation on the visible duct or pipe, which can cause condensation.', 'attention', 'licensed HVAC contractor'],
+  ['Outdoor / Condensing Units', 'Corrosion on the outdoor unit casing and pipe connections.', 'attention', 'licensed HVAC contractor'],
+  ['Distribution Board Condition', 'Circuits in the distribution board are not labelled. Labelling is recommended.', 'attention', 'licensed electrician'],
+  ['Distribution Board Condition', 'The distribution board cover is missing or not fixed, leaving live parts exposed.', 'critical', 'licensed electrician'],
+  ['Breakers and RCD Protection', 'The RCD did not trip when tested. The circuit has no working protection against electric shock.', 'critical', 'licensed electrician', 'RCD'],
+  ['Breakers and RCD Protection', 'The RCD tripped correctly when tested.', 'info', '', 'RCD'],
+  ['Sockets and Switches (sample tested)', 'A sample of sockets was tested and found correctly wired.', 'info', ''],
+  ['Earthing and Bonding', 'No earth detected at the socket tested.', 'critical', 'licensed electrician'],
+  ['Lighting', 'Light fittings not working in this area. Bulbs or fittings should be replaced.', 'attention', 'licensed electrician'],
+  ['Water Heater Condition', 'Rust and water stains at the water heater connections, indicating a slow leak.', 'attention', 'licensed plumber'],
+  ['Hot Water Temperature', 'Hot water temperature at the taps is below the recommended level.', 'attention', 'licensed plumber', 'Hot water below standard'],
+  ['Pressure / Temperature Relief Valve', 'The relief valve drain is not connected to a drain point.', 'attention', 'licensed plumber'],
+];
+
+/** Puts the proper system items in place on databases created before they existed (keeps everything else). */
+export function upgradeChecklists(db, now) {
+  const done = db.prepare("SELECT value FROM settings WHERE key='_checklist_version'").get()?.value;
+  if (Number(done) >= 2) return false;
+  tx(db, () => {
+    const lk = db.prepare('INSERT INTO lookups(list,value,sort) SELECT ?,?,? WHERE NOT EXISTS (SELECT 1 FROM lookups WHERE list=? AND value=?)');
+    for (const [list, values] of Object.entries(SYSTEM_LOOKUPS)) values.forEach((v, i) => lk.run(list, v, i, list, v));
+    const gid = (term) => (term ? db.prepare('SELECT id FROM glossary WHERE term=?').get(term)?.id ?? null : null);
+    for (const [item, text, sev, trade, term] of SYSTEM_COMMENTS) {
+      if (!db.prepare('SELECT 1 FROM comment_library WHERE item_name=? AND text=?').get(item, text)) db.prepare('INSERT INTO comment_library(item_name,text,default_severity,default_trade,glossary_id) VALUES(?,?,?,?,?)').run(item, text, sev, trade, gid(term));
+    }
+    // old comments that were filed under the old system items move to the new ones
+    db.prepare("UPDATE comment_library SET item_name='Breakers and RCD Protection' WHERE item_name='Electrical Panel Condition'").run();
+    db.prepare("UPDATE comment_library SET item_name='Cooling Performance (supply air temperature)' WHERE item_name='Air Conditioning Comments' AND text LIKE 'No cold air%'").run();
+    for (const [secName, items] of Object.entries(SYSTEM_ITEMS)) {
+      for (const st of db.prepare("SELECT id FROM section_templates WHERE name=? AND kind='system'").all(secName)) {
+        db.prepare('DELETE FROM item_templates WHERE section_template_id=?').run(st.id);
+        items.forEach(([n, a, l], i) => db.prepare('INSERT INTO item_templates(section_template_id,name,attr_label,attr_list,sort) VALUES(?,?,?,?,?)').run(st.id, n, a, l, i + 1));
+      }
+      // reports not yet issued: rebuild the system section when no finding has been recorded in it
+      for (const sec of db.prepare("SELECT s.id FROM report_sections s JOIN reports r ON r.id=s.report_id WHERE s.name=? AND s.kind='system' AND r.status IN ('draft','returned')").all(secName)) {
+        if (db.prepare('SELECT COUNT(*) n FROM observations o JOIN report_items it ON it.id=o.item_id WHERE it.section_id=?').get(sec.id).n) continue;
+        db.prepare('DELETE FROM report_items WHERE section_id=?').run(sec.id);
+        items.forEach(([n, a, l], i) => db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_list,attr_value,sort) VALUES(?,?,?,?,?,?)').run(sec.id, n, a, l, '', i + 1));
+      }
+    }
+    // room items: materials picklist only where it makes sense
+    db.prepare("UPDATE item_templates SET attr_list='material' WHERE attr_label='Materials' AND (attr_list IS NULL OR attr_list='') AND name NOT IN ('Supply Lines Condition')").run();
+    db.prepare("INSERT INTO settings(key,value) VALUES('_checklist_version','2') ON CONFLICT(key) DO UPDATE SET value='2'").run();
+  });
+  return true;
+}
+
 const ROOM = ['location', 'floor', 'walls', 'ceiling', 'doors', 'windows', 'electrical', 'comments'];
 const BATH = ['location', 'floor', 'walls', 'doors', 'sink', 'sinkfaucet', 'shower', 'showerbase', 'drains', 'toilet', 'counters', 'electrical'];
 const SECTIONS = [
-  ['Air Conditioning', 'system', 'once', 'sec_intro_air_conditioning', [['Air Conditioning Comments', 'Type', null]]],
-  ['Electrical', 'system', 'once', 'sec_intro_electrical', [['Main Service Condition', 'Type', null], ['Electrical Panel Condition', 'Type', 'material']]],
-  ['Water Heater', 'system', 'once', 'sec_intro_water_heater', [['Supply Lines Condition', 'Materials', 'material'], ['Water Heater Room Comments', null, null]]],
+  ['Air Conditioning', 'system', 'once', 'sec_intro_air_conditioning', SYSTEM_ITEMS['Air Conditioning']],
+  ['Electrical', 'system', 'once', 'sec_intro_electrical', SYSTEM_ITEMS.Electrical],
+  ['Water Heater', 'system', 'once', 'sec_intro_water_heater', SYSTEM_ITEMS['Water Heater']],
   ['Kitchen', 'area', 'once', null, ['floor', 'walls', 'counters', 'sink', 'sinkfaucet', 'drains', 'electrical', 'comments']],
   ['Laundry Area', 'area', 'once', null, ['location', 'floor', 'drains', 'electrical']],
   ['Living Room', 'area', 'once', null, ROOM],
@@ -168,8 +247,8 @@ const COMMENTS = [
   ['Electrical Condition', 'Live and neutral are reversed at this socket, as shown in the photos.', 'critical', 'licensed electrician', 'Live/neutral reversed'],
   ['Electrical Condition', 'The socket is loose in the wall and must be secured.', 'attention', 'licensed electrician', null],
   ['Electrical Condition', 'Switch buttons are not level within the switch frame. Replacement is recommended.', 'attention', 'licensed electrician', null],
-  ['Electrical Panel Condition', 'Sockets were tested with a socket tester and found correctly wired with adequate earthing. The RCD tripped correctly when tested.', 'info', '', 'RCD'],
-  ['Air Conditioning Comments', 'No cold air from the AC outlet in this area. All other AC outlets in the property were cooling normally.', 'critical', 'licensed HVAC contractor', null],
+  ['Breakers and RCD Protection', 'Sockets were tested with a socket tester and found correctly wired with adequate earthing. The RCD tripped correctly when tested.', 'info', '', 'RCD'],
+  ['Cooling Performance (supply air temperature)', 'No cold air from the AC outlet in this area. All other AC outlets in the property were cooling normally.', 'critical', 'licensed HVAC contractor', null],
   ['Comments', 'Noise from the ceiling when the AC in this room is switched on, which stops when it is switched off. This is likely to come from the AC duct or fan coil unit.', 'attention', 'licensed HVAC contractor', null],
   ['Supply Lines Condition', 'Hot water temperature at the taps is below the recommended level.', 'attention', 'licensed plumber', 'Hot water below standard'],
   ['Shower Faucet Condition', 'Sealant is missing between the wall and the base plate of the shower mixer. This can let water behind the fitting. Sealing is recommended.', 'attention', 'qualified contractor', null],
@@ -202,14 +281,14 @@ export function seedReference(db, now) {
     const sc = db.prepare('INSERT INTO surcharges(name,kind,value) VALUES(?,?,?)');
     for (const s of SURCHARGES) sc.run(...s);
     const lk = db.prepare('INSERT INTO lookups(list,value,sort) VALUES(?,?,?)');
-    for (const [list, values] of Object.entries(LOOKUPS)) values.forEach((v, i) => lk.run(list, v, i));
+    for (const [list, values] of Object.entries({ ...LOOKUPS, ...SYSTEM_LOOKUPS })) values.forEach((v, i) => lk.run(list, v, i));
     const cb = db.prepare("INSERT INTO content_blocks(code,version,title,body,effective_from,created_at) VALUES(?,1,?,?,'2026-01-01',?)");
     for (const [code, title, body] of BLOCKS) cb.run(code, title, body, t);
     const g = db.prepare('INSERT INTO glossary(term,definition,references_text) VALUES(?,?,?)');
     for (const r of GLOSSARY) g.run(...r);
     const gid = (term) => (term ? db.prepare('SELECT id FROM glossary WHERE term=?').get(term).id : null);
     const cm = db.prepare('INSERT INTO comment_library(item_name,text,default_severity,default_trade,glossary_id) VALUES(?,?,?,?,?)');
-    for (const [item, text, sev, trade, term] of COMMENTS) cm.run(item, text, sev, trade, gid(term));
+    for (const [item, text, sev, trade, term] of [...COMMENTS, ...SYSTEM_COMMENTS]) cm.run(item, text, sev, trade, gid(term));
     const cl = db.prepare('INSERT INTO checklists(name) VALUES(?)').run('Residential (apartment, townhouse, villa)');
     const clId = Number(cl.lastInsertRowid);
     SECTIONS.forEach(([name, kind, rule, intro, items], si) => {
@@ -220,6 +299,7 @@ export function seedReference(db, now) {
       });
     });
     db.prepare("UPDATE services SET checklist_id=? WHERE is_addon=0").run(clId);
+    db.prepare("INSERT INTO settings(key,value) VALUES('_checklist_version','2') ON CONFLICT(key) DO UPDATE SET value='2'").run();
   });
   return true;
 }

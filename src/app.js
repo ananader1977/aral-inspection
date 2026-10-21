@@ -5,7 +5,7 @@ import { createApp, createRateLimiter } from './http.js';
 import { createAuth, ensureSuperAdmin } from './auth.js';
 import { createAdmin } from './admin.js';
 import { createMailer } from './mailer.js';
-import { seedReference, seedDemo } from './seed.js';
+import { seedReference, seedDemo, upgradeChecklists } from './seed.js';
 import { createPricing } from './pricing.js';
 import { createLeads } from './leads.js';
 import { registerRoutes } from './routes.js';
@@ -36,6 +36,7 @@ export function createContext({ config, now = () => Date.now() }) {
   ctx.docs = createDocs(ctx);
   ctx.payments = createPayments(ctx);
   ctx.seeded = seedReference(db, now);
+  if (upgradeChecklists(db, now)) console.log('[setup] Checklist upgraded: proper items for Air Conditioning, Electrical and Water Heater.');
   ctx.createdUsers = ensureSuperAdmin(ctx);
   if (config.seedDemo) ctx.createdUsers.push(...seedDemo(db, now, config.demoPassword));
   return ctx;

@@ -2,7 +2,7 @@
 // Field types: text, textarea, int, num, bool, date, enum (options), ref (another resource), lookup (picklist name).
 const SEGMENTS = ['owner', 'bank', 'developer', 'any'];
 const REPORT_TYPES = ['pre_purchase', 'snagging', 'move_in_out', 'collateral', 'progress', 'repossessed', 'building_audit', 'specialist', 'valuation_support'];
-const LOOKUP_LISTS = ['lost_reason', 'property_type', 'purpose', 'community', 'developer', 'bank', 'material', 'trade', 'attendance', 'occupancy', 'weather', 'referral_source'];
+const LOOKUP_LISTS = ['lost_reason', 'property_type', 'purpose', 'community', 'developer', 'bank', 'material', 'trade', 'attendance', 'occupancy', 'weather', 'referral_source', 'ac_type', 'electrical_service', 'protection_device', 'water_heater_type', 'pipe_material'];
 
 export const RESOURCES = {
   branches: {
