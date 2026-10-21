@@ -51,8 +51,13 @@ export function loadConfig(env = process.env) {
  */
 export function resolveBaseUrl(env, port) {
   const origin = (u) => { try { return new URL(String(u).trim()).origin; } catch { return ''; } };
-  const set = origin(env.BASE_URL || '');
+  let set = origin(env.BASE_URL || '');
   const render = origin(env.RENDER_EXTERNAL_URL || '');
+  // a code-hosting address (e.g. the GitHub repository link) is never where the app runs
+  if (set && /(^|\.)(github\.com|githubusercontent\.com|gitlab\.com|bitbucket\.org|render\.com)$/i.test(new URL(set).hostname) && !/\.onrender\.com$/i.test(new URL(set).hostname)) {
+    console.warn(`[config] BASE_URL (${env.BASE_URL}) is a code or dashboard address, not the app. ${render ? `Using ${render} for links.` : 'Set BASE_URL to the app address.'}`);
+    set = '';
+  }
   if (render && (!set || (/\.onrender\.com$/i.test(new URL(set).hostname) && set !== render))) {
     if (set) console.warn(`[config] BASE_URL (${set}) is not this service's address; using ${render} for links. Update BASE_URL on Render.`);
     return render;
