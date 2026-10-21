@@ -65,11 +65,39 @@ export function openDb(file) {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
+  migrate(db);
   db.exec(SCHEMA);
   const ins = db.prepare('INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)');
   for (const [k, v] of Object.entries(SETTING_DEFAULTS)) ins.run(k, v);
   ins.run('_secret', crypto.randomBytes(32).toString('base64url'));
   return db;
+}
+
+/**
+ * Brings a database created by an earlier version up to date: every column that schema.sql has and the
+ * database lacks is added (with its default), so existing data is kept. New tables and indexes are then
+ * created by schema.sql itself (CREATE ... IF NOT EXISTS).
+ */
+export function migrate(db) {
+  const ref = new DatabaseSync(':memory:');
+  ref.exec(SCHEMA);
+  const tables = (d) => d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all().map((r) => r.name);
+  const have = new Set(tables(db));
+  const added = [];
+  for (const t of tables(ref)) {
+    if (!have.has(t)) continue;
+    const cur = new Set(db.prepare(`PRAGMA table_info("${t}")`).all().map((c) => c.name));
+    for (const c of ref.prepare(`PRAGMA table_info("${t}")`).all()) {
+      if (cur.has(c.name)) continue;
+      const def = c.dflt_value != null ? ` DEFAULT ${c.dflt_value}` : '';
+      const notNull = c.notnull && c.dflt_value != null ? ' NOT NULL' : '';
+      db.exec(`ALTER TABLE "${t}" ADD COLUMN "${c.name}" ${c.type || ''}${notNull}${def}`);
+      added.push(`${t}.${c.name}`);
+    }
+  }
+  ref.close();
+  if (added.length) console.log(`[db] upgraded database: added ${added.join(', ')}`);
+  return added;
 }
 
 export function getSettings(db) {
