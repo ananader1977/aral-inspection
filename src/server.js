@@ -20,5 +20,10 @@ if (config.paymentProvider === 'mock') console.warn('[info] PAYMENT_PROVIDER=moc
 if (!config.smtp.host) console.warn('[info] SMTP not configured: emails are only logged (Settings > Messages).');
 if (!config.require2fa) console.warn('[warn] REQUIRE_2FA=false: two-step sign-in is not enforced. Use only for testing.');
 
+// hourly: expire old quotations, send overdue-invoice reminders
+const tick = () => ctx.finance.tick().then((r) => { if (r.expired || r.reminded) console.log(`[tick] quotes expired: ${r.expired}, reminders sent: ${r.reminded}`); }).catch((e) => console.error('[tick]', e.message));
+setTimeout(tick, 30000).unref();
+setInterval(tick, 60 * 60 * 1000).unref();
+
 server.listen(config.port, () => console.log(`ARAL inspection app running at ${config.baseUrl} (port ${config.port})`));
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 3000).unref(); });

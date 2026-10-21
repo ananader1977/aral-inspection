@@ -8,6 +8,7 @@ import { isEmail } from './util.js';
 import { dateKey } from './time.js';
 import { LEAD_STATUSES } from './leads.js';
 import { RESIDENTIAL_TYPES, COMMERCIAL_TYPES } from './pricing.js';
+import { registerOpsRoutes } from './routes-ops.js';
 
 export function registerRoutes(app, ctx) {
   const { db, auth, admin, config } = ctx;
@@ -219,4 +220,6 @@ export function registerRoutes(app, ctx) {
     const s = ctx.settings();
     sendXlsx(res, 'Settings', [{ name: 'Settings', columns: [{ header: 'Setting', key: 'k', width: 28 }, { header: 'Value', key: 'v', width: 50 }], rows: Object.keys(SETTING_DEFAULTS).map((k) => ({ k, v: s[k] })) }]);
   });
+
+  registerOpsRoutes(app, ctx);
 }

@@ -102,3 +102,10 @@ test('booking request becomes a lead, emails the office and the client, and is m
     assert.equal(man.body.row.source, 'phone');
   } finally { await t.close(); }
 });
+
+test('every browser script parses', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const dir = new URL('../public/js/', import.meta.url).pathname;
+  const files = ['app.js', 'common.js', 'i18n.js', 'settings.js', 'leads.js', 'jobs.js', 'calendar.js', 'inspect.js', 'reviews.js', 'finance.js', 'pub/shared.js', 'pub/quote.js', 'pub/pay.js', 'pub/pay-demo.js', 'pub/verify.js', 'pub/report.js', '../sw.js', '../site/site.js'];
+  for (const f of files) execFileSync(process.execPath, ['--check', dir + f]);
+});

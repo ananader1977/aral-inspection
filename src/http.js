@@ -29,9 +29,9 @@ const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'same-origin',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Permissions-Policy': 'camera=(self), microphone=(self), geolocation=(self)',
   'Content-Security-Policy':
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; " +
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self'; connect-src 'self'; " +
     "frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
 };
 
@@ -105,7 +105,7 @@ export function createApp({ publicDir, bodyLimit = 8 * 1024 * 1024, onError } = 
     req.cookies = parseCookies(req.headers.cookie);
     req.params = {};
     req.ip_ = req.socket.remoteAddress || '';
-    req.rawBody = async () => (req._raw ??= await readBody(req, bodyLimit));
+    req.rawBody = async (lim = bodyLimit) => (req._raw ??= await readBody(req, lim));
     req.json = async () => {
       if (req._json !== undefined) return req._json;
       const buf = await req.rawBody();

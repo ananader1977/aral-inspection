@@ -87,7 +87,27 @@ Thermal imaging shows surface temperature differences. These can point to moistu
 3. Air conditioning and DEWA must be connected on the day for a full inspection.
 4. The report is delivered within the stated time after the inspection.
 5. Rescheduling with less than 24 hours' notice may be charged.`],
-  ['tc_booking', 'Service agreement', `DRAFT: the service agreement the client signs after accepting the quotation. To be approved by ARAL's legal adviser.`],
+  ['tc_booking', 'Service agreement', `DRAFT: to be reviewed and approved by ARAL's legal adviser before use with clients.
+
+1. Service. ARAL Property Inspection Service ("ARAL") will carry out the inspection described in the accepted quotation at the property named in it, and deliver a written report within the stated time after the inspection.
+
+2. Nature of the inspection. The inspection is visual and non-invasive. It covers the parts of the property that are safely accessible on the day. ARAL does not open walls, lift fixed floors, move furniture or dismantle equipment. It is not a valuation, a structural engineering assessment, a survey of boundaries or a guarantee of the property's future condition.
+
+3. Access and site conditions. The client arranges access to the whole property on the agreed date, with air conditioning and DEWA services connected. If ARAL cannot get access, or services are not connected, the affected areas are reported as not inspected and a further visit may be charged.
+
+4. Fees and payment. The fee is shown in the quotation. Unless credit terms were agreed in writing, the fee is paid in full before the inspection. VAT is added where it applies.
+
+5. Rescheduling and cancellation. The client may reschedule or cancel free of charge up to 24 hours before the visit. Later changes, or a visit where access fails, may be charged as set out in the quotation.
+
+6. The report. The report is prepared for the client named in it and for the purpose stated. Others who rely on it do so at their own risk. The report reflects the condition seen on the day of the inspection only.
+
+7. Liability. ARAL carries out the inspection with reasonable skill and care. ARAL's total liability arising from the inspection is limited to the fee paid, except where the law does not allow such a limit.
+
+8. Claims. Any concern about the report must be raised in writing within 30 days of the report date, and ARAL must be given the chance to revisit the property before any repair is carried out.
+
+9. Photos and data. ARAL may take photos and videos of the property for the report. Personal data is used only to provide the service and is kept securely.
+
+10. Governing law. This agreement is governed by the laws of the Emirate of Dubai and the federal laws of the United Arab Emirates.`],
   ['tc_invoice', 'Invoice notes', `Thank you for your business. Please quote the invoice number with your payment.`],
   ['qt_cover_letter', 'Quotation cover letter', `Dear {{client_name}},
 
@@ -165,6 +185,11 @@ const COMMENTS = [
 ];
 
 export function seedReference(db, now) {
+  // existing databases: replace the one-line placeholder agreement with the full draft
+  try {
+    const ph = db.prepare("SELECT id, body FROM content_blocks WHERE code='tc_booking' AND version=1").get();
+    if (ph && ph.body.length < 200 && db.prepare("SELECT COUNT(*) n FROM content_blocks WHERE code='tc_booking'").get().n === 1) db.prepare('UPDATE content_blocks SET body=? WHERE id=?').run(BLOCKS.find((b) => b[0] === 'tc_booking')[2], ph.id);
+  } catch { /* fresh database */ }
   if (db.prepare('SELECT COUNT(*) n FROM services').get().n > 0) return false;
   tx(db, () => {
     const t = now();

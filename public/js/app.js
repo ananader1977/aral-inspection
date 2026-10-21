@@ -1,7 +1,12 @@
-import { api, h, $, fill, toast, pill, t } from '/js/common.js';
+import { api, h, $, fill, toast, pill, t, money, fmtStamp } from '/js/common.js';
 import { setLang, savedLang, getLang } from '/js/i18n.js';
 import { settingsView } from '/js/settings.js';
 import { leadsView } from '/js/leads.js';
+import { jobsView, clientsView, statusPill } from '/js/jobs.js';
+import { calendarView } from '/js/calendar.js';
+import { inspectView } from '/js/inspect.js';
+import { reviewsView } from '/js/reviews.js';
+import { financeView } from '/js/finance.js';
 
 const app = $('#app'), dlg = $('#dlg'), nav = $('#nav');
 export const S = { me: null, cfg: null, lk: null };
@@ -25,6 +30,7 @@ export const confirmBox = (title, text, okLabel = 'Confirm', danger = true) => n
 });
 
 window.addEventListener('hashchange', route);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 boot();
 
 async function boot() {
@@ -115,17 +121,26 @@ async function twoFactorSetup(forced) {
 }
 
 // ---------- routing ----------
-const TABS = () => [['dashboard', 'Dashboard'], ...(can('leads.manage') ? [['leads', 'Leads']] : []), ...(can('settings.view') ? [['settings', 'Settings']] : [])];
+const TABS = () => [['dashboard', 'Dashboard'],
+  ...(can('leads.manage') ? [['leads', 'Leads']] : []),
+  ...(can('jobs.view') ? [['jobs', 'Jobs']] : []),
+  ...(can('calendar.view') ? [['calendar', 'Calendar']] : []),
+  ...(can('inspect') ? [['inspect', S.me.role === 'inspector' ? 'My inspections' : 'Inspections']] : []),
+  ...(can('reports.review') ? [['reviews', 'Reviews']] : []),
+  ...(can('finance.view') ? [['finance', 'Finance']] : []),
+  ...(can('settings.view') ? [['settings', 'Settings']] : [])];
+const VIEWS = { leads: ['leads.manage', (b) => leadsView(b)], jobs: ['jobs.view', jobsView], clients: ['jobs.view', clientsView], calendar: ['calendar.view', calendarView], inspect: ['inspect', inspectView], reviews: ['jobs.view', reviewsView], finance: ['finance.view', financeView], settings: ['settings.view', settingsView] };
 async function route() {
   if (!S.me) return;
   const parts = (location.hash.slice(1) || 'dashboard').split('/');
   const name = parts[0];
-  const tabs = h('div', { class: 'tabs' }, TABS().map(([k, l]) => h('a', { class: name === k ? 'on' : '', href: `#${k}` }, t(l))));
+  const tabs = h('div', { class: 'tabs' }, TABS().map(([k, l]) => h('a', { class: name === k || (name === 'clients' && k === 'jobs') ? 'on' : '', href: `#${k}` }, t(l))));
   const body = h('div', {}, h('p', { class: 'muted' }, t('Loading…')));
   fill(app, tabs, body);
+  window.scrollTo(0, 0);
   try {
-    if (name === 'settings' && can('settings.view')) await settingsView(body, parts.slice(1));
-    else if (name === 'leads' && can('leads.manage')) await leadsView(body);
+    const v = VIEWS[name];
+    if (v && (can(v[0]) || (name === 'reviews' && can('reports.review')))) await v[1](body, parts.slice(1));
     else if (name === 'account') await accountView(body);
     else await dashboard(body);
   } catch (e) {
@@ -135,19 +150,32 @@ async function route() {
 export const refresh = route;
 
 async function dashboard(el) {
-  const d = await A('GET', '/dashboard');
+  const [d, k] = await Promise.all([A('GET', '/dashboard'), A('GET', '/kpis')]);
   const done = d.setup.filter((s) => s.done).length;
+  const kpi = (v, label, href, cu) => h(href ? 'a' : 'div', { class: `kpi ${cu ? 'cu' : ''}`, ...(href ? { href } : {}) }, h('b', {}, v), h('span', {}, t(label)));
+  const open = k.open || {};
+  const sum = (...keys) => keys.reduce((a, x) => a + (open[x] || 0), 0);
+  const visits = k.today_visits || [];
   fill(el,
-    h('div', { class: 'kpis' },
-      d.leads ? h('a', { class: `kpi ${d.leads.overdue ? 'cu' : ''}`, href: '#leads' }, h('b', {}, d.leads.open), h('span', {}, d.leads.overdue ? t('Open leads · {n} waiting over 2 hours', { n: d.leads.overdue }) : t('Open leads'))) : null,
-      h('div', { class: 'kpi' }, h('b', {}, d.counts.users), h('span', {}, t('Active users'))),
-      h('div', { class: 'kpi' }, h('b', {}, d.counts.inspectors), h('span', {}, t('Active inspectors'))),
-      h('div', { class: 'kpi cu' }, h('b', {}, d.counts.services), h('span', {}, t('Services in the catalogue'))),
-      h('div', { class: 'kpi cu' }, h('b', {}, d.counts.comments), h('span', {}, t('Ready-made findings')))),
-    d.setup.length ? h('div', { class: 'card' }, h('div', { class: 'actions' }, h('h2', {}, t('Before you go live')), h('span', { class: 'spacer' }), pill(`${done} / ${d.setup.length}`, done === d.setup.length ? 'ok' : 'cu')),
+    S.me.role === 'inspector' ? h('div', { class: 'kpis' }, kpi(k.mine, 'Visits to do', '#inspect', true), kpi(k.returned, 'Reports returned to you', '#inspect')) : h('div', { class: 'kpis' },
+      d.leads ? kpi(d.leads.open, d.leads.overdue ? t('Open leads · {n} waiting over 2 hours', { n: d.leads.overdue }) : 'Open leads', '#leads', !!d.leads.overdue) : null,
+      kpi(`${k.jobs_month}${k.target ? ` / ${k.target}` : ''}`, 'Jobs this month (target)', can('jobs.view') ? '#jobs' : null),
+      kpi(sum('new', 'quoted', 'quote_accepted', 'agreement_signed', 'payment_pending'), 'Waiting for quote, signature or payment', can('jobs.view') ? '#jobs' : null),
+      kpi(sum('paid', 'access_failed'), 'Paid, not yet booked', can('jobs.view') ? '#jobs' : null, sum('paid', 'access_failed') > 0),
+      kpi(k.reviews_waiting, 'Reports waiting for review', can('reports.review') ? '#reviews' : null, k.reviews_waiting > 0),
+      kpi(k.reports_month, 'Reports issued this month'),
+      kpi(k.sla_pct == null ? '-' : `${k.sla_pct}%`, 'Reports on time this month'),
+      kpi(k.review_score?.n ? `${k.review_score.a} ★` : '-', t('Client rating (target {n})', { n: k.review_target })),
+      k.revenue_month != null ? kpi(money(k.revenue_month), 'Invoiced this month (excl. VAT)', '#finance', true) : null,
+      k.collected_month != null ? kpi(money(k.collected_month), 'Collected this month', '#finance/payments', true) : null,
+      k.outstanding != null ? kpi(money(k.outstanding), 'Outstanding invoices', '#finance/aging', true) : null,
+      k.commission_payable != null ? kpi(money(k.commission_payable), 'Commission to pay', '#finance/commissions', true) : null),
+    k.turnover_12m != null && !k.vat_registered && k.turnover_12m > 300000 ? h('div', { class: 'alert' }, t('Turnover in the last 12 months is {n}. VAT registration is mandatory above AED 375,000.', { n: money(k.turnover_12m) })) : null,
+    visits.length ? h('div', { class: 'card' }, h('h2', {}, t("Today's visits")), h('div', { class: 'tablewrap' }, h('table', {}, h('tbody', {}, visits.map((v) => h('tr', { class: 'click', onclick: () => go(can('jobs.view') ? `jobs/${v.id}` : `inspect/${v.id}`) }, h('td', { class: 'nowrap' }, fmtStamp(v.scheduled_start).slice(-5)), h('td', { class: 'ltr' }, v.number), h('td', {}, v.client_name, h('div', { class: 'small muted' }, [v.building, v.unit_no].filter(Boolean).join(' '))), h('td', {}, v.inspector_name || '-'), h('td', {}, statusPill(v.status)))))))) : null,
+    k.sla_late?.length ? h('div', { class: 'card' }, h('h2', {}, t('Reports past their due time')), k.sla_late.map((j) => h('p', {}, h('a', { href: `#jobs/${j.id}`, class: 'ltr' }, j.number), ` · ${j.client_name} · `, pill(fmtStamp(j.sla_due_at), 'bad')))) : null,
+    d.setup.length && done < d.setup.length ? h('div', { class: 'card' }, h('div', { class: 'actions' }, h('h2', {}, t('Before you go live')), h('span', { class: 'spacer' }), pill(`${done} / ${d.setup.length}`, done === d.setup.length ? 'ok' : 'cu')),
       h('ul', { class: 'checklist' }, d.setup.map((s) => h('li', { class: s.done ? 'done' : '' }, h('i', { class: 'dot', 'aria-hidden': 'true' }, s.done ? '✓' : ''), h('span', {}, t(s.label)), h('span', { class: 'spacer' }), s.done ? null : h('a', { class: 'btn alt sm', href: `#${s.href}` }, t('Open')))))) : null,
-    d.expiring.length ? h('div', { class: 'card' }, h('h2', {}, t('Expiring in the next 45 days')), h('div', { class: 'tablewrap' }, h('table', {}, h('tbody', {}, d.expiring.map((x) => h('tr', {}, h('td', {}, t(x.kind === 'inspector' ? 'Inspector' : 'Equipment')), h('td', {}, x.name), h('td', { class: 'num' }, pill(x.due.split('-').reverse().join('/'), x.due < new Date().toISOString().slice(0, 10) ? 'bad' : 'warn')))))))) : null,
-    h('div', { class: 'card' }, h('h2', {}, t('Coming next')), h('p', { class: 'muted' }, t('Jobs, quotations, payments, the inspection phone app, reports and invoices are added in the next phases. This version sets up the company, users, services, prices, report wording and libraries they will use.'))));
+    d.expiring.length ? h('div', { class: 'card' }, h('h2', {}, t('Expiring in the next 45 days')), h('div', { class: 'tablewrap' }, h('table', {}, h('tbody', {}, d.expiring.map((x) => h('tr', {}, h('td', {}, t(x.kind === 'inspector' ? 'Inspector' : 'Equipment')), h('td', {}, x.name), h('td', { class: 'num' }, pill(x.due.split('-').reverse().join('/'), x.due < new Date().toISOString().slice(0, 10) ? 'bad' : 'warn')))))))) : null);
 }
 
 async function accountView(el) {

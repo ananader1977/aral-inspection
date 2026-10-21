@@ -79,8 +79,11 @@ export function getSettings(db) {
 }
 
 /** Runs fn inside a transaction (rolls back on error). */
+/** Nested calls join the outer transaction. */
 export function tx(db, fn) {
-  db.exec('BEGIN IMMEDIATE');
+  if (db.__txDepth) { db.__txDepth++; try { return fn(); } finally { db.__txDepth--; } }
+  db.__txDepth = 1;
+  try { db.exec('BEGIN IMMEDIATE'); } catch (e) { db.__txDepth = 0; throw e; }
   try {
     const r = fn();
     db.exec('COMMIT');
@@ -88,6 +91,8 @@ export function tx(db, fn) {
   } catch (e) {
     db.exec('ROLLBACK');
     throw e;
+  } finally {
+    db.__txDepth = 0;
   }
 }
 

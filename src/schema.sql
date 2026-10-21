@@ -242,6 +242,10 @@ CREATE TABLE IF NOT EXISTS jobs (
   pack_delivered_at INTEGER,
   -- money snapshot (from accepted quote)
   fee_net REAL NOT NULL DEFAULT 0,
+  client_kind TEXT NOT NULL DEFAULT 'individual',   -- individual pays in advance; company = credit terms
+  drive_folders TEXT NOT NULL DEFAULT '',          -- JSON {root, photo, video, pdf} Google Drive folder ids
+  lead_id INTEGER,
+  equipment_ids TEXT NOT NULL DEFAULT '[]',
   created_by INTEGER REFERENCES users(id),
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
@@ -561,6 +565,7 @@ CREATE TABLE IF NOT EXISTS files (                 -- Google Drive (or disk fall
   mime TEXT NOT NULL,
   size INTEGER NOT NULL DEFAULT 0,
   storage TEXT NOT NULL CHECK (storage IN ('drive','disk')),
+  sha256 TEXT NOT NULL DEFAULT '',
   drive_id TEXT, link TEXT, local_path TEXT,
   created_by INTEGER REFERENCES users(id),
   created_at INTEGER NOT NULL

@@ -44,5 +44,5 @@ export function toast(msg, ms = 3500) {
   document.body.append(el);
   setTimeout(() => el.remove(), ms);
 }
-export const pill = (text, kind = '') => h('span', { class: `pill ${kind}` }, text);
+export const pill = (text, kind = '') => h('span', { class: `pill ${kind}` }, /^[a-z_]+$/.test(String(text)) ? String(text).replace(/_/g, ' ') : text);
 export const yes = (v) => (v ? t('Yes') : t('No'));

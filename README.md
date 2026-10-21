@@ -9,13 +9,9 @@ Built the same way as the Dar Al Bunyan app: Node.js 22 with the built-in SQLite
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Database design, report field mapping, screen layouts | Approved |
-| 2 | Sign-in, roles, settings, users, terms, EN/AR screens | **Done, for review** |
-| 3 | Requests, pricing, quotations, PDF engine | Next |
-| 4 | Agreement, demo card payments, Gmail | |
-| 5 | Scheduling, phone inspection app, photos, report, review, QR | |
-| 6 | Invoices, VAT switch, credit notes, commissions, client portal | |
-| 7 | Dashboard, KPIs, Excel exports | |
-| 8 | Tests, security review, deployment, user guide | |
+| 2 | Sign-in, roles, settings, users, terms, EN/AR screens | Done |
+| 3–7 | Jobs, quotations, agreement, payments, scheduling and calendar, phone inspection app, review, PDF report, invoices, commissions, dashboard, exports | **Done, for review** |
+| 8 | Lawyer-approved wording, Stripe live keys, Google Drive keys, user guide | Waiting for your inputs |
 
 ## Phase 1 documents
 
@@ -33,13 +29,32 @@ Built the same way as the Dar Al Bunyan app: Node.js 22 with the built-in SQLite
 - **Company details:** licence and RERA numbers, contact details, VAT switch and TRN, bank details, document numbering, quotation and payment defaults, inspector commission, targets, brand colours.
 - **Branch addresses**, with one marked as printed on documents.
 - **Report & terms wording:** every text block is versioned with an effective date, so issued documents keep the wording they were issued with. Terms and the thermal addendum are loaded as **DRAFT** for your lawyer to replace.
-- **Catalogue:** 15 services from the business plan, prices by property type and bedrooms, surcharges, picklists (communities, developers, banks, materials, trades…), valuation partners.
+- **Catalogue:** the 8 approved services (3 residential, 2 bank, 2 developer, thermal imaging add-on), prices by property type and bedrooms, picklists (communities, developers, banks, materials, trades…), valuation partners.
 - **Field team:** inspectors (licence, insurance and agreement expiry are flagged) and equipment (calibration due dates).
 - **Report content:** the residential checklist (sections and items from the sample report), a comment library of 26 ready-made findings, and a glossary.
 - **Messages** (every email, with a "send me a test email" button) and an **audit log** of every sign-in and change.
 - **Excel export** on every list.
 - **English / Arabic screens** with right-to-left layout. PDFs and emails stay in English.
 - **Dashboard** with a "before you go live" checklist and items expiring within 45 days.
+
+## How a job runs
+
+1. **Lead → job.** Website enquiries land in *Leads*; *Convert to job* (or *Jobs → + New job*) creates the client, property and job.
+2. **Quotation.** *Prepare quotation* fills the lines from the price list (or the client's negotiated rate; developer services are priced per proposal). Discounts above 10% need the Super Admin. *Send quotation* emails the PDF and a secure link. Revisions are numbered `-R1`, `-R2`; unanswered quotations expire automatically.
+3. **Client link.** The client accepts (or asks for a change / declines), then **signs the service agreement** online (typed name, optional drawn signature, time and IP recorded; signed PDF emailed), then **pays by card**. Bank and company clients on credit terms skip the payment step.
+4. **Demo payments.** With `PAYMENT_PROVIDER=mock` the checkout is a demo page: card `4242 4242 4242 4242`, any future expiry, any CVC (`4000 0000 0000 0002` shows a decline). A receipt PDF is emailed. Switch to Stripe with `PAYMENT_PROVIDER=stripe`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (webhook URL `/api/public/stripe/webhook`).
+5. **Scheduling.** *Schedule the inspection* shows who is free: inspectors with expired licence/insurance/agreement, double bookings and cameras out of calibration are blocked; services that need thermal imaging get a free thermal camera automatically. Client and inspector receive an email with a calendar invite (.ics).
+6. **Calendar.** Week view (Mon–Sat, hour rows, Prev / Today / Next, colour legend, list on phones), filtered by inspector, as in the Consultancy app. *Subscribe in Outlook / Google* gives a private feed link for the office and one per inspector.
+7. **Phone inspection.** Inspectors open the app on their phone (*Add to Home Screen*), press *I'm on site* (starts the report clock), and go room by room: the areas are built from the bedrooms and maid's room; findings come from the comment library or free text with severity Critical / Needs attention / For information; photos (camera or gallery, marked with arrows, circles, boxes or text), thermal images with min/max °C, and videos up to 60 s. **Everything is saved on the phone first and sent when there is signal.**
+8. **Review.** *Submit for review* checks the basics (date, time, a photo on every critical finding). The Technical Manager can correct, return with comments, approve, then **issue**: the report gets its `RPT-` number, the PDF is stored as an unchangeable version, and the client gets the PDF plus the online report link (with videos and a star rating).
+9. **Invoice and commission.** Issuing invoices the job (advance payments are applied, so paid jobs close at once). Banks/companies set to *monthly invoicing* get one invoice per month listing each report with its bank reference. Credit notes, part payments, aging, overdue reminders and the inspector's 42% commission (statement PDF, mark as paid) are under *Finance*.
+10. **Re-inspection.** *Book a re-inspection* creates a linked job whose report starts with the open findings, each marked Fixed / Partly fixed / Not fixed.
+
+The **report PDF** follows the approved sample structure: cover with photo and verification QR, introduction, scope, standards, contents with page numbers, general information, colour legend, numbered sections and items with photos two per row (videos as a preview + QR to play online), glossary, summary with page numbers, conclusion, terms, thermal addendum, sign-off and back page. The footer reads `ARAL | building, unit, community` with *Page X of Y*.
+
+**Excel exports:** jobs, SLA by client, quotations, invoices (with a VAT summary sheet), payments, aging, commissions, equipment calibration, clients, leads, plus every settings list.
+
+**Photos and videos** go to Google Drive (`ARAL Jobs / JOB-… – building unit / photos | videos | pdf`) when `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_REFRESH_TOKEN` are set; otherwise to the server disk.
 
 ## Quick start (your computer)
 

@@ -9,6 +9,12 @@ import { seedReference, seedDemo } from './seed.js';
 import { createPricing } from './pricing.js';
 import { createLeads } from './leads.js';
 import { registerRoutes } from './routes.js';
+import { createStorage } from './storage.js';
+import { createJobs } from './jobs.js';
+import { createReports } from './reports.js';
+import { createFinance } from './finance.js';
+import { createDocs } from './docs.js';
+import { createPayments } from './payments.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -23,6 +29,12 @@ export function createContext({ config, now = () => Date.now() }) {
   ctx.auth = createAuth(ctx);
   ctx.pricing = createPricing(ctx);
   ctx.leads = createLeads(ctx);
+  ctx.storage = createStorage(ctx);
+  ctx.jobs = createJobs(ctx);
+  ctx.reports = createReports(ctx);
+  ctx.finance = createFinance(ctx);
+  ctx.docs = createDocs(ctx);
+  ctx.payments = createPayments(ctx);
   ctx.seeded = seedReference(db, now);
   ctx.createdUsers = ensureSuperAdmin(ctx);
   if (config.seedDemo) ctx.createdUsers.push(...seedDemo(db, now, config.demoPassword));
