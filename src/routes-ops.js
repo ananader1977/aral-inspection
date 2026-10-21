@@ -143,7 +143,8 @@ export function registerOpsRoutes(app, ctx) {
     const args = req.user.role === 'inspector' ? [req.user.inspector_id || -1] : [];
     res.json({ rows: db.prepare(`SELECT j.id, j.number, j.status, j.scheduled_start, j.scheduled_end, j.sla_due_at, c.name client_name, c.mobile client_mobile, s.name service_name, p.building, p.unit_no, p.community, p.property_type, p.bedrooms, r.status report_status, r.review_note, i.name inspector_name
       FROM jobs j JOIN clients c ON c.id=j.client_id JOIN services s ON s.id=j.service_id JOIN properties p ON p.id=j.property_id LEFT JOIN reports r ON r.job_id=j.id LEFT JOIN inspectors i ON i.id=j.inspector_id
-      WHERE ${where} AND j.status IN ('scheduled','report_draft','access_failed','under_review') ORDER BY j.scheduled_start LIMIT 200`).all(...args) });
+      WHERE ${where} AND (j.status IN ('scheduled','report_draft','access_failed','under_review') OR (? AND (j.status='paid' OR (j.status='agreement_signed' AND j.client_kind='company'))))
+      ORDER BY j.scheduled_start IS NULL, j.scheduled_start LIMIT 200`).all(...args, req.user.role === 'inspector' ? 0 : 1), inspectors: db.prepare('SELECT COUNT(*) n FROM inspectors WHERE active=1').get().n, linked: req.user.role !== 'inspector' || !!req.user.inspector_id });
   });
   app.get('/api/app/inspect/:id', U, P('inspect'), (req, res) => res.json(R.tree(id(req), req.user)));
   app.post('/api/app/inspect/:id/checkin', U, P('inspect'), (req, res) => { R.checkIn(req.user, id(req)); res.json(R.tree(id(req), req.user)); });

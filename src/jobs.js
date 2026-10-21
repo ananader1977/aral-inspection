@@ -370,6 +370,7 @@ export function createJobs(ctx) {
       db.prepare('UPDATE agreements SET signed_at=?, signed_name=?, signed_ip=?, signature_file_id=? WHERE id=?').run(ctx.now(), who, ip, sigId, ag.id);
       move(null, q.job_id, 'agreement_signed', `Agreement signed by ${who}`);
       if (j.client_kind !== 'company' && q.total > 0) move(null, q.job_id, 'payment_pending', 'Waiting for payment');
+      else ctx.reports.ensureReport(q.job_id); // credit clients: ready to schedule now
     });
     try {
       const pdf = await ctx.docs.agreementPdf(ag.id);
@@ -429,7 +430,10 @@ export function createJobs(ctx) {
         .run(j.client_id, qid, method, provider, ref, amt, paid_on || dateKey(ctx.now()), proof_file_id, receipt, user?.id ?? null, ctx.now()).lastInsertRowid);
       const due = round2((q.total * q.deposit_pct) / 100);
       const cur = db.prepare('SELECT status FROM jobs WHERE id=?').get(j.id).status;
-      if (paidForJob(j.id) + 0.001 >= due && ['payment_pending', 'agreement_signed'].includes(cur)) move(user, j.id, 'paid', `Paid AED ${money(amt)} (${method.replace('_', ' ')})`);
+      if (paidForJob(j.id) + 0.001 >= due && ['payment_pending', 'agreement_signed'].includes(cur)) {
+        move(user, j.id, 'paid', `Paid AED ${money(amt)} (${method.replace('_', ' ')})`);
+        ctx.reports.ensureReport(j.id); // the inspection record (rooms and items) is ready as soon as the job is paid
+      }
       else event(user, j.id, `Payment received: AED ${money(amt)} (${method.replace('_', ' ')})`);
       return id;
     });

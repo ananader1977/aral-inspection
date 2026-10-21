@@ -82,12 +82,17 @@ export async function inspectView(el, parts) {
     const day = j.scheduled_start ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dubai' }).format(j.scheduled_start) : '';
     (day === today ? groups.today : day > today ? groups.next : groups.other).push(j);
   }
-  const cardFor = (j) => h('a', { class: 'card jobcard', href: `#inspect/${j.id}` },
-    h('div', { class: 'actions' }, h('b', { class: 'ltr' }, j.number), h('span', { class: 'spacer' }), j.report_status === 'returned' ? pill(t('Returned for changes'), 'bad') : pill(t(j.status === 'report_draft' ? 'In progress' : j.status === 'under_review' ? 'With the reviewer' : j.status === 'access_failed' ? 'Access failed' : 'Scheduled'), j.status === 'report_draft' ? 'cu' : '')),
+  const unbooked = d.rows.filter((j) => !j.scheduled_start);
+  for (const k of Object.keys(groups)) groups[k] = groups[k].filter((j) => j.scheduled_start);
+  const cardFor = (j) => h('a', { class: 'card jobcard', href: j.scheduled_start ? `#inspect/${j.id}` : `#jobs/${j.id}` },
+    h('div', { class: 'actions' }, h('b', { class: 'ltr' }, j.number), h('span', { class: 'spacer' }), !j.scheduled_start ? pill(t('Paid – not scheduled yet'), 'warn') : j.report_status === 'returned' ? pill(t('Returned for changes'), 'bad') : pill(t(j.status === 'report_draft' ? 'In progress' : j.status === 'under_review' ? 'With the reviewer' : j.status === 'access_failed' ? 'Access failed' : 'Scheduled'), j.status === 'report_draft' ? 'cu' : '')),
     h('div', {}, h('b', {}, j.scheduled_start ? fmtStamp(j.scheduled_start) : '-'), ' · ', j.service_name),
     h('div', { class: 'muted' }, [j.building, j.unit_no && `${t('Unit')} ${j.unit_no}`, j.community].filter(Boolean).join(', ')),
     h('div', { class: 'small muted' }, `${j.client_name} · ${[j.property_type, j.bedrooms != null ? `${j.bedrooms} BR` : ''].filter(Boolean).join(' ')}${S.me.role !== 'inspector' && j.inspector_name ? ` · ${j.inspector_name}` : ''}`));
-  fill(el, h('h1', {}, t('My inspections')), syncBadge(),
+  fill(el, h('h1', {}, t(S.me.role === 'inspector' ? 'My inspections' : 'Inspections')), syncBadge(),
+    !d.linked ? h('div', { class: 'alert bad' }, t('Your login is not linked to an inspector record. Ask the Super Admin to set "Inspector record" on your user in Settings → Users.')) : null,
+    S.me.role !== 'inspector' && !d.inspectors ? h('div', { class: 'alert' }, t('There are no inspectors yet. Add one in Settings → Inspectors, then schedule the job.'), ' ', h('a', { class: 'btn alt sm', href: '#settings/list/inspectors' }, t('Add an inspector'))) : null,
+    unbooked.length ? h('section', {}, h('h2', {}, t('Paid, waiting to be scheduled')), h('p', { class: 'small muted' }, t('Open the job and press "Schedule the inspection" to choose the date and the inspector. The inspection opens here once it is booked.')), unbooked.map(cardFor)) : null,
     [['today', 'Today'], ['next', 'Coming up'], ['other', 'Earlier / open']].map(([k, l]) => groups[k].length ? h('section', {}, h('h2', {}, t(l)), groups[k].map(cardFor)) : null),
     d.rows.length ? null : h('div', { class: 'card' }, h('p', { class: 'muted' }, t('No visits assigned to you right now.'))));
 }

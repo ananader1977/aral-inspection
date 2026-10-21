@@ -141,6 +141,7 @@ async function jobFile(el, id) {
   fill(el,
     h('div', { class: 'actions' }, h('a', { class: 'btn alt sm', href: '#jobs' }, '‹ ', t('Jobs')), h('h1', { class: 'ltr' }, j.number), statusPill(j.status, j.status_label), d.parent ? h('a', { class: 'pill cu', href: `#jobs/${d.parent.id}` }, `${t('Re-inspection of')} ${d.parent.number}`) : null),
     h('p', { class: 'muted' }, `${j.service_name} · ${where(j) || t('Property details missing')}`),
+    nextStep(j, d, accepted, due) ? h('div', { class: 'alert info nextstep' }, h('b', {}, t('Next step')), ': ', nextStep(j, d, accepted, due)) : null,
     btns.length ? h('div', { class: 'card actions' }, btns) : null,
     h('div', { class: 'grid2' },
       card('Client', kv([['Name', c.name], ['Type', t(c.type)], ['Mobile', h('span', { class: 'ltr' }, c.mobile || '-')], ['Email', h('span', { class: 'ltr' }, c.email || '-')], ['Payment', c.credit_terms_days ? t('{n} days credit', { n: c.credit_terms_days }) : t('Pays in advance')], ['Monthly invoice', c.monthly_invoicing ? t('Yes') : '']]),
@@ -228,6 +229,26 @@ async function quoteEditor(j, draft, reload) {
   draw();
 }
 
+/** One line telling the office what to do next on this job. */
+function nextStep(j, d, accepted, due) {
+  const draft = d.quotes.find((q) => q.status === 'draft');
+  switch (j.status) {
+    case 'new': case 'quote_rejected': case 'quote_expired': return draft ? t('Send the quotation to the client.') : t('Prepare the quotation.');
+    case 'quoted': return t('Waiting for the client to accept the quotation. You can also record an acceptance by phone or email.');
+    case 'quote_accepted': return t('Waiting for the client to sign the service agreement (see below).');
+    case 'agreement_signed': return j.client_kind === 'company' ? t('Schedule the inspection.') : t('Take the payment.');
+    case 'payment_pending': return t('Take the payment: Pay by card, or Record payment for a transfer, cheque, cash or card machine.');
+    case 'paid': return t('Schedule the inspection: choose the date and the inspector. The inspection then opens in the Inspections tab and on the inspector\'s phone.');
+    case 'scheduled': return t('On the day, the inspector opens the inspection and presses "I\'m on site". You can also open it here.');
+    case 'access_failed': return t('Reschedule the inspection.');
+    case 'report_draft': return t('The inspection is in progress. The inspector submits the report for review when finished.');
+    case 'under_review': return t('The Technical Manager reviews, approves and issues the report.');
+    case 'report_issued': return d.invoices.length ? '' : t('Issue the invoice (or wait for the monthly invoice).');
+    case 'invoiced': return t('Waiting for the invoice to be paid.');
+    default: return '';
+  }
+}
+
 /** The secure link the client uses to accept, sign and pay: copy, open, or send by WhatsApp. */
 function clientLink(url, c, j) {
   const wa = String(c.mobile || '').replace(/\D/g, '').replace(/^00/, '').replace(/^0(5\d{8})$/, '971$1');
@@ -290,6 +311,7 @@ function scheduleForm(j, reload) {
     if (!f.date.value || !f.time.value) return fill(box, h('p', { class: 'muted' }, t('Choose the date and time to see who is free.')));
     const r = await run(() => A('GET', `/jobs/${j.id}/availability?date=${f.date.value}&time=${f.time.value}&hours=${f.hours.value}`));
     if (!r) return;
+    if (!r.inspectors.length) return fill(box, h('div', { class: 'alert' }, t('There are no inspectors yet. Add one in Settings → Inspectors, then schedule the job.'), ' ', h('a', { class: 'btn alt sm', href: '#settings/list/inspectors', onclick: closeModal }, t('Add an inspector'))));
     fill(box, h('h3', {}, t('Inspector')), h('div', { class: 'pickgrid' }, r.inspectors.map((i) => h('label', { class: `pick ${i.ok ? '' : 'off'}` },
       h('input', { type: 'radio', name: 'ins', value: i.id, checked: chosenIns === i.id, disabled: !i.ok && !i.problems.every((p) => p === 'not thermal certified'), onchange: () => { chosenIns = i.id; } }),
       h('span', {}, h('b', {}, i.name), h('div', { class: 'small muted' }, i.ok ? i.areas || t('Available') : i.problems.map((p) => t(p)).join(', ')))))),

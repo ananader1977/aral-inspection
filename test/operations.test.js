@@ -389,6 +389,11 @@ test('after acceptance the client is emailed the signing link; the office can re
     const paid = await call(null, 'POST', `/api/public/pay-demo/${sid}`, { card: '4242424242424242', expiry: '12/30', cvc: '123' }, { csrf: false });
     assert.match(paid.body.back, /\/app\/#jobs\//);
     assert.equal((await call('sa', 'GET', `/api/app/jobs/${job.body.id}`)).body.job.status, 'paid');
+    // the inspection record exists as soon as the job is paid, and the job waits in Inspections to be scheduled
+    assert.ok((await call('sa', 'GET', `/api/app/jobs/${job.body.id}`)).body.report);
+    const insp = (await call('sa', 'GET', '/api/app/inspect')).body;
+    assert.ok(insp.rows.some((r) => r.id === job.body.id && !r.scheduled_start));
+    assert.ok((await call('sa', 'GET', `/api/app/inspect/${job.body.id}`)).body.sections.length > 5);
     const pay = ctx.db.prepare('SELECT p.*, u.email FROM payments p LEFT JOIN users u ON u.id=p.recorded_by ORDER BY p.id DESC').get();
     assert.equal(pay.method, 'card');
     assert.equal(pay.email, SA.email);
