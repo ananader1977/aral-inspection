@@ -8,7 +8,8 @@ test('first start loads the catalogue, checklists, wording and the super admin',
   const t = await startTestApp();
   try {
     const n = (sql) => t.ctx.db.prepare(sql).get().n;
-    assert.equal(n('SELECT COUNT(*) n FROM services'), 15);
+    assert.equal(n('SELECT COUNT(*) n FROM services'), 8);
+    assert.equal(n('SELECT COUNT(*) n FROM surcharges'), 0);
     assert.ok(n('SELECT COUNT(*) n FROM price_rules') > 20);
     assert.ok(n('SELECT COUNT(*) n FROM comment_library') >= 20);
     assert.ok(n('SELECT COUNT(*) n FROM section_templates') >= 15);

@@ -76,14 +76,12 @@
           <div><label for="ptype" data-i18n="fType">Property type</label><select id="ptype" name="property_type" required></select></div>
           <div id="bedsWrap"><label for="beds" data-i18n="fBeds">Bedrooms</label>
             <select id="beds" name="bedrooms"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6+</option></select></div>
-          <div id="sqftWrap" class="hide"><label for="sqft" data-i18n="fSqft">Size (sq ft)</label><input id="sqft" name="sqft" inputmode="numeric" dir="ltr"></div>
         </div>
         <label for="community" data-i18n="fCommunity">Community</label>
         <input id="community" name="community" list="communities" autocomplete="off">
         <datalist id="communities"></datalist>
-        <p class="sub" data-i18n="fAddons">Add-ons</p>
+        <p class="sub" data-i18n="fAddons">Add-on</p>
         <div class="checks" id="addons"></div>
-        <label class="chk"><input type="checkbox" name="urgent" id="urgent"> <span data-i18n="fUrgent">Same-day / urgent report</span></label>
       </fieldset>
 
       <aside class="panel quote" aria-live="polite">
@@ -128,15 +126,19 @@
   <div class="in">
     <p class="kick" data-i18n="svcKick">Residential</p>
     <h2 data-i18n="svcTitle">Inspections for every stage of owning a home</h2>
-    <div class="cards">
+    <div class="cards three">
       <article><h3 data-i18n="s1t">Resale inspection</h3><p data-i18n="s1d">Before you sign the MOU or transfer: a full condition report you can use to negotiate with the seller. Includes one re-inspection.</p><p class="from"><span data-i18n="from">From</span> <b id="p_OWN-PPI">AED 1,200</b></p></article>
       <article><h3 data-i18n="s2t">Snagging and handover</h3><p data-i18n="s2d">Before you accept the keys to a new unit: 200+ checks and a defect list in the developer's format, with a re-inspection after repairs.</p><p class="from"><span data-i18n="from">From</span> <b id="p_OWN-SNG">AED 1,200</b></p></article>
-      <article><h3 data-i18n="s3t">11th-month warranty</h3><p data-i18n="s3d">Before the developer's defect period ends, so every remaining defect is claimed in time.</p><p class="from"><span data-i18n="from">From</span> <b id="p_OWN-DLP">AED 900</b></p></article>
       <article><h3 data-i18n="s4t">Move-in / move-out</h3><p data-i18n="s4d">A dated, photo-backed condition record that protects the deposit for tenants and landlords.</p><p class="from"><span data-i18n="from">From</span> <b id="p_OWN-MIO">AED 900</b></p></article>
     </div>
     <div class="biz">
-      <div><p class="kick" data-i18n="bizKick">Commercial</p><h3 data-i18n="bizTitle">Banks, developers, offices and warehouses</h3>
-        <p data-i18n="bizText">Collateral and construction-progress inspections for lenders, building and common-area audits for developers and owners associations, and pre-lease inspections for offices, shops and warehouses.</p></div>
+      <div><p class="kick" data-i18n="bizKick">Commercial</p><h3 data-i18n="bizTitle">For banks, developers and owners associations</h3>
+        <ul class="bizlist">
+          <li data-i18n-html="b1"><b>Repossessed or distressed asset inspection</b> for banks: condition, vacancy, keys and an indication of repair costs.</li>
+          <li data-i18n-html="b2"><b>Buyer handover programme</b>: white-label snagging for a bank's new-home mortgage customers.</li>
+          <li data-i18n-html="b3"><b>Pre-handover quality check</b> for developers: unit-by-unit snagging before handover, with defects tracked until closed.</li>
+          <li data-i18n-html="b4"><b>Defect-period tracking</b> for developers and owners associations: open defects re-inspected before the liability period ends.</li>
+        </ul></div>
       <a class="btn ghost" href="#book" id="bizBtn" data-i18n="bizBtn">Ask for a business quote</a>
     </div>
   </div>
@@ -147,18 +149,18 @@
     <p class="kick" data-i18n="prKick">Prices</p>
     <h2 data-i18n="prTitle">Clear prices, no surprises</h2>
     <div class="tw"><table>
-      <thead><tr><th data-i18n="thProp">Property</th><th data-i18n="thResale">Resale</th><th data-i18n="thSnag">Snagging</th><th data-i18n="thWarr">11th-month</th><th data-i18n="thMove">Move-in/out</th></tr></thead>
+      <thead><tr><th data-i18n="thProp">Property</th><th data-i18n="thResale">Resale</th><th data-i18n="thSnag">Snagging and handover</th><th data-i18n="thMove">Move-in / move-out</th></tr></thead>
       <tbody>
-        <tr><td data-i18n="rStudio">Studio</td><td>1,200</td><td>1,200</td><td>900</td><td>900</td></tr>
-        <tr><td data-i18n="r1">1-bedroom apartment</td><td>1,500</td><td>1,400</td><td>900</td><td>900</td></tr>
-        <tr><td data-i18n="r2">2-bedroom apartment</td><td>1,700</td><td>1,800</td><td>900</td><td>1,300</td></tr>
-        <tr><td data-i18n="r3">3-bedroom apartment</td><td>1,860</td><td>2,400</td><td>1,600</td><td>1,300</td></tr>
-        <tr><td data-i18n="rTh">Townhouse</td><td>2,500</td><td>3,000</td><td>1,600</td><td>1,800</td></tr>
-        <tr><td data-i18n="rV4">Villa, up to 4 bedrooms</td><td>3,000</td><td>4,500</td><td>1,600</td><td>2,200</td></tr>
-        <tr><td data-i18n="rV5">Villa, 5+ bedrooms</td><td>3,500</td><td>6,000</td><td>1,600</td><td>2,200</td></tr>
+        <tr><td data-i18n="rStudio">Studio</td><td>1,200</td><td>1,200</td><td>900</td></tr>
+        <tr><td data-i18n="r1">1-bedroom apartment</td><td>1,500</td><td>1,400</td><td>900</td></tr>
+        <tr><td data-i18n="r2">2-bedroom apartment</td><td>1,700</td><td>1,800</td><td>1,300</td></tr>
+        <tr><td data-i18n="r3">3-bedroom apartment</td><td>1,860</td><td>2,400</td><td>1,300</td></tr>
+        <tr><td data-i18n="rTh">Townhouse</td><td>2,500</td><td>3,000</td><td>1,800</td></tr>
+        <tr><td data-i18n="rV4">Villa, up to 4 bedrooms</td><td>3,000</td><td>4,500</td><td>2,200</td></tr>
+        <tr><td data-i18n="rV5">Villa, 5+ bedrooms</td><td>3,500</td><td>6,000</td><td>2,200</td></tr>
       </tbody>
     </table></div>
-    <p class="fine" id="vatNote" data-i18n="prNote">Prices in AED. Add-ons: thermal imaging 500, HVAC check 850, moisture and leak detection 600, pool and waterproofing 1,000.</p>
+    <p class="fine" id="vatNote" data-i18n="prNote">Prices in AED. Add-on: thermal imaging 500.</p>
   </div>
 </section>
 

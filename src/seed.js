@@ -8,35 +8,26 @@ const SERVICES = [
   // code, name, segment, report_type, addon, reinspection, sla_h, thermal, sort
   ['OWN-PPI', 'Resale (Pre-purchase) Inspection', 'owner', 'pre_purchase', 0, 1, 24, 1, 1],
   ['OWN-SNG', 'Snagging & Handover Inspection', 'owner', 'snagging', 0, 1, 48, 1, 2],
-  ['OWN-DLP', '11th-Month Warranty Inspection', 'owner', 'snagging', 0, 0, 48, 1, 3],
-  ['OWN-MIO', 'Move-in / Move-out Condition Report', 'owner', 'move_in_out', 0, 0, 24, 0, 4],
-  ['BNK-COL', 'Collateral Condition Inspection', 'bank', 'collateral', 0, 0, 48, 0, 10],
-  ['BNK-VSI', 'Valuation-support Site Inspection', 'bank', 'valuation_support', 0, 0, 24, 0, 11],
-  ['BNK-CPM', 'Construction Progress Monitoring (per stage)', 'bank', 'progress', 0, 0, 120, 0, 12],
-  ['BNK-REP', 'Repossessed / Distressed Asset Inspection', 'bank', 'repossessed', 0, 0, 48, 0, 13],
-  ['BNK-POR', 'Portfolio Re-inspection', 'bank', 'collateral', 0, 0, 120, 0, 14],
-  ['BNK-HND', 'Buyer Handover Programme (white-label snagging)', 'bank', 'snagging', 0, 1, 72, 1, 15],
-  ['DEV-AUD', 'Building / Common-area Audit', 'developer', 'building_audit', 0, 0, 240, 1, 20],
+  ['OWN-MIO', 'Move-in / Move-out Condition Report', 'owner', 'move_in_out', 0, 0, 24, 0, 3],
+  ['BNK-REP', 'Repossessed / Distressed Asset Inspection', 'bank', 'repossessed', 0, 0, 48, 0, 10],
+  ['BNK-HND', 'Buyer Handover Programme (white-label snagging)', 'bank', 'snagging', 0, 1, 72, 1, 11],
+  ['DEV-PHQ', 'Pre-handover Quality Check', 'developer', 'snagging', 0, 0, 120, 1, 20],
+  ['DEV-DPT', 'Defect-period Tracking', 'developer', 'snagging', 0, 0, 120, 0, 21],
   ['ADD-THM', 'Add-on: Thermal Imaging', 'any', 'specialist', 1, 0, 24, 1, 30],
-  ['ADD-HVAC', 'Add-on: HVAC / VRF Performance Check', 'any', 'specialist', 1, 0, 24, 0, 31],
-  ['ADD-MST', 'Add-on: Moisture & Leak Detection', 'any', 'specialist', 1, 0, 24, 0, 32],
-  ['ADD-POOL', 'Add-on: Pool & Waterproofing Review', 'any', 'specialist', 1, 0, 24, 0, 33],
 ];
 
-// Base prices (AED, excl. VAT) by service, property type and bedrooms. Taken from the business plan ranges.
+// Base prices (AED, excl. VAT) by service, property type and bedrooms. Developer services are priced per proposal.
 const PRICES = [
   ['OWN-PPI', 'apartment', 0, 0, 1200], ['OWN-PPI', 'apartment', 1, 1, 1500], ['OWN-PPI', 'apartment', 2, 2, 1700], ['OWN-PPI', 'apartment', 3, 3, 1860], ['OWN-PPI', 'apartment', 4, 9, 2300],
   ['OWN-PPI', 'townhouse', 0, 9, 2500], ['OWN-PPI', 'villa', 0, 4, 3000], ['OWN-PPI', 'villa', 5, 9, 3500],
   ['OWN-SNG', 'apartment', 0, 0, 1200], ['OWN-SNG', 'apartment', 1, 1, 1400], ['OWN-SNG', 'apartment', 2, 2, 1800], ['OWN-SNG', 'apartment', 3, 9, 2400],
   ['OWN-SNG', 'townhouse', 0, 9, 3000], ['OWN-SNG', 'villa', 0, 4, 4500], ['OWN-SNG', 'villa', 5, 9, 6000],
-  ['OWN-DLP', '*', 0, 2, 900], ['OWN-DLP', '*', 3, 9, 1600],
   ['OWN-MIO', 'apartment', 0, 1, 900], ['OWN-MIO', 'apartment', 2, 9, 1300], ['OWN-MIO', 'villa', 0, 9, 2200], ['OWN-MIO', 'townhouse', 0, 9, 1800],
-  ['BNK-COL', '*', null, null, 750], ['BNK-VSI', '*', null, null, 600], ['BNK-CPM', '*', null, null, 2400], ['BNK-REP', '*', null, null, 1300],
-  ['BNK-POR', '*', null, null, 650], ['BNK-HND', '*', null, null, 2000], ['DEV-AUD', '*', null, null, 18000],
-  ['ADD-THM', '*', null, null, 500], ['ADD-HVAC', '*', null, null, 850], ['ADD-MST', '*', null, null, 600], ['ADD-POOL', '*', null, null, 1000],
+  ['BNK-REP', '*', null, null, 1300], ['BNK-HND', '*', null, null, 2000],
+  ['ADD-THM', '*', null, null, 500],
 ];
 
-const SURCHARGES = [['Same-day / urgent report', 'percent', 25], ['Friday or public holiday visit', 'fixed', 250], ['Outside Dubai (Sharjah, Ajman, Abu Dhabi)', 'fixed', 300]];
+const SURCHARGES = [];
 
 const LOOKUPS = {
   property_type: ['studio', 'apartment', 'townhouse', 'villa', 'penthouse', 'office', 'retail', 'warehouse', 'building', 'land'],
@@ -203,7 +194,7 @@ export function seedReference(db, now) {
         db.prepare('INSERT INTO item_templates(section_template_id,name,attr_label,attr_list,sort) VALUES(?,?,?,?,?)').run(Number(st.lastInsertRowid), iname, attr, list, ii + 1);
       });
     });
-    db.prepare("UPDATE services SET checklist_id=? WHERE segment IN ('owner','bank') OR code='DEV-AUD'").run(clId);
+    db.prepare("UPDATE services SET checklist_id=? WHERE is_addon=0").run(clId);
   });
   return true;
 }

@@ -65,7 +65,7 @@ export function registerRoutes(app, ctx) {
       services: svc.map((x) => ({ ...x, from: from(x.code) })), communities: lk('community'),
       residential_types: RESIDENTIAL_TYPES, commercial_types: COMMERCIAL_TYPES,
       price_table: [['studio', 'studio', 0], ['apt1', 'apartment', 1], ['apt2', 'apartment', 2], ['apt3', 'apartment', 3], ['townhouse', 'townhouse', 3], ['villa4', 'villa', 4], ['villa5', 'villa', 5]].map(([key, type, beds]) => ({
-        key, prices: Object.fromEntries(['OWN-PPI', 'OWN-SNG', 'OWN-DLP', 'OWN-MIO'].map((code) => {
+        key, prices: Object.fromEntries(['OWN-PPI', 'OWN-SNG', 'OWN-MIO'].map((code) => {
           const sv = db.prepare('SELECT id FROM services WHERE code=? AND active=1').get(code);
           return [code, sv ? ctx.pricing.basePrice(sv.id, type, beds, null)?.price ?? null : null];
         })),

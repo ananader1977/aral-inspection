@@ -17,7 +17,7 @@ test('the website is served at / and gets live prices from the price list', asyn
     assert.equal(row('villa5')['OWN-SNG'], 6000);
     assert.equal(row('apt2')['OWN-MIO'], 1300);
     assert.equal(site.addon_prices['ADD-THM'], 500);
-    assert.ok(site.services.every((s) => s.code.startsWith('OWN-') || s.is_addon), 'bank and developer services are not offered on the public site');
+    assert.deepEqual(site.services.map((s) => s.code), ['OWN-PPI', 'OWN-SNG', 'OWN-MIO', 'ADD-THM']);
     // a price change in Settings shows on the website straight away
     await t.login('sa', SA.email, SA.password);
     const ppi = t.ctx.db.prepare("SELECT r.id FROM price_rules r JOIN services s ON s.id=r.service_id WHERE s.code='OWN-PPI' AND r.bedrooms_min=0 AND r.property_type='apartment'").get().id;
@@ -34,8 +34,10 @@ test('instant estimate: base price, add-ons, urgent surcharge, VAT and commercia
     assert.equal(r.body.total, 1700);
     assert.equal(r.body.vat, 0);
     r = await post(t, '/api/public/estimate', { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2, addons: ['ADD-THM', 'NOPE'], urgent: true });
-    assert.deepEqual(r.body.lines.map((l) => l.amount), [1700, 500, 550]);
-    assert.equal(r.body.total, 2750);
+    assert.deepEqual(r.body.lines.map((l) => l.amount), [1700, 500]); // no surcharges in the price list
+    assert.equal(r.body.total, 2200);
+    // removed services are not offered
+    assert.equal((await post(t, '/api/public/estimate', { service: 'OWN-DLP', property_type: 'apartment', bedrooms: 2 })).status, 400);
     r = await post(t, '/api/public/estimate', { service: 'OWN-SNG', property_type: 'studio' });
     assert.equal(r.body.total, 1200);
     r = await post(t, '/api/public/estimate', { service: 'OWN-SNG', property_type: 'villa', bedrooms: 6 });

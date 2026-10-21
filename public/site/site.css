@@ -126,3 +126,5 @@ details{border-bottom:1px solid var(--line);padding:14px 0}summary{cursor:pointe
 .hero .in{z-index:1}
 .btn{white-space:nowrap}
 @media(max-width:520px){.logo small{display:none}.bar .in{gap:10px}.lang{padding:6px 9px}}
+.cards.three{grid-template-columns:repeat(3,minmax(0,1fr))}@media(max-width:860px){.cards.three{grid-template-columns:minmax(0,1fr)}}
+.bizlist{margin:10px 0 0;padding-inline-start:18px;color:#4A3424}.bizlist li{margin:6px 0}.bizlist b{color:var(--navy)}
