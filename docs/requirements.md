@@ -73,23 +73,21 @@ Reference implementation: GitHub repo `ananader1977/dar-al-bunyan`. Reuse its st
 - Individual clients: pay upfront (full or deposit) before inspection.
 - Referral source tracking (broker, mortgage adviser, website, WhatsApp, Google) with optional referral fee.
 
-## 4. SERVICE CATALOGUE (admin-editable; seed with these)
-| Code | Service | Segment | Default fee range (AED) | Default turnaround |
+## 4. SERVICE CATALOGUE (approved 21 Oct 2026; admin-editable)
+| Code | Service | Segment | Price (AED, excl. VAT) | Turnaround |
 |---|---|---|---|---|
-| BNK-COL | Collateral condition inspection | Bank | 600–900 | 24–48 h |
-| BNK-VSI | Valuation-support site inspection (pack to RERA valuer partner) | Bank | 500–700 | 24 h |
-| BNK-CPM | Construction-progress monitoring (per stage) | Bank | 2,000–3,500 | 3–5 days |
-| BNK-REP | Repossessed / distressed asset inspection | Bank | 1,000–1,500 | 48 h |
-| BNK-POR | Portfolio re-inspection (batch) | Bank | 500–800 | 5 days |
-| BNK-HND | Buyer handover programme (white-label snagging) | Bank | 1,200–3,500 | 3 days |
-| OWN-SNG | New-owner snagging & handover (200+ points, incl. 1 re-inspection) | Owner | 1,200–6,000 | 48 h |
-| OWN-MIO | Move-in / move-out condition report | Owner / tenant | 900–2,200 | 24 h |
-| OWN-PPI | Pre-purchase (resale) inspection | Buyer | 1,500–3,500 | 48 h |
-| ADD-SPC | Specialist add-on: thermal, moisture/leak, HVAC/VRF, pool/waterproofing | Any | 500–1,500 | with parent job |
-| DEV-AUD | Building / common-area audit & developer QA | Developer / OA | 10,000–40,000 per project | per proposal |
-| OWN-DLP | Defect-liability-period re-inspection | Owner | 800–2,000 | 48 h |
+| OWN-PPI | Resale (pre-purchase) inspection, incl. 1 re-inspection | Owner / buyer | 1,200 – 3,500 by size | 24 h |
+| OWN-SNG | Snagging & handover, incl. 1 re-inspection | Owner | 1,200 – 6,000 by size | 48 h |
+| OWN-MIO | Move-in / move-out condition report | Owner / tenant | 900 – 2,200 by size | 24 h |
+| BNK-REP | Repossessed / distressed asset inspection | Bank | 1,300 per unit | 48 h |
+| BNK-HND | Buyer handover programme (white-label snagging) | Bank | 2,000 per unit | 3 days |
+| DEV-PHQ | Pre-handover quality check | Developer | Per proposal | Per proposal |
+| DEV-DPT | Defect-period tracking | Developer / OA | Per proposal | Per proposal |
+| ADD-THM | Add-on: thermal imaging | Any | 500 | With the job |
 
-**Pricing engine:** fee = base by service × property type × size band (sq ft) + add-ons + urgency surcharge − discount (discount limit per role) ± client rate-card override. Show an **instant quote** on the public booking page by property type and size.
+No surcharges. All other services from the business plan (11th-month warranty, collateral, valuation-support, progress monitoring, portfolio re-inspection, building audit, other add-ons, commercial units) are removed.
+
+**Pricing engine:** fee = base by service × property type × bedrooms + thermal add-on − discount (limit per role) ± bank rate-card override. Developer services are quoted per project. The public website shows an instant estimate for the three residential services.
 
 ## 5. WORKFLOW (state machine)
 `NEW_REQUEST → QUOTED → QUOTE_ACCEPTED → PAYMENT_PENDING → PAID → SCHEDULED → INSPECTED → REPORT_DRAFT → UNDER_REVIEW → REPORT_ISSUED → INVOICED → CLOSED`
