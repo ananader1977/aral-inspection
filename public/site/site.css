@@ -128,3 +128,13 @@ details{border-bottom:1px solid var(--line);padding:14px 0}summary{cursor:pointe
 @media(max-width:520px){.logo small{display:none}.bar .in{gap:10px}.lang{padding:6px 9px}}
 .cards.three{grid-template-columns:repeat(3,minmax(0,1fr))}@media(max-width:860px){.cards.three{grid-template-columns:minmax(0,1fr)}}
 .bizlist{margin:10px 0 0;padding-inline-start:18px;color:#4A3424}.bizlist li{margin:6px 0}.bizlist b{color:var(--navy)}
+/* phones: the estimate no longer sticks over the form; a slim price bar at the bottom instead */
+.mbar{display:none}
+@media(max-width:760px){
+  .quote{position:static;top:auto}
+  .mbar{display:flex;position:fixed;inset-inline:0;bottom:0;z-index:25;align-items:center;justify-content:space-between;gap:12px;background:var(--navy);color:#fff;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 20px rgba(10,31,74,.25)}
+  .mbar small{display:block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--copper-l)}
+  .mbar b{font:800 1.25rem var(--display);font-variant-numeric:tabular-nums}
+  body.has-mbar{padding-bottom:76px}
+}
+#step2{scroll-margin-top:80px}

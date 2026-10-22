@@ -139,11 +139,13 @@ async function update() {
     lastEstimate = r;
     const est = $('#est');
     if (r.error) { est.replaceChildren(p(r.error, 'muted')); return; }
-    if (r.quote_needed) { est.replaceChildren(p(L(MSG.quote), 'meta')); return; }
+    if (r.quote_needed) { est.replaceChildren(p(L(MSG.quote), 'meta')); mbar.ready = false; mbar.sync(); return; }
     const ul = document.createElement('ul'); ul.className = 'lines';
     for (const l of r.lines) { const li = document.createElement('li'); li.append(span(lang === 'ar' ? arLine(l.label) : l.label), span(fmt(l.amount))); ul.append(li); }
     if (r.vat) { const li = document.createElement('li'); li.append(span(`${L(MSG.vat)} ${r.vat_rate}%`), span(fmt(r.vat))); ul.append(li); }
     const price = document.createElement('p'); price.className = 'price'; price.append(Object.assign(document.createElement('small'), { textContent: 'AED' }), fmt(r.total));
+    $('#mbarPrice').textContent = `AED ${fmt(r.total)}`;
+    mbar.ready = true; mbar.sync();
     est.replaceChildren(price, p(r.vat ? L(MSG.total) : L(MSG.noVat), 'meta'), ul,
       p([L(MSG.report).replace('{h}', r.turnaround_hours), r.includes_reinspection ? L(MSG.reinsp) : ''].filter(Boolean).join(' · '), 'meta'));
   } catch { /* keep last estimate */ }
@@ -154,6 +156,22 @@ function arLine(label) {
   const s = site.services.find((x) => x.name === label || x.name.replace(/^Add-on:\s*/, '') === label);
   return s ? svcName(s) : label;
 }
+
+// Phone price bar: shown while the booking section is on screen, but never while typing in a field
+// and never when the full estimate panel is already visible, so it cannot cover any field.
+const mbar = { ready: false, inBook: false, quoteVisible: false, typing: false };
+mbar.sync = () => {
+  const show = mbar.ready && mbar.inBook && !mbar.quoteVisible && !mbar.typing;
+  $('#mbar').classList.toggle('hide', !show);
+  document.body.classList.toggle('has-mbar', show);
+};
+if ('IntersectionObserver' in window) {
+  new IntersectionObserver(([e]) => { mbar.inBook = e.isIntersecting; mbar.sync(); }).observe($('#book'));
+  new IntersectionObserver(([e]) => { mbar.quoteVisible = e.isIntersecting; mbar.sync(); }, { threshold: 0.25 }).observe($('.quote'));
+}
+document.addEventListener('focusin', (e) => { if (e.target.matches('input,select,textarea')) { mbar.typing = true; mbar.sync(); } });
+document.addEventListener('focusout', () => { setTimeout(() => { mbar.typing = !!document.activeElement?.matches?.('input,select,textarea'); mbar.sync(); }, 50); });
+$('#mbar a').addEventListener('click', (e) => { e.preventDefault(); $('#step2').scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('#name').focus({ preventScroll: true }), 450); });
 
 $('#bookForm').addEventListener('input', (e) => { if (e.target.closest('.panel:not(.wide)')) update(); });
 $('#bookForm').addEventListener('change', (e) => { if (e.target.closest('.panel:not(.wide)')) update(); });

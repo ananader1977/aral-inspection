@@ -95,7 +95,7 @@
         </ul>
       </aside>
 
-      <fieldset class="panel wide">
+      <fieldset class="panel wide" id="step2">
         <legend data-i18n="step2">2. Book it</legend>
         <div class="three">
           <div><label for="name" data-i18n="fName">Full name</label><input id="name" name="name" autocomplete="name" required></div>
@@ -113,6 +113,8 @@
         <div class="send"><button class="btn cu" type="submit" id="submit" data-i18n="fSubmit">Request booking</button><span class="note" data-i18n="fNote">No payment now. We confirm the date and send the quotation first.</span></div>
       </fieldset>
     </form>
+    <!-- phones: slim price bar at the bottom (hidden while typing or when the full estimate is on screen) -->
+    <div class="mbar hide" id="mbar" aria-hidden="true"><span><small data-i18n="estTitle">Your estimate</small><b id="mbarPrice"></b></span><a class="btn cu sm" href="#step2" data-i18n="fSubmit">Request booking</a></div>
     <div class="done hide" id="done" tabindex="-1">
       <h3 data-i18n="doneTitle">Thank you, we have your request</h3>
       <p data-i18n="doneText">We will call or WhatsApp you shortly to confirm the date. Your reference:</p>
