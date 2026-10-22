@@ -21,7 +21,7 @@ export function loadConfig(env = process.env) {
     demoPassword: env.DEMO_PASSWORD || '',
     paymentProvider: (env.PAYMENT_PROVIDER || 'mock').toLowerCase(),
     // AI photo suggestions (Claude). Leave ANTHROPIC_API_KEY empty to hide the feature.
-    ai: { apiKey: (env.ANTHROPIC_API_KEY || '').trim(), model: (env.AI_MODEL || 'claude-sonnet-5-5').trim(), baseUrl: (env.AI_BASE_URL || '').trim() },
+    ai: aiConfig(env),
     stripe: { secretKey: env.STRIPE_SECRET_KEY || '', webhookSecret: env.STRIPE_WEBHOOK_SECRET || '' },
     smtp: {
       host: (env.SMTP_HOST || '').trim(),
@@ -51,6 +51,14 @@ export function loadConfig(env = process.env) {
  *   different *.onrender.com address (a typo or the example from the README), which would open Render's 404 page.
  *   A custom domain in BASE_URL (e.g. https://app.aral.ae) is always kept.
  */
+/** AI_PROVIDER = gemini | claude. When it is not set, the provider whose key is present is used (Gemini first). */
+export function aiConfig(env) {
+  const gem = (env.GEMINI_API_KEY || '').trim(), cla = (env.ANTHROPIC_API_KEY || '').trim();
+  const want = (env.AI_PROVIDER || '').trim().toLowerCase();
+  const provider = want === 'gemini' || want === 'claude' ? want : gem ? 'gemini' : 'claude';
+  return { provider, apiKey: provider === 'gemini' ? gem : cla, model: (env.AI_MODEL || '').trim(), baseUrl: (env.AI_BASE_URL || '').trim(), paidTier: env.GEMINI_PAID_TIER === 'true' };
+}
+
 export function resolveBaseUrl(env, port) {
   const origin = (u) => { try { return new URL(String(u).trim()).origin; } catch { return ''; } };
   let set = origin(env.BASE_URL || '');

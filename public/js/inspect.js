@@ -470,7 +470,7 @@ async function inspectJob(el, jobId) {
       try {
         const r = await A('POST', '/ai/suggest', { item_id: it.id, media_ids: aiPhotos.slice(0, 4) });
         fill(aiBox,
-          h('div', { class: 'aihead' }, h('b', {}, '✨ ', t('AI suggestions')), h('span', { class: 'small muted' }, t('Check before saving. You are responsible for the report.'))),
+          h('div', { class: 'aihead' }, h('b', {}, '✨ ', t('AI suggestions')), h('span', { class: 'small muted' }, `${S.cfg?.ai_provider ? `${S.cfg.ai_provider} · ` : ''}${t('Check before saving. You are responsible for the report.')}`)),
           r.findings.length ? h('div', { class: 'sugg' }, r.findings.map((x) => h('button', { type: 'button', class: `suggbtn ai ${x.severity}`, onclick: () => {
             text.value = x.text; sev = x.severity; trade.value = x.trade || ''; inSum.checked = sev !== 'info'; libId = null; drawSev(); text.focus();
             if (r.caption && opts.photoIds?.length) opts.caption = r.caption;

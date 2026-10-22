@@ -23,7 +23,7 @@ export function registerRoutes(app, ctx) {
   app.get('/api/health', (req, res) => res.json({ ok: true }));
   app.get('/api/config', (req, res) => {
     const s = ctx.settings();
-    res.json({ company: s.company_name, short: s.company_short, tagline: s.tagline, lang: s.ui_default_lang, payments: config.paymentProvider, email: !!config.smtp.host, storage: config.drive.refreshToken ? 'drive' : 'disk', ai: !!config.ai?.apiKey });
+    res.json({ company: s.company_name, short: s.company_short, tagline: s.tagline, lang: s.ui_default_lang, payments: config.paymentProvider, email: !!config.smtp.host, storage: config.drive.refreshToken ? 'drive' : 'disk', ai: !!config.ai?.apiKey, ai_provider: config.ai?.apiKey ? ctx.ai.label() : '' });
   });
 
   app.post('/api/login', async (req, res) => {

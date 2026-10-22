@@ -75,3 +75,42 @@ test('without an API key the feature is off', async () => {
     assert.equal((await t.call('sa', 'POST', '/api/app/ai/suggest', { media_ids: [1] })).status, 404);
   } finally { await t.close(); }
 });
+
+test('Gemini provider (free tier): photos sent as inline data, reply parsed, rate limit explained', async () => {
+  let seen = null, status = 200;
+  const fake = http.createServer((req, res) => {
+    let b = ''; req.on('data', (c) => (b += c)); req.on('end', () => {
+      seen = { url: req.url, headers: req.headers, body: JSON.parse(b) };
+      res.writeHead(status, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(status === 200 ? { candidates: [{ content: { parts: [{ text: '{"findings":[{"text":"Water stain on the ceiling below the AC duct, as shown in the photo.","severity":"critical","trade":"licensed HVAC contractor","confidence":"medium"}],"caption":"Ceiling stain","no_defect":false,"note":""}' }] } }] } : { error: { message: 'Resource exhausted' } }));
+    });
+  });
+  await new Promise((r) => fake.listen(0, '127.0.0.1', r));
+  const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aral-gem-'));
+  const t = await startTestApp({ uploadDir, ai: { provider: 'gemini', apiKey: 'g-key', model: '', baseUrl: `http://127.0.0.1:${fake.address().port}/v1beta/models` } });
+  const { call, ctx } = t;
+  try {
+    await t.login('sa', SA.email, SA.password);
+    assert.match((await call(null, 'GET', '/api/config')).body.ai_provider, /Gemini \(free tier\)/);
+    const job = await call('sa', 'POST', '/api/app/jobs', { service_code: 'OWN-MIO', client: { name: 'Gem Test', mobile: '0502223344', type: 'company' }, property: { property_type: 'apartment', bedrooms: 1 } });
+    ctx.db.prepare("UPDATE jobs SET status='paid' WHERE id=?").run(job.body.id);
+    const ins = Number(ctx.db.prepare("INSERT INTO inspectors(name,created_at) VALUES('Gem Inspector',?)").run(Date.now()).lastInsertRowid);
+    await call('sa', 'POST', `/api/app/jobs/${job.body.id}/schedule`, { date: '2026-10-22', time: '16:00', hours: 2, inspector_id: ins, notify: false });
+    const tree = (await call('sa', 'POST', `/api/app/inspect/${job.body.id}/checkin`)).body;
+    const ceiling = tree.sections.find((s) => s.name === 'Living Room').items.find((i) => i.name === 'Ceiling Condition');
+    await fetch(`${t.url}/api/app/inspect/${job.body.id}/media?kind=photo&uuid=g-1&item_id=${ceiling.id}`, { method: 'POST', headers: { Cookie: t.jars.sa, 'X-Requested-With': 'aral', 'Content-Type': 'image/jpeg' }, body: JPEG });
+    const r = await call('sa', 'POST', '/api/app/ai/suggest', { item_id: ceiling.id });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(r.body.provider, 'gemini');
+    assert.equal(r.body.findings[0].severity, 'critical');
+    assert.equal(seen.url, '/v1beta/models/gemini-3.5-flash-lite:generateContent');
+    assert.equal(seen.headers['x-goog-api-key'], 'g-key');
+    assert.equal(seen.body.contents[0].parts[0].inline_data.mime_type, 'image/jpeg');
+    assert.match(seen.body.contents[0].parts.at(-1).text, /Living Room[\s\S]*Ceiling Condition/);
+    assert.equal(seen.body.generationConfig.responseMimeType, 'application/json');
+    status = 429;
+    const lim = await call('sa', 'POST', '/api/app/ai/suggest', { item_id: ceiling.id });
+    assert.equal(lim.status, 429);
+    assert.match(lim.body.error, /free AI limit/);
+  } finally { await t.close(); await new Promise((r) => fake.close(r)); fs.rmSync(uploadDir, { recursive: true, force: true }); }
+});

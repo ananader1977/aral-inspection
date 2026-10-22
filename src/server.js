@@ -18,6 +18,7 @@ if (ctx.createdUsers.length) {
 }
 if (config.paymentProvider === 'mock') console.warn('[info] PAYMENT_PROVIDER=mock: card payments use the DEMO checkout (no real money).');
 if (!config.smtp.host) console.warn('[info] SMTP not configured: emails are only logged (Settings > Messages).');
+if (config.ai.apiKey) console.log(`[info] AI photo suggestions: ${ctx.ai.label()}, model ${ctx.ai.model()}.`);
 if (!config.require2fa) console.warn('[warn] REQUIRE_2FA=false: two-step sign-in is not enforced. Use only for testing.');
 
 // hourly: expire old quotations, send overdue-invoice reminders
