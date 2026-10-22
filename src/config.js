@@ -56,7 +56,13 @@ export function aiConfig(env) {
   const gem = (env.GEMINI_API_KEY || '').trim(), cla = (env.ANTHROPIC_API_KEY || '').trim();
   const want = (env.AI_PROVIDER || '').trim().toLowerCase();
   const provider = want === 'gemini' || want === 'claude' ? want : gem ? 'gemini' : 'claude';
-  return { provider, apiKey: provider === 'gemini' ? gem : cla, model: (env.AI_MODEL || '').trim(), baseUrl: (env.AI_BASE_URL || '').trim(), paidTier: env.GEMINI_PAID_TIER === 'true' };
+  // a model name from the other provider (e.g. AI_MODEL=claude-… while AI_PROVIDER=gemini) is ignored
+  let model = (env.AI_MODEL || '').trim();
+  if (model && !model.toLowerCase().startsWith(provider === 'gemini' ? 'gemini' : 'claude')) {
+    console.warn(`[config] AI_MODEL "${model}" is not a ${provider} model; using the default ${provider} model. Clear AI_MODEL on Render.`);
+    model = '';
+  }
+  return { provider, apiKey: provider === 'gemini' ? gem : cla, model, baseUrl: (env.AI_BASE_URL || '').trim(), paidTier: env.GEMINI_PAID_TIER === 'true' };
 }
 
 export function resolveBaseUrl(env, port) {
