@@ -164,7 +164,7 @@ export function registerOpsRoutes(app, ctx) {
   app.post('/api/app/inspect/:id/media', U, P('inspect'), async (req, res) => {
     const q = req.query;
     const buf = await req.rawBody(MAX_VIDEO + 1024);
-    res.json({ id: await R.addMedia(req.user, id(req), { buf, mime: req.headers['content-type'], kind: q.kind, client_uuid: q.uuid, observation_id: q.observation_id, section_id: q.section_id, caption: q.caption, temp_min_c: q.temp_min, temp_max_c: q.temp_max, pair_media_id: q.pair, taken_at: q.taken_at }) });
+    res.json({ id: await R.addMedia(req.user, id(req), { buf, mime: req.headers['content-type'], kind: q.kind, client_uuid: q.uuid, observation_id: q.observation_id, section_id: q.section_id, item_id: q.item_id, caption: q.caption, temp_min_c: q.temp_min, temp_max_c: q.temp_max, pair_media_id: q.pair, taken_at: q.taken_at }) });
   });
   app.post('/api/app/media/:id/thumb', U, P('inspect'), async (req, res) => { await R.addThumb(req.user, id(req), await req.rawBody(3 * 1024 * 1024), req.headers['content-type']); res.json({ ok: true }); });
   app.put('/api/app/media/:id', U, P('inspect'), async (req, res) => { R.updateMedia(req.user, id(req), await req.json()); res.json({ ok: true }); });

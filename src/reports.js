@@ -104,15 +104,15 @@ export function createReports(ctx) {
     const sections = db.prepare('SELECT * FROM report_sections WHERE report_id=? ORDER BY sort, id').all(r.id).map((s) => ({
       ...s,
       items: db.prepare('SELECT * FROM report_items WHERE section_id=? ORDER BY sort, id').all(s.id).map((it) => ({
-        ...it, observations: db.prepare('SELECT * FROM observations WHERE item_id=? ORDER BY sort, id').all(it.id).map((o) => ({ ...o, media: media.filter((m) => m.observation_id === o.id).map((m) => m.id) })),
+        ...it, media: media.filter((m) => m.item_id === it.id && !m.observation_id).map((m) => m.id), observations: db.prepare('SELECT * FROM observations WHERE item_id=? ORDER BY sort, id').all(it.id).map((o) => ({ ...o, media: media.filter((m) => m.observation_id === o.id).map((m) => m.id) })),
       })),
-      media: media.filter((m) => m.section_id === s.id && !m.observation_id).map((m) => m.id),
+      media: media.filter((m) => m.section_id === s.id && !m.observation_id && !m.item_id).map((m) => m.id),
     }));
     const j = J().getJob(jobId);
     return {
       report: { ...r, persons_present: JSON.parse(r.persons_present || '[]'), equipment_used: JSON.parse(r.equipment_used || '[]') },
       job: { id: j.id, number: j.number, status: j.status, status_label: j.status_label || J().JOB_STATUS_LABEL[j.status], client_name: j.client_name, client_mobile: j.client_mobile, service_name: j.service_name, service_code: j.service_code, property_type: j.property_type, bedrooms: j.bedrooms, building: j.building, unit_no: j.unit_no, community: j.community, access_notes: j.access_notes, access_contact: j.access_contact, scheduled_start: j.scheduled_start, scheduled_end: j.scheduled_end, inspector_name: j.inspector_name, access_at: j.access_at, sla_due_at: j.sla_due_at, needs_thermal: j.needs_thermal, parent_job_id: j.parent_job_id },
-      sections, media: media.map((m) => ({ id: m.id, kind: m.kind, observation_id: m.observation_id, section_id: m.section_id, caption: m.caption, mime: m.mime, size: m.size, has_thumb: !!m.thumb_file_id, in_pdf: m.in_pdf, temp_min_c: m.temp_min_c, temp_max_c: m.temp_max_c, pair_media_id: m.pair_media_id, client_uuid: m.client_uuid })),
+      sections, media: media.map((m) => ({ id: m.id, kind: m.kind, observation_id: m.observation_id, section_id: m.section_id, item_id: m.item_id, caption: m.caption, mime: m.mime, size: m.size, has_thumb: !!m.thumb_file_id, in_pdf: m.in_pdf, temp_min_c: m.temp_min_c, temp_max_c: m.temp_max_c, pair_media_id: m.pair_media_id, client_uuid: m.client_uuid })),
       counts: countFindings(r.id),
       attachments: listAttachments(r.id),
     };
@@ -264,6 +264,7 @@ export function createReports(ctx) {
   function deleteItem(user, iid) {
     guard(jobOfItem(iid), user);
     if (db.prepare('SELECT COUNT(*) n FROM observations WHERE item_id=?').get(iid).n) throw new HttpError(409, 'This item has findings. Delete them first.');
+    if (db.prepare('SELECT COUNT(*) n FROM media WHERE item_id=?').get(iid).n) throw new HttpError(409, 'This item has photos. Delete them first.');
     db.prepare('DELETE FROM report_items WHERE id=?').run(iid);
   }
 
@@ -297,7 +298,8 @@ export function createReports(ctx) {
   }
   function deleteObservation(user, oid) {
     guard(jobOfObs(oid), user);
-    db.prepare('UPDATE media SET observation_id=NULL WHERE observation_id=?').run(oid);
+    const itemId = db.prepare('SELECT item_id FROM observations WHERE id=?').get(oid)?.item_id;
+    db.prepare('UPDATE media SET observation_id=NULL, item_id=COALESCE(item_id,?) WHERE observation_id=?').run(itemId ?? null, oid);
     db.prepare('DELETE FROM observations WHERE id=?').run(oid);
   }
   /** Comment-library suggestions for an item (matching item name first, then general). */
@@ -305,7 +307,7 @@ export function createReports(ctx) {
 
   // ---------- photos and videos ----------
   /** Saves an uploaded photo/video. Idempotent on client_uuid so the phone can retry after going offline. */
-  async function addMedia(user, jobId, { buf, mime, kind, client_uuid, observation_id, section_id, caption, temp_min_c, temp_max_c, pair_media_id, taken_at }) {
+  async function addMedia(user, jobId, { buf, mime, kind, client_uuid, observation_id, section_id, item_id, caption, temp_min_c, temp_max_c, pair_media_id, taken_at }) {
     own(jobId, user);
     const r = reportOfJob(jobId); canEdit(r, user);
     if (client_uuid) { const ex = db.prepare('SELECT id FROM media WHERE client_uuid=?').get(String(client_uuid)); if (ex) return ex.id; }
@@ -317,14 +319,16 @@ export function createReports(ctx) {
     let oid = observation_id ? Number(observation_id) : null, sid = section_id ? Number(section_id) : null;
     if (oid) { const ref = jobOfObs(oid); if (!ref || ref.job_id !== jobId) throw new HttpError(400, 'Finding not found.'); }
     if (sid) { const ref = jobOfSection(sid); if (!ref || ref.job_id !== jobId) throw new HttpError(400, 'Area not found.'); }
+    let iid = item_id ? Number(item_id) : null;
+    if (iid) { const ref = jobOfItem(iid); if (!ref || ref.job_id !== jobId) throw new HttpError(400, 'Item not found.'); if (!sid) sid = db.prepare('SELECT section_id FROM report_items WHERE id=?').get(iid).section_id; }
     const ext = { 'image/jpeg': '.jpg', 'image/png': '.png', 'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/webm': '.webm', 'video/3gpp': '.3gp' }[mime];
     const n = db.prepare('SELECT COUNT(*) n FROM media WHERE job_id=?').get(jobId).n + 1;
     const number = J().getJob(jobId).number;
     const fileId = await ctx.storage.save({ name: `${number}_${kind}_${String(n).padStart(3, '0')}${ext}`, mime, buf, jobId, purpose: kind, userId: user?.id });
     let size = null;
     if (mime === 'image/jpeg') { const { jpegInfo } = await import('./pdf.js'); size = jpegInfo(buf); }
-    const id = Number(db.prepare(`INSERT INTO media(job_id,observation_id,section_id,kind,pair_media_id,file_id,width,height,caption,temp_min_c,temp_max_c,taken_at,sort,client_uuid,uploaded_by,created_at)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(jobId, oid, sid, kind, pair_media_id ? Number(pair_media_id) : null, fileId, size?.width ?? null, size?.height ?? null, clampStr(caption, 200),
+    const id = Number(db.prepare(`INSERT INTO media(job_id,observation_id,section_id,item_id,kind,pair_media_id,file_id,width,height,caption,temp_min_c,temp_max_c,taken_at,sort,client_uuid,uploaded_by,created_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(jobId, oid, sid, iid, kind, pair_media_id ? Number(pair_media_id) : null, fileId, size?.width ?? null, size?.height ?? null, clampStr(caption, 200),
       temp_min_c === '' || temp_min_c == null ? null : Number(temp_min_c), temp_max_c === '' || temp_max_c == null ? null : Number(temp_max_c), Number(taken_at) || ctx.now(), n, client_uuid ? String(client_uuid).slice(0, 64) : null, user?.id ?? null, ctx.now()).lastInsertRowid);
     return id;
   }
@@ -349,6 +353,11 @@ export function createReports(ctx) {
       db.prepare('UPDATE media SET observation_id=? WHERE id=?').run(oid, mediaId);
     }
     if (b.section_id !== undefined) db.prepare('UPDATE media SET section_id=? WHERE id=?').run(b.section_id ? Number(b.section_id) : null, mediaId);
+    if (b.item_id !== undefined) {
+      const iid = b.item_id ? Number(b.item_id) : null;
+      if (iid && jobOfItem(iid)?.job_id !== m.job_id) throw new HttpError(400, 'Item not found.');
+      db.prepare('UPDATE media SET item_id=?, section_id=COALESCE((SELECT section_id FROM report_items WHERE id=?), section_id) WHERE id=?').run(iid, iid, mediaId);
+    }
   }
   async function deleteMedia(user, mediaId) {
     const m = db.prepare('SELECT * FROM media WHERE id=?').get(mediaId);
@@ -510,7 +519,7 @@ export function createReports(ctx) {
     const glossary = db.prepare(`SELECT DISTINCT g.* FROM glossary g JOIN observations o ON o.glossary_id=g.id JOIN report_items it ON it.id=o.item_id JOIN report_sections s ON s.id=it.section_id WHERE s.report_id=?`).all(r.id);
     return {
       ...verify(tok), general: { ...t.report, verify_token: undefined, review_note: undefined }, client: t.job.client_name, service: t.job.service_name,
-      sections: t.sections.map((s) => ({ name: s.name, kind: s.kind, intro: s.intro, not_inspected_reason: s.not_inspected_reason, items: s.items.map((it) => ({ name: it.name, attr_label: it.attr_label, attr_value: it.attr_value, observations: it.observations.map((o) => ({ text: o.text, severity: o.severity, trade: o.trade, in_summary: o.in_summary, reinspect_status: o.reinspect_status, media: o.media })) })), media: s.media })),
+      sections: t.sections.map((s) => ({ name: s.name, kind: s.kind, intro: s.intro, not_inspected_reason: s.not_inspected_reason, items: s.items.map((it) => ({ name: it.name, attr_label: it.attr_label, attr_value: it.attr_value, media: it.media, observations: it.observations.map((o) => ({ text: o.text, severity: o.severity, trade: o.trade, in_summary: o.in_summary, reinspect_status: o.reinspect_status, media: o.media })) })), media: s.media })),
       media: t.media.filter((m) => m.in_pdf).map((m) => ({ id: m.id, kind: m.kind, caption: m.caption, has_thumb: m.has_thumb, temp_min_c: m.temp_min_c, temp_max_c: m.temp_max_c })),
       counts: t.counts, glossary, pdf: `/api/public/report/${encodeURIComponent(tok)}/pdf`,
       attachments: t.attachments.map((a) => ({ id: a.id, title: a.title, description: a.description, kind: a.kind, size: a.size })),

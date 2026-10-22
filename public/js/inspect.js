@@ -77,6 +77,8 @@ const enqueue = async (item) => { await qAdd(item); sync.pending++; notify(); fl
 window.addEventListener('online', flush);
 setInterval(flush, 20000);
 
+document.addEventListener('click', (e) => { if (!e.target.closest?.('.capwrap')) document.querySelectorAll('.capmenu').forEach((m) => m.classList.add('hide')); });
+
 // ---------- list of my visits ----------
 export async function inspectView(el, parts) {
   if (parts[0]) return inspectJob(el, Number(parts[0]));
@@ -157,8 +159,8 @@ async function inspectJob(el, jobId) {
       editable ? h('div', { class: 'card' }, h('h2', {}, t('Quick photos')), h('p', { class: 'small muted' }, t('Take photos room by room now and attach them to findings later.')), captureButtons({ section_id: null }), mediaStrip(tree.media.filter((m) => !m.observation_id && !m.section_id).map((m) => m.id), {})) : null,
       tree.sections.map((s, si) => sectionCard(s, si)),
       editable ? h('p', {}, h('button', { class: 'btn alt block', onclick: addArea }, t('+ Add an area or room'))) : null,
-      h('div', { class: 'card actions' },
-        h('a', { class: 'btn alt', href: `/api/app/inspect/${jobId}/preview.pdf`, target: '_blank' }, t('Preview the PDF')),
+      h('div', { class: 'stickybar' },
+        h('a', { class: 'btn alt', href: `/api/app/inspect/${jobId}/preview.pdf`, target: '_blank' }, t('Preview PDF')),
         editable && J.status === 'report_draft' ? h('button', { class: 'btn cu', onclick: submit }, t('Submit for review')) : null));
   }
 
@@ -256,35 +258,66 @@ async function inspectJob(el, jobId) {
   function sectionCard(s, si) {
     const count = s.items.reduce((a, i) => a + i.observations.length, 0);
     const worst = s.items.some((i) => i.observations.some((o) => o.severity === 'critical')) ? 'critical' : s.items.some((i) => i.observations.some((o) => o.severity === 'attention')) ? 'attention' : '';
+    // an item counts as recorded when it has a detail, a photo or a finding
+    const done = s.items.filter((i) => i.attr_value || i.media?.length || i.observations.length || local.some((l) => l.item_id === i.id)).length;
     const det = h('details', { class: `card sect ${worst}`, open: st.open.has(String(s.id)), ontoggle: () => { det.open ? st.open.add(String(s.id)) : st.open.delete(String(s.id)); saveOpen(); } },
-      h('summary', {}, h('b', {}, `${si + 1}. ${s.name}`), ' ', count ? pill(String(count), worst || '') : s.not_inspected_reason ? pill(t('Not inspected'), 'warn') : null),
+      h('summary', {}, h('span', { class: 'sname' }, `${si + 1}. ${s.name}`),
+        s.not_inspected_reason ? pill(t('Not inspected'), 'warn') : h('span', { class: `prog ${done === s.items.length && s.items.length ? 'full' : ''}` }, `${done}/${s.items.length}`),
+        count ? pill(String(count), worst || '') : null),
       s.not_inspected_reason ? h('div', { class: 'alert' }, t('Not inspected'), ': ', s.not_inspected_reason) : null,
-      s.items.map((it, ii) => itemBlock(s, it, ii)),
-      editable ? h('div', { class: 'card sub' }, h('div', { class: 'small muted' }, t('Photos for this area (not tied to a finding)')), captureButtons({ section_id: s.id }), mediaStrip(s.media, {})) : null,
-      editable ? h('div', { class: 'actions' },
+      h('div', { class: 'items' }, s.items.map((it, ii) => itemBlock(s, it, ii))),
+      s.media.length || local.some((l) => l.section_id === s.id && !l.item_id && !l.observation_id) ? h('div', { class: 'secmedia' }, h('div', { class: 'small muted' }, t('Other photos in this area')), mediaStrip(s.media, { section_id: s.id })) : null,
+      editable ? h('div', { class: 'secfoot' },
         h('button', { class: 'btn alt sm', onclick: () => addItem(s) }, t('+ Item')),
-        h('button', { class: 'btn alt sm', onclick: () => sectionMenu(s, si) }, t('Area options'))) : null);
+        captureMenuButton({ section_id: s.id }, t('Area photo')),
+        h('span', { class: 'spacer' }),
+        h('button', { class: 'btn alt sm', onclick: () => sectionMenu(s, si) }, '⋯ ', t('Area options'))) : null);
     return det;
   }
 
+  /** One checklist item: name, detail, a camera button next to it, and its findings. */
   function itemBlock(s, it, ii) {
     // each item offers its own picklist (AC type, pipe material, tile material…); rooms default to materials
     const attrList = it.attr_label ? S.lk?.[it.attr_list || (it.attr_label === 'Materials' && s.kind === 'area' ? 'material' : '')] || [] : [];
     const listId = `dl-${it.id}`;
-    return h('div', { class: 'item' },
-      h('div', { class: 'actions' }, h('b', {}, `${ii + 1}. ${t(it.name)}`), h('span', { class: 'spacer' }),
-        editable ? h('button', { class: 'btn sm', onclick: () => findingDialog(s, it) }, t('+ Finding')) : null),
-      it.attr_label ? h('div', { class: 'attr' }, h('label', {}, t(it.attr_label)), h('input', { value: it.attr_value || '', list: listId, disabled: !editable, onchange: (e) => { it.attr_value = e.target.value; persist(); op('PUT', `/items/${it.id}`, { attr_value: e.target.value }); } }), h('datalist', { id: listId }, attrList.map((v) => h('option', { value: v })))) : null,
+    const nPhotos = (it.media?.length || 0) + local.filter((l) => l.item_id === it.id).length;
+    return h('div', { class: `irow ${it.observations.some((o) => o.severity === 'critical') ? 'critical' : it.observations.some((o) => o.severity === 'attention') ? 'attention' : ''}` },
+      h('div', { class: 'ihead' },
+        h('span', { class: 'inum' }, String(ii + 1)),
+        h('div', { class: 'iname' }, t(it.name)),
+        editable ? captureMenuButton({ item_id: it.id, section_id: s.id }, null, nPhotos) : nPhotos ? h('span', { class: 'ibadge' }, `📷 ${nPhotos}`) : null,
+        editable ? h('button', { class: 'ibtn add', type: 'button', title: t('Add a finding'), 'aria-label': t('Add a finding'), onclick: () => findingDialog(s, it) }, '+') : null),
+      it.attr_label ? h('div', { class: 'iattr' }, h('label', { for: `a-${it.id}` }, t(it.attr_label)),
+        h('input', { id: `a-${it.id}`, value: it.attr_value || '', list: listId, disabled: !editable, placeholder: t('Choose or type'), onchange: (e) => { it.attr_value = e.target.value; persist(); op('PUT', `/items/${it.id}`, { attr_value: e.target.value }); } }),
+        h('datalist', { id: listId }, attrList.map((v) => h('option', { value: v })))) : null,
+      mediaStrip(it.media || [], { item_id: it.id }),
       it.observations.map((o) => h('div', { class: `obs ${o.severity}` },
-        h('div', { class: 'actions' }, h('span', { class: 'spacer otext' }, o.text, o.trade ? h('span', { class: 'small muted' }, ` · ${o.trade}`) : null, o.reinspect_status ? pill(t(o.reinspect_status), o.reinspect_status === 'fixed' ? 'ok' : 'bad') : null),
-          editable ? h('button', { class: 'btn alt sm', onclick: () => findingDialog(s, it, o) }, t('Edit')) : null),
-        mediaStrip(o.media, { observation_id: o.id }),
-        editable ? captureButtons({ observation_id: o.id }) : null)));
+        h('div', { class: 'ohead' },
+          h('button', { class: 'otext', type: 'button', disabled: !editable, onclick: () => findingDialog(s, it, o) }, o.text, o.trade ? h('span', { class: 'small muted' }, ` · ${o.trade}`) : null),
+          o.reinspect_status ? pill(t(o.reinspect_status), o.reinspect_status === 'fixed' ? 'ok' : 'bad') : null,
+          editable ? captureMenuButton({ observation_id: o.id, section_id: s.id }, null, o.media.length + local.filter((l) => l.observation_id === o.id).length, true) : null),
+        mediaStrip(o.media, { observation_id: o.id }))));
+  }
+
+  /** Camera button that opens a small menu: take photo, gallery, video, thermal. */
+  function captureMenuButton(target, label, n = 0, small = false) {
+    const wrap = h('span', { class: 'capwrap' });
+    const menu = h('span', { class: 'capmenu hide' }, captureButtons(target, true));
+    const btn = h('button', { class: `ibtn cam ${small ? 'sm' : ''} ${label ? 'lbl' : ''}`, type: 'button', title: t('Add photo'), 'aria-label': t('Add photo'), 'aria-expanded': 'false', onclick: (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.capmenu:not(.hide)').forEach((m) => { if (m !== menu) m.classList.add('hide'); });
+      menu.classList.toggle('hide');
+      // open upwards when there is no room below (the bottom bar covers the last 70 px)
+      menu.classList.toggle('up', btn.getBoundingClientRect().bottom > window.innerHeight - 260);
+      btn.setAttribute('aria-expanded', String(!menu.classList.contains('hide')));
+    } }, '📷', label ? ` ${label}` : null, n ? h('b', {}, String(n)) : null);
+    wrap.append(btn, menu);
+    return wrap;
   }
 
   // ---------- photos / videos ----------
   function mediaStrip(ids, target) {
-    const pend = local.filter((l) => (target.observation_id ? l.observation_id === target.observation_id : target.section_id !== undefined ? l.section_id === target.section_id : false));
+    const pend = local.filter((l) => (target.observation_id ? l.observation_id === target.observation_id : target.item_id ? l.item_id === target.item_id && !l.observation_id : target.section_id !== undefined ? l.section_id === target.section_id && !l.item_id && !l.observation_id : false));
     const all = [...ids.map((id) => mediaById.get(id)).filter(Boolean), ...pend];
     if (!all.length) return null;
     return h('div', { class: 'strip' }, all.map((m) => {
@@ -294,13 +327,19 @@ async function inspectJob(el, jobId) {
         m.kind === 'video' ? h('i', {}, '▶') : null, m.kind === 'thermal' ? h('i', {}, '°C') : null, m.blobUrl ? h('em', {}, '⟳') : null);
     }));
   }
-  function captureButtons(target) {
+  function captureButtons(target, compact = false) {
     const inp = (accept, capture, multiple, kind) => {
       const i = h('input', { type: 'file', accept, class: 'hide', multiple: !!multiple, ...(capture ? { capture } : {}) });
       i.addEventListener('change', async () => { for (const f of i.files) await addFile(f, kind, target); i.value = ''; });
       return i;
     };
     const photo = inp('image/*', 'environment', false, 'photo'), gal = inp('image/*', null, true, 'photo'), vid = inp('video/*', 'environment', false, 'video'), th = inp('image/*', null, false, 'thermal');
+    const close = () => document.querySelectorAll('.capmenu').forEach((m) => m.classList.add('hide'));
+    if (compact) return h('span', { class: 'capture compact' }, photo, gal, vid, th,
+      h('button', { type: 'button', onclick: () => { close(); photo.click(); } }, '📷 ', t('Camera')),
+      h('button', { type: 'button', onclick: () => { close(); gal.click(); } }, '🖼 ', t('Gallery')),
+      h('button', { type: 'button', onclick: () => { close(); vid.click(); } }, '🎥 ', t('Video')),
+      tree.report.thermal_used || J.needs_thermal ? h('button', { type: 'button', onclick: () => { close(); th.click(); } }, '🌡 ', t('Thermal')) : null);
     return h('div', { class: 'capture' }, photo, gal, vid, th,
       h('button', { class: 'btn alt sm', type: 'button', onclick: () => photo.click() }, '📷 ', t('Photo')),
       h('button', { class: 'btn alt sm', type: 'button', onclick: () => gal.click() }, '🖼 ', t('Gallery')),
@@ -321,9 +360,9 @@ async function inspectJob(el, jobId) {
   }
   function queueMedia(blob, kind, target, extra = {}, thumb) {
     const key = uuid();
-    const l = { key, blobUrl: URL.createObjectURL(thumb || blob), kind, observation_id: target.observation_id, section_id: target.section_id ?? null };
+    const l = { key, blobUrl: URL.createObjectURL(thumb || blob), kind, observation_id: target.observation_id, item_id: target.observation_id ? undefined : target.item_id, section_id: target.section_id ?? null };
     local.push(l);
-    const query = { kind, uuid: key, taken_at: Date.now(), ...(target.observation_id ? { observation_id: target.observation_id } : {}), ...(target.section_id ? { section_id: target.section_id } : {}), ...Object.fromEntries(Object.entries(extra).filter(([, v]) => v !== undefined && v !== '')) };
+    const query = { kind, uuid: key, taken_at: Date.now(), ...(target.observation_id ? { observation_id: target.observation_id } : {}), ...(target.section_id ? { section_id: target.section_id } : {}), ...(target.item_id && !target.observation_id ? { item_id: target.item_id } : {}), ...Object.fromEntries(Object.entries(extra).filter(([, v]) => v !== undefined && v !== '')) };
     const tmp = `tmp-${key}`;
     enqueue({ path: `/api/app/inspect/${jobId}/media`, blob, query, tmp });
     if (thumb) enqueue({ path: `/api/app/media/${tmp}/thumb`, blob: thumb, query: {} });
@@ -353,29 +392,46 @@ async function inspectJob(el, jobId) {
     queueMedia(file.slice(0, file.size, type), 'video', target, {}, thumb);
   }
   function mediaMenu(m) {
-    const obsOptions = [];
-    tree.sections.forEach((s) => s.items.forEach((it) => it.observations.forEach((o) => obsOptions.push([o.id, `${s.name} · ${it.name}: ${o.text.slice(0, 50)}`]))));
+    // where the photo belongs: an item, a finding under an item, or the area in general
+    const opts = [];
+    tree.sections.forEach((sc) => {
+      opts.push([`s:${sc.id}`, `${sc.name} · ${t('area photo')}`]);
+      sc.items.forEach((it) => {
+        opts.push([`i:${it.id}`, `${sc.name} · ${t(it.name)}`]);
+        it.observations.forEach((o) => { if (typeof o.id === 'number') opts.push([`o:${o.id}`, `${sc.name} · ${t(it.name)} · ${o.text.slice(0, 40)}`]); });
+      });
+    });
+    const cur = m.observation_id ? `o:${m.observation_id}` : m.item_id ? `i:${m.item_id}` : m.section_id ? `s:${m.section_id}` : '';
     const cap = h('input', { value: m.caption || '' });
-    const sel = h('select', {}, h('option', { value: '' }, t('Not linked to a finding')), obsOptions.map(([id, l]) => h('option', { value: id, selected: id === m.observation_id }, l)));
+    const sel = h('select', {}, h('option', { value: '' }, t('Quick photos (not placed yet)')), opts.map(([k, l]) => h('option', { value: k, selected: k === cur }, l)));
+    const unlink = () => tree.sections.forEach((sc) => { sc.media = sc.media.filter((x) => x !== m.id); sc.items.forEach((it) => { it.media = (it.media || []).filter((x) => x !== m.id); it.observations.forEach((o) => { o.media = o.media.filter((x) => x !== m.id); }); }); });
     modal(h('h2', {}, t(m.kind === 'video' ? 'Video' : 'Photo')),
       m.kind === 'video' ? h('video', { src: `/api/app/media/${m.id}`, controls: true, playsinline: true, class: 'preview' }) : h('img', { src: `/api/app/media/${m.id}`, class: 'preview', alt: '' }),
       m.temp_min_c != null || m.temp_max_c != null ? h('p', { class: 'small' }, `${t('Thermal')}: min ${m.temp_min_c ?? '-'} °C, max ${m.temp_max_c ?? '-'} °C`) : null,
-      editable ? [field('Caption', cap), field('Finding', sel),
+      editable ? [field('Caption', cap), field('Place it under', sel),
         h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!m.in_pdf, onchange: (e) => { m.in_pdf = e.target.checked ? 1 : 0; op('PUT', `/media/${m.id}`, { in_pdf: e.target.checked }); } }), t('Show in the PDF'))] : null,
       h('p', { class: 'actions' },
         editable ? h('button', { class: 'btn cu', onclick: () => {
-          const oid = sel.value ? Number(sel.value) : null;
-          for (const s of tree.sections) { s.media = s.media.filter((x) => x !== m.id); for (const it of s.items) for (const o of it.observations) o.media = o.media.filter((x) => x !== m.id); }
-          if (oid) tree.sections.forEach((s) => s.items.forEach((it) => it.observations.forEach((o) => { if (o.id === oid) o.media.push(m.id); })));
-          else if (m.section_id) tree.sections.find((s) => s.id === m.section_id)?.media.push(m.id);
-          m.observation_id = oid; m.caption = cap.value; persist();
-          op('PUT', `/media/${m.id}`, { caption: cap.value, observation_id: oid });
+          const [kind, raw] = sel.value ? sel.value.split(':') : ['', ''];
+          const idv = Number(raw) || null;
+          unlink();
+          let body = { caption: cap.value, observation_id: null, item_id: null, section_id: null };
+          tree.sections.forEach((sc) => {
+            if (kind === 's' && sc.id === idv) { sc.media.push(m.id); body.section_id = sc.id; }
+            sc.items.forEach((it) => {
+              if (kind === 'i' && it.id === idv) { (it.media ||= []).push(m.id); body = { ...body, item_id: it.id, section_id: sc.id }; }
+              it.observations.forEach((o) => { if (kind === 'o' && o.id === idv) { o.media.push(m.id); body = { ...body, observation_id: o.id, item_id: it.id, section_id: sc.id }; } });
+            });
+          });
+          Object.assign(m, { observation_id: body.observation_id, item_id: body.item_id, section_id: body.section_id, caption: cap.value });
+          persist();
+          op('PUT', `/media/${m.id}`, body);
           closeModal(); drawBody();
         } }, t('Save')) : null,
         editable && m.kind === 'photo' ? h('button', { class: 'btn alt', onclick: () => { R.cover_media_id = m.id; op('PUT', `/inspect/${jobId}/general`, { cover_media_id: m.id }); toast(t('Cover photo set')); closeModal(); } }, t('Use as cover photo')) : null,
         editable ? h('button', { class: 'btn danger', onclick: async () => {
           if (!(await confirmBox('Delete this file?', null, 'Delete'))) return;
-          tree.sections.forEach((s) => { s.media = s.media.filter((x) => x !== m.id); s.items.forEach((it) => it.observations.forEach((o) => { o.media = o.media.filter((x) => x !== m.id); })); });
+          unlink();
           tree.media = tree.media.filter((x) => x.id !== m.id); mediaById.delete(m.id); persist();
           op('DELETE', `/media/${m.id}`); drawBody();
         } }, t('Delete')) : null,

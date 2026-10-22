@@ -162,6 +162,19 @@ test('individual client: website lead to issued report, invoice and commission',
     await call('insp', 'PUT', `/api/app/inspect/${jobId}/general`, { persons_present: ['Buyer', 'Agent'], weather: 'Sunny', temperature_c: 33, ac_connected: true, dewa_connected: true, cover_media_id: p1.body.id });
     assert.equal(ctx.db.prepare("SELECT COUNT(*) n FROM files WHERE purpose IN ('photo','thermal','video','thumb')").get().n, 4);
 
+    // a photo taken next to a checklist item (no finding needed)
+    const ceiling = tree.sections.find((s) => s.name === 'Kitchen').items.find((i) => i.name === 'Walls Condition');
+    const ip = await up(`kind=photo&uuid=item-1&item_id=${ceiling.id}&caption=Walls%20overview`, JPEG, 'image/jpeg');
+    assert.equal(ip.status, 200, JSON.stringify(ip.body));
+    const t2 = (await call('insp', 'GET', `/api/app/inspect/${jobId}`)).body;
+    const walls = t2.sections.find((s) => s.name === 'Kitchen').items.find((i) => i.id === ceiling.id);
+    assert.deepEqual(walls.media, [ip.body.id]);
+    assert.ok(!t2.sections.find((s) => s.name === 'Kitchen').media.includes(ip.body.id), 'item photos are not area photos');
+    assert.equal((await call('insp', 'DELETE', `/api/app/items/${ceiling.id}`)).status, 409);
+    const otherItem = t2.sections.find((s) => s.name === 'Kitchen').items.find((i) => i.name === 'Sink Condition');
+    assert.equal((await call('insp', 'PUT', `/api/app/media/${ip.body.id}`, { item_id: otherItem.id })).status, 200);
+    assert.equal((await call('insp', 'PUT', `/api/app/media/${ip.body.id}`, { item_id: ceiling.id })).status, 200);
+
     // attachments: a PDF (lab result) and an image (floor plan); fake PDFs and other types are refused
     const att = (q, buf, type) => fetch(`${t.url}/api/app/inspect/${jobId}/attachments?${new URLSearchParams(q)}`, { method: 'POST', headers: { Cookie: t.jars.insp, 'X-Requested-With': 'aral', 'Content-Type': type }, body: buf }).then(async (r) => ({ status: r.status, body: await r.json() }));
     const labPdf = ctx.docs.quotePdf(q.body.id);
@@ -199,7 +212,7 @@ test('individual client: website lead to issued report, invoice and commission',
     assert.ok(v1.page_count >= 8, `pages ${v1.page_count}`);
     try {
       const txt = execFileSync('pdftotext', ['-layout', '-', '-'], { input: rpt }).toString();
-      for (const s of ['Attachments', 'A1. Floor plan', 'A2. Mould lab result', 'Swab test from the kitchen cabinet', 'RESALE', 'Contents', 'General information', 'Report summary', 'Glossary', 'Hollow sound', 'Thermal imaging addendum', 'Sign-off', 'Page 2 of', 'No defects observed', 'ARAL | IL Primo, Unit 1205, Downtown Dubai']) assert.ok(txt.includes(s), `PDF should contain "${s}"`);
+      for (const s of ['Walls overview', 'Attachments', 'A1. Floor plan', 'A2. Mould lab result', 'Swab test from the kitchen cabinet', 'RESALE', 'Contents', 'General information', 'Report summary', 'Glossary', 'Hollow sound', 'Thermal imaging addendum', 'Sign-off', 'Page 2 of', 'No defects observed', 'ARAL | IL Primo, Unit 1205, Downtown Dubai']) assert.ok(txt.includes(s), `PDF should contain "${s}"`);
     } catch (e) { if (e.code !== 'ENOENT') throw e; }
     const mailR = ctx.db.prepare("SELECT * FROM outbox WHERE template_code='report_issued'").get();
     assert.match(mailR.body, /report\.html\?t=/);

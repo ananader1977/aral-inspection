@@ -447,6 +447,7 @@ CREATE TABLE IF NOT EXISTS media (                 -- photos / videos / thermal 
   job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
   observation_id INTEGER REFERENCES observations(id) ON DELETE SET NULL,  -- NULL = unassigned (quick mode)
   section_id INTEGER REFERENCES report_sections(id) ON DELETE SET NULL,
+  item_id INTEGER REFERENCES report_items(id) ON DELETE SET NULL,   -- photo taken next to a checklist item (no finding needed)
   kind TEXT NOT NULL CHECK (kind IN ('photo','video','thermal')),
   pair_media_id INTEGER REFERENCES media(id),      -- thermal ↔ normal photo
   file_id INTEGER NOT NULL REFERENCES files(id),

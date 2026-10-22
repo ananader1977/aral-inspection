@@ -425,12 +425,13 @@ export function createDocs(ctx) {
       const anyDefect = sc.items.some((it) => it.observations.some((o) => o.severity !== 'info'));
       if (!anyDefect && !sc.not_inspected_reason) d.para('No defects observed at the time of inspection.', { size: 9.5, bold: true, fill: C.blue });
       sc.items.forEach((it, ii) => {
-        if (!it.observations.length && !it.attr_value) return;
+        if (!it.observations.length && !it.attr_value && !it.media.length) return;
         d.need(36);
         d.pdf.rect(d.x, d.y, d.width, 18, { fill: C.zebra });
         d.pdf.text(`${ii + 1}. ${it.name}`, d.x + 6, d.y + 12.5, { size: 10, bold: true, fill: C.navy });
         if (it.attr_value) d.pdf.text(`${it.attr_label || 'Type'}: ${it.attr_value}`, d.x + d.width - 6, d.y + 12.5, { size: 8.5, fill: C.muted, align: 'right' });
         d.y += 24;
+        if (it.media.length) mediaGrid(it.media);
         if (!it.observations.length) { d.para('No defects observed.', { size: 9, fill: C.muted, indent: 6 }); return; }
         d.para('Observations', { size: 8.5, bold: true, fill: C.muted, indent: 6, after: 3 });
         it.observations.forEach((o) => {
