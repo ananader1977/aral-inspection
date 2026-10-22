@@ -20,6 +20,8 @@ export function loadConfig(env = process.env) {
     seedDemo: env.SEED_DEMO === 'true',
     demoPassword: env.DEMO_PASSWORD || '',
     paymentProvider: (env.PAYMENT_PROVIDER || 'mock').toLowerCase(),
+    // AI photo suggestions (Claude). Leave ANTHROPIC_API_KEY empty to hide the feature.
+    ai: { apiKey: (env.ANTHROPIC_API_KEY || '').trim(), model: (env.AI_MODEL || 'claude-sonnet-5-5').trim(), baseUrl: (env.AI_BASE_URL || '').trim() },
     stripe: { secretKey: env.STRIPE_SECRET_KEY || '', webhookSecret: env.STRIPE_WEBHOOK_SECRET || '' },
     smtp: {
       host: (env.SMTP_HOST || '').trim(),

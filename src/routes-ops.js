@@ -185,6 +185,39 @@ export function registerOpsRoutes(app, ctx) {
     const a = await R.attachmentBytes(id(req), { user: can(req.user.role, 'jobs.view') ? null : req.user });
     res.send(a.buf, a.mime, 200, { 'Content-Disposition': `inline; filename="${a.name.replace(/"/g, '')}"`, 'Cache-Control': 'private, max-age=3600' });
   });
+  // AI: read the photos of an item and suggest findings (the inspector chooses and edits)
+  app.post('/api/app/ai/suggest', U, P('inspect'), async (req, res) => {
+    if (!config.disableRateLimit) ctx.limit(`ai:${req.user.id}`, 40, 10 * 60 * 1000);
+    const b = await req.json();
+    let mediaIds = Array.isArray(b.media_ids) ? b.media_ids.map(Number).filter(Boolean).slice(0, 4) : [];
+    let itemId = b.item_id ? Number(b.item_id) : null;
+    if (!itemId && mediaIds.length) {
+      const m = db.prepare('SELECT m.item_id, o.item_id oitem FROM media m LEFT JOIN observations o ON o.id=m.observation_id WHERE m.id=?').get(mediaIds[0]);
+      itemId = m?.item_id || m?.oitem || null;
+    }
+    const it = itemId ? db.prepare('SELECT it.*, s.name sname, s.kind skind, r.job_id FROM report_items it JOIN report_sections s ON s.id=it.section_id JOIN reports r ON r.id=s.report_id WHERE it.id=?').get(itemId) : null;
+    if (!it && !mediaIds.length) throw new HttpError(400, 'Choose an item or a photo.');
+    const jobId = it?.job_id ?? db.prepare('SELECT job_id FROM media WHERE id=?').get(mediaIds[0])?.job_id;
+    if (!jobId) throw new HttpError(404, 'Not found');
+    jobAccess(req, jobId);
+    if (req.user.role === 'inspector') { const j = db.prepare('SELECT inspector_id FROM jobs WHERE id=?').get(jobId); if (j.inspector_id !== req.user.inspector_id) throw new HttpError(403, 'This job is not assigned to you.'); }
+    if (!mediaIds.length && it) mediaIds = db.prepare("SELECT m.id FROM media m LEFT JOIN observations o ON o.id=m.observation_id WHERE (m.item_id=? OR o.item_id=?) AND m.kind IN ('photo','thermal','video') ORDER BY m.id DESC LIMIT 4").all(it.id, it.id).map((r) => r.id);
+    const images = [];
+    for (const mid of mediaIds) {
+      const m = db.prepare('SELECT * FROM media WHERE id=? AND job_id=?').get(mid, jobId);
+      if (!m) continue;
+      const fid = m.kind === 'video' ? m.thumb_file_id : m.file_id;
+      if (!fid) continue;
+      const f = ctx.storage.get(fid);
+      images.push({ buf: await ctx.storage.read(fid), mime: f.mime });
+    }
+    const j = J.getJob(jobId);
+    const name = it?.name || 'General photo';
+    const examples = db.prepare("SELECT text, default_severity severity FROM comment_library WHERE active=1 AND item_name=? ORDER BY uses DESC LIMIT 12").all(name);
+    const out = await ctx.ai.suggest({ images, section: it?.sname || 'Property', item: name, detail: it?.attr_value ? `${it.attr_label}: ${it.attr_value}` : '', propertyType: [j.bedrooms ? `${j.bedrooms} bedroom` : '', j.property_type].filter(Boolean).join(' '), examples });
+    ctx.admin.audit(req.user, 'ai', it?.id ?? null, 'suggest', null, { job: j.number, photos: images.length, model: out.model, findings: out.findings.length });
+    res.json({ ...out, item_id: it?.id ?? null, media_ids: mediaIds });
+  });
   app.post('/api/app/inspect/:id/submit', U, P('inspect'), async (req, res) => { await R.submit(req.user, id(req)); res.json({ ok: true }); });
   app.get('/api/app/inspect/:id/problems', U, P('inspect'), (req, res) => res.json({ problems: R.problems(R.reportOfJob(id(req))) }));
   app.get('/api/app/inspect/:id/preview.pdf', U, P('inspect', 'jobs.view'), async (req, res) => {

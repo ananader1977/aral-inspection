@@ -15,6 +15,7 @@ import { createReports } from './reports.js';
 import { createFinance } from './finance.js';
 import { createDocs } from './docs.js';
 import { createPayments } from './payments.js';
+import { createAi } from './ai.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -35,6 +36,7 @@ export function createContext({ config, now = () => Date.now() }) {
   ctx.finance = createFinance(ctx);
   ctx.docs = createDocs(ctx);
   ctx.payments = createPayments(ctx);
+  ctx.ai = createAi(ctx);
   ctx.seeded = seedReference(db, now);
   if (upgradeChecklists(db, now)) console.log('[setup] Checklist upgraded: proper items for Air Conditioning, Electrical and Water Heater.');
   ctx.createdUsers = ensureSuperAdmin(ctx);

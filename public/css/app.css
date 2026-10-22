@@ -158,3 +158,10 @@ a.kpi{text-decoration:none;color:inherit;display:block}a.kpi:hover{border-color:
   details.card.sect{padding:12px}
 }
 .capmenu.up{top:auto;bottom:calc(100% + 6px)}
+/* AI suggestions */
+.btn.ai{background:linear-gradient(135deg,#0B4F8C,#8C5A36);border-color:transparent;color:#fff}.btn.ai:hover{filter:brightness(1.08)}
+.aichip{margin-top:8px;border:1px dashed #C9A07F;background:#FBF6F1;color:var(--copper-d);border-radius:99px;padding:6px 12px;font:inherit;font-size:.85rem;font-weight:600;cursor:pointer}
+.aibox{margin:8px 0}.aibox:empty{display:none}.aihead{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline;margin-bottom:6px}
+.suggbtn.ai{border-style:solid;background:#FDFBF8}.suggbtn .conf{display:block;margin-top:4px;font-size:.75rem;color:var(--muted);font-weight:600}
+.aiwait{display:flex;align-items:center;gap:10px;color:var(--muted)}.spin{width:18px;height:18px;border:3px solid var(--line);border-top-color:var(--copper);border-radius:99px;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.small.bad{color:var(--bad)}

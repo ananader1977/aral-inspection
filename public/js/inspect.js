@@ -291,6 +291,7 @@ async function inspectJob(el, jobId) {
         h('input', { id: `a-${it.id}`, value: it.attr_value || '', list: listId, disabled: !editable, placeholder: t('Choose or type'), onchange: (e) => { it.attr_value = e.target.value; persist(); op('PUT', `/items/${it.id}`, { attr_value: e.target.value }); } }),
         h('datalist', { id: listId }, attrList.map((v) => h('option', { value: v })))) : null,
       mediaStrip(it.media || [], { item_id: it.id }),
+      editable && S.cfg?.ai && (it.media || []).some((x) => typeof x === 'number' && mediaById.get(x)?.kind !== 'video') ? h('button', { class: 'aichip', type: 'button', onclick: () => findingDialog(s, it, null, { photoIds: (it.media || []).filter((x) => typeof x === 'number').slice(-4), autoAi: true }) }, '✨ ', t('Suggest a finding from the photo')) : null,
       it.observations.map((o) => h('div', { class: `obs ${o.severity}` },
         h('div', { class: 'ohead' },
           h('button', { class: 'otext', type: 'button', disabled: !editable, onclick: () => findingDialog(s, it, o) }, o.text, o.trade ? h('span', { class: 'small muted' }, ` · ${o.trade}`) : null),
@@ -428,6 +429,12 @@ async function inspectJob(el, jobId) {
           op('PUT', `/media/${m.id}`, body);
           closeModal(); drawBody();
         } }, t('Save')) : null,
+        editable && S.cfg?.ai && m.kind !== 'video' && !m.observation_id && m.item_id ? h('button', { class: 'btn ai', onclick: () => {
+          const sc = tree.sections.find((x) => x.items.some((i) => i.id === m.item_id));
+          const itm = sc?.items.find((i) => i.id === m.item_id);
+          if (!itm) return;
+          closeModal(); findingDialog(sc, itm, null, { photoIds: [m.id], autoAi: true });
+        } }, '✨ ', t('Suggest a finding')) : null,
         editable && m.kind === 'photo' ? h('button', { class: 'btn alt', onclick: () => { R.cover_media_id = m.id; op('PUT', `/inspect/${jobId}/general`, { cover_media_id: m.id }); toast(t('Cover photo set')); closeModal(); } }, t('Use as cover photo')) : null,
         editable ? h('button', { class: 'btn danger', onclick: async () => {
           if (!(await confirmBox('Delete this file?', null, 'Delete'))) return;
@@ -439,7 +446,8 @@ async function inspectJob(el, jobId) {
   }
 
   // ---------- findings ----------
-  async function findingDialog(s, it, o) {
+  /** opts.photoIds: photos to attach to the new finding; opts.autoAi: ask the AI as soon as the dialog opens. */
+  async function findingDialog(s, it, o, opts = {}) {
     let sugg = { rows: [], glossary: [], trades: [] };
     try { sugg = await A('GET', `/suggestions?item=${encodeURIComponent(it.name)}`); } catch { /* offline: free text only */ }
     let sev = o?.severity || 'attention';
@@ -453,6 +461,25 @@ async function inspectJob(el, jobId) {
     const drawSev = () => fill(sevBtns, SEV.map(([k, l]) => h('button', { type: 'button', class: `sevbtn ${k} ${sev === k ? 'on' : ''}`, onclick: () => { sev = k; inSum.checked = k !== 'info'; drawSev(); } }, t(l))));
     drawSev();
     const list = h('div', { class: 'sugg' }, sugg.rows.map((r) => h('button', { type: 'button', class: `suggbtn ${r.default_severity}`, onclick: () => { text.value = r.text; sev = r.default_severity; trade.value = r.default_trade || ''; if (r.glossary_id) gl.value = r.glossary_id; inSum.checked = sev !== 'info'; libId = r.id; drawSev(); text.focus(); } }, r.text)));
+    // ---- AI: read the photos and suggest wording ----
+    const aiPhotos = opts.photoIds?.length ? opts.photoIds : [...(o ? o.media : []), ...(it.media || [])].filter((x) => typeof x === 'number');
+    const aiBox = h('div', { class: 'aibox' });
+    const askAi = async () => {
+      if (!navigator.onLine) return fill(aiBox, h('p', { class: 'small muted' }, t('AI suggestions need an internet connection.')));
+      fill(aiBox, h('p', { class: 'aiwait' }, h('span', { class: 'spin' }), t('Reading the photo…')));
+      try {
+        const r = await A('POST', '/ai/suggest', { item_id: it.id, media_ids: aiPhotos.slice(0, 4) });
+        fill(aiBox,
+          h('div', { class: 'aihead' }, h('b', {}, '✨ ', t('AI suggestions')), h('span', { class: 'small muted' }, t('Check before saving. You are responsible for the report.'))),
+          r.findings.length ? h('div', { class: 'sugg' }, r.findings.map((x) => h('button', { type: 'button', class: `suggbtn ai ${x.severity}`, onclick: () => {
+            text.value = x.text; sev = x.severity; trade.value = x.trade || ''; inSum.checked = sev !== 'info'; libId = null; drawSev(); text.focus();
+            if (r.caption && opts.photoIds?.length) opts.caption = r.caption;
+          } }, x.text, h('span', { class: `conf ${x.confidence}` }, `${t(SEV.find(([k]) => k === x.severity)?.[1] || x.severity)} · ${t(`confidence ${x.confidence}`)}${x.trade ? ` · ${x.trade}` : ''}`)))) : null,
+          r.note ? h('p', { class: 'small muted' }, r.note) : null,
+          h('button', { class: 'btn alt sm', type: 'button', onclick: askAi }, t('Try again')));
+      } catch (e) { fill(aiBox, h('p', { class: 'small bad' }, e.message), h('button', { class: 'btn alt sm', type: 'button', onclick: askAi }, t('Try again'))); }
+    };
+    if (S.cfg?.ai && aiPhotos.length) fill(aiBox, h('button', { class: 'btn ai', type: 'button', onclick: askAi }, '✨ ', t('Suggest from the photo')));
     const f = h('form', { onsubmit: (e) => {
       e.preventDefault();
       const v = { text: text.value.trim(), severity: sev, trade: trade.value.trim(), in_summary: inSum.checked, glossary_id: gl.value ? Number(gl.value) : null, ...(J.parent_job_id ? { reinspect_status: re.value || null } : {}) };
@@ -460,12 +487,22 @@ async function inspectJob(el, jobId) {
       if (o) { Object.assign(o, v); op('PUT', `/observations/${o.id}`, v); }
       else {
         const tmp = `tmp-${uuid()}`;
-        it.observations.push({ id: tmp, ...v, media: [] });
+        const moved = (opts.photoIds || []).filter((x) => typeof x === 'number');
+        it.observations.push({ id: tmp, ...v, media: moved });
         op('POST', `/items/${it.id}/observations`, { ...v, library_id: libId || undefined }, { tmp });
+        // the photo the suggestion came from moves under the new finding
+        for (const mid of moved) {
+          it.media = (it.media || []).filter((x) => x !== mid);
+          s.media = s.media.filter((x) => x !== mid);
+          const m = mediaById.get(mid); if (m) { m.observation_id = tmp; m.item_id = it.id; }
+          op('PUT', `/media/${mid}`, { observation_id: tmp, item_id: it.id, section_id: s.id, ...(opts.caption && !m?.caption ? { caption: opts.caption } : {}) });
+        }
       }
       persist(); closeModal(); st.open.add(String(s.id)); saveOpen(); drawHead(); drawBody();
     } }, h('h2', {}, `${s.name} · ${t(it.name)}`),
-    sugg.rows.length && !o ? h('details', { open: true }, h('summary', {}, t('Ready-made findings')), list) : null,
+    opts.photoIds?.length ? h('div', { class: 'strip' }, opts.photoIds.map((mid) => h('span', { class: 'thumb' }, h('img', { src: `/api/app/media/${mid}?thumb=1`, alt: '' })))) : null,
+    aiBox,
+    sugg.rows.length && !o ? h('details', { open: !S.cfg?.ai || !aiPhotos.length }, h('summary', {}, t('Ready-made findings')), list) : null,
     field('Finding', text), h('label', {}, t('Severity')), sevBtns,
     h('div', { class: 'grid2' }, field('Recommended trade', trade), field('Glossary', gl)),
     h('datalist', { id: 'dl-trade' }, (sugg.trades.length ? sugg.trades : S.lk?.trade || []).map((v) => h('option', { value: v }))),
@@ -478,6 +515,7 @@ async function inspectJob(el, jobId) {
       } }, t('Delete')) : null,
       h('button', { class: 'btn alt', type: 'button', onclick: closeModal }, t('Cancel'))));
     modal(f);
+    if (opts.autoAi && S.cfg?.ai && aiPhotos.length) askAi();
   }
 
   // ---------- areas and items ----------
