@@ -379,6 +379,16 @@ export function registerOpsRoutes(app, ctx) {
     res.json({ ok: true });
   });
 
+  // ---------- database backups (Super Admin) ----------
+  app.get('/api/app/backups', U, P('settings.edit'), (req, res) => res.json({ rows: ctx.backup.list(), ...ctx.backup.status() }));
+  app.post('/api/app/backups', U, P('settings.edit'), async (req, res) => res.json(await ctx.backup.run(req.user, 'manual')));
+  app.get('/api/app/backups/:id/download', U, P('settings.edit'), async (req, res) => {
+    const f = db.prepare("SELECT * FROM files WHERE id=? AND purpose='backup'").get(id(req));
+    if (!f) throw new HttpError(404, 'Backup not found');
+    ctx.admin.audit(req.user, 'backup', f.id, 'download', null, { name: f.name }, ip(req));
+    res.send(await ctx.storage.read(f.id), 'application/octet-stream', 200, { 'Content-Disposition': `attachment; filename="${f.name}"` });
+  });
+
   // ---------- dashboard KPIs ----------
   app.get('/api/app/kpis', U, (req, res) => {
     const n = (sql, ...a) => db.prepare(sql).get(...a)?.n ?? 0;

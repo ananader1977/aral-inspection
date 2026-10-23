@@ -22,6 +22,8 @@ export function loadConfig(env = process.env) {
     paymentProvider: (env.PAYMENT_PROVIDER || 'mock').toLowerCase(),
     // AI photo suggestions (Claude). Leave ANTHROPIC_API_KEY empty to hide the feature.
     ai: aiConfig(env),
+    // Nightly database backup (Google Drive when set up). BACKUP_KEY encrypts the copies; keep it safe, it is needed to restore.
+    backup: { key: env.BACKUP_KEY || '', keep: Number(env.BACKUP_KEEP) || 30 },
     stripe: { secretKey: env.STRIPE_SECRET_KEY || '', webhookSecret: env.STRIPE_WEBHOOK_SECRET || '' },
     smtp: {
       host: (env.SMTP_HOST || '').trim(),

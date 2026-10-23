@@ -74,11 +74,15 @@ export function createStorage(ctx) {
       if (driveOn) {
         let parent = null;
         if (jobId) { const f = await jobFolders(jobId); parent = f && (f[SUB[purpose] || (purpose.startsWith('pdf') ? 'pdf' : 'root')] || f.root); }
+        else if (purpose === 'backup') {
+          parent = db.prepare("SELECT value FROM settings WHERE key='_drive_backup_folder'").get()?.value;
+          if (!parent) { parent = await driveFolder('ARAL Backups', d.folderId || null); db.prepare("INSERT OR REPLACE INTO settings(key,value) VALUES('_drive_backup_folder',?)").run(parent); }
+        }
         const up = await driveUpload(name, mime, buf, parent);
         rec = { storage: 'drive', drive_id: up.drive_id, link: up.link, local_path: null };
       } else {
         const job = jobId ? db.prepare('SELECT number FROM jobs WHERE id=?').get(jobId)?.number : null;
-        const rel = path.join(job ? `jobs/${job}` : 'general', SUB[purpose] || (purpose.startsWith('pdf') ? 'pdf' : 'other'), `${Date.now()}_${crypto.randomBytes(5).toString('hex')}${path.extname(name).replace(/[^.\w]/g, '').slice(0, 10)}`);
+        const rel = path.join(job ? `jobs/${job}` : purpose === 'backup' ? 'backups' : 'general', purpose === 'backup' ? '.' : SUB[purpose] || (purpose.startsWith('pdf') ? 'pdf' : 'other'), `${Date.now()}_${crypto.randomBytes(5).toString('hex')}${path.extname(name).replace(/[^.\w]/g, '').slice(0, 10)}`);
         fs.mkdirSync(path.dirname(path.join(baseDir, rel)), { recursive: true });
         fs.writeFileSync(path.join(baseDir, rel), buf);
         rec = { storage: 'disk', drive_id: null, link: '', local_path: rel };

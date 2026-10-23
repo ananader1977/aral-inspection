@@ -17,6 +17,8 @@ export function registerRoutes(app, ctx) {
   const ip = (req) => (config.trustProxy ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() : '') || req.ip_;
   const limit = (req, key, max, ms) => { if (!config.disableRateLimit) ctx.limit(`${key}:${ip(req)}`, max, ms); };
   const id = (req) => Number(req.params.id);
+  // browsers must always use HTTPS for this site (only when the public address is https)
+  if (config.secureCookies) app.use((req, res) => { res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains'); });
   const me = (u) => ({ ...u, role_label: ROLE_LABEL[u.role], permissions: permissionsOf(u.role), needs2fa: auth.needs2fa(u) });
 
   // ---------- public ----------

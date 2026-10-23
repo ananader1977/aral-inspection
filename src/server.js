@@ -21,8 +21,11 @@ if (!config.smtp.host) console.warn('[info] SMTP not configured: emails are only
 if (config.ai.apiKey) console.log(`[info] AI photo suggestions: ${ctx.ai.label()}, model ${ctx.ai.model()}.`);
 if (!config.require2fa) console.warn('[warn] REQUIRE_2FA=false: two-step sign-in is not enforced. Use only for testing.');
 
-// hourly: expire old quotations, send overdue-invoice reminders
-const tick = () => ctx.finance.tick().then((r) => { if (r.expired || r.reminded) console.log(`[tick] quotes expired: ${r.expired}, reminders sent: ${r.reminded}`); }).catch((e) => console.error('[tick]', e.message));
+// hourly: expire old quotations, send overdue-invoice reminders, nightly database backup (after 02:00 Dubai)
+const tick = async () => {
+  await ctx.finance.tick().then((r) => { if (r.expired || r.reminded) console.log(`[tick] quotes expired: ${r.expired}, reminders sent: ${r.reminded}`); }).catch((e) => console.error('[tick]', e.message));
+  await ctx.backup.tick().then((r) => { if (r) console.log(`[backup] ${r.name} saved to ${r.storage} (${Math.round(r.size / 1024)} KB${r.encrypted ? ', encrypted' : ''})`); }).catch((e) => console.error('[backup] failed:', e.message));
+};
 setTimeout(tick, 30000).unref();
 setInterval(tick, 60 * 60 * 1000).unref();
 

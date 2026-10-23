@@ -25,7 +25,7 @@ const NAV = () => [
   ['Catalogue & pricing', [['list/services', 'Services'], ['list/price_rules', 'Prices'], ['list/surcharges', 'Surcharges'], ['list/lookups', 'Picklists'], ['list/valuation_partners', 'Valuation partners']]],
   ['Field team', [['list/inspectors', 'Inspectors'], ['list/equipment', 'Equipment']]],
   ['Report content', [['list/checklists', 'Checklists'], ['list/section_templates', 'Checklist sections'], ['list/item_templates', 'Checklist items'], ['list/comment_library', 'Comment library'], ['list/glossary', 'Glossary']]],
-  ['System', [...(can('messages.view') ? [['messages', 'Messages']] : []), ...(can('audit.view') ? [['audit', 'Audit log']] : [])]],
+  ['System', [...(can('messages.view') ? [['messages', 'Messages']] : []), ...(can('audit.view') ? [['audit', 'Audit log']] : []), ...(can('settings.edit') ? [['backups', 'Backups']] : [])]],
 ];
 
 export async function settingsView(el, parts) {
@@ -38,6 +38,7 @@ export async function settingsView(el, parts) {
   if (sub.startsWith('wording')) return wording(body, parts[1]);
   if (sub === 'messages') return messages(body);
   if (sub === 'audit') return audit(body);
+  if (sub === 'backups' && can('settings.edit')) return backups(body);
   if (parts[0] === 'list') return listView(body, parts[1]);
   fill(body, h('p', {}, t('Not found')));
 }
@@ -238,3 +239,24 @@ async function audit(el) {
 
 function debounce(fn, ms) { let tm; return (...a) => { clearTimeout(tm); tm = setTimeout(() => fn(...a), ms); }; }
 function addDays(iso, n) { const d = new Date(`${iso}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+
+// ---------- database backups ----------
+async function backups(el) {
+  const d = await A('GET', '/backups');
+  const kb = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+  const last = d.last;
+  fill(el, h('div', { class: 'card' },
+    h('div', { class: 'actions' }, h('h1', {}, t('Backups')), h('span', { class: 'spacer' }),
+      h('button', { class: 'btn cu', onclick: async (e) => { e.target.disabled = true; if (await run(() => A('POST', '/backups'), 'Backup saved')) backups(el); else e.target.disabled = false; } }, t('Back up now'))),
+    h('p', { class: 'small muted' }, t('The whole database (jobs, clients, reports, invoices, users and settings) is copied every night after 02:00 Dubai time. Photos and PDFs are files in Google Drive or on the server and are not part of this copy.')),
+    h('div', { class: 'kpis' },
+      h('div', { class: `kpi ${last ? '' : 'cu'}` }, h('b', {}, last ? fmtStamp(last.at) : t('Never')), h('span', {}, t('Last backup'))),
+      h('div', { class: 'kpi' }, h('b', {}, d.storage === 'drive' ? 'Google Drive' : t('Server disk')), h('span', {}, d.storage === 'drive' ? t('Folder "ARAL Backups"') : t('Add the Google Drive keys to keep copies off the server'))),
+      h('div', { class: `kpi ${d.encrypted ? '' : 'cu'}` }, h('b', {}, d.encrypted ? t('Encrypted') : t('Not encrypted')), h('span', {}, d.encrypted ? t('Keep BACKUP_KEY safe: it is needed to restore') : t('Set BACKUP_KEY on Render to encrypt the copies'))),
+      h('div', { class: 'kpi' }, h('b', {}, String(d.keep)), h('span', {}, t('Copies kept')))),
+    d.rows.length ? h('div', { class: 'tablewrap' }, h('table', {}, h('thead', {}, h('tr', {}, ['File', 'Made', 'Size', ''].map((x) => h('th', {}, t(x))))),
+      h('tbody', {}, d.rows.map((r) => h('tr', {}, h('td', { class: 'ltr small' }, r.name), h('td', { class: 'nowrap' }, fmtStamp(r.created_at)), h('td', { class: 'num' }, kb(r.size)),
+        h('td', {}, h('a', { class: 'btn alt sm', href: `/api/app/backups/${r.id}/download` }, t('Download')))))))) : h('p', { class: 'muted' }, t('No backups yet.')),
+    h('details', { class: 'small' }, h('summary', {}, t('How to restore')),
+      h('ol', {}, h('li', {}, t('Download the backup file.')), h('li', {}, t('Ask your developer to unpack it (and decrypt it with BACKUP_KEY if encrypted) and replace app.db on the Render disk while the service is stopped.')), h('li', {}, t('Start the service again. Test a restore once before going live.'))))));
+}
