@@ -56,6 +56,14 @@ services:
         value: mock          # demo card checkout; switch to stripe + keys when going live
       - key: BACKUP_KEY
         sync: false          # long random passphrase; encrypts the nightly database backups (keep a copy somewhere safe)
+      - key: FCM_SERVICE_ACCOUNT
+        sync: false
+      - key: APNS_KEY
+        sync: false
+      - key: APNS_KEY_ID
+        sync: false
+      - key: APNS_TEAM_ID
+        sync: false
       - key: AI_PROVIDER
         value: gemini        # gemini (Google, free tier) or claude (Anthropic, paid)
       - key: GEMINI_API_KEY
