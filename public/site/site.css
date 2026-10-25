@@ -1,4 +1,4 @@
-/* ARAL public website. Brand tokens from the logo; logical properties so Arabic mirrors cleanly. */
+/* A R A L public website. Brand tokens from the logo; logical properties so Arabic mirrors cleanly. */
 :root{--navy:#0A1F4A;--navy-2:#11295E;--blue:#0B4F8C;--sky:#2283C8;--copper:#8C5A36;--copper-l:#C08A5E;--copper-t:#F4ECE4;--ink:#16213A;--muted:#5B6782;--line:#DDE3EC;--bg:#F5F7FA;--white:#fff;--crit:#C62828;
 --display:"Avenir Next","Montserrat","Segoe UI",system-ui,sans-serif;--body:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Arabic",Tahoma,sans-serif}
 *{box-sizing:border-box}

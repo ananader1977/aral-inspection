@@ -43,7 +43,7 @@ services:
       - key: SMTP_PASS        # Gmail app password (16 letters)
         sync: false
       - key: SMTP_FROM
-        value: ARAL Property Inspection Service <ananader1@gmail.com>
+        value: A R A L Property Inspection Services <ananader1@gmail.com>
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET

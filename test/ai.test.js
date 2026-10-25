@@ -56,7 +56,7 @@ test('suggest a finding from the photos of a checklist item', async () => {
     assert.equal(content[0].type, 'image');
     assert.equal(content[0].source.media_type, 'image/jpeg');
     assert.match(content.at(-1).text, /Kitchen[\s\S]*Floor Condition/);
-    assert.match(content.at(-1).text, /Hollow sound/, 'ARAL wording examples from the comment library are included');
+    assert.match(content.at(-1).text, /Hollow sound/, 'A R A L wording examples from the comment library are included');
     // from a photo id alone
     assert.equal((await call('sa', 'POST', '/api/app/ai/suggest', { media_ids: [up.id] })).body.item_id, floor.id);
     // logged in the audit trail

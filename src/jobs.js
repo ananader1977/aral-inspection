@@ -449,7 +449,7 @@ export function createJobs(ctx) {
 
   async function notifyOffice(subject, text) {
     const s = S();
-    if (s.email && isEmail(s.email)) await ctx.mailer.send({ to: s.email, subject: `[ARAL] ${subject}`, text, template: 'office' });
+    if (s.email && isEmail(s.email)) await ctx.mailer.send({ to: s.email, subject: `[A R A L] ${subject}`, text, template: 'office' });
   }
 
   // ---------- scheduling ----------

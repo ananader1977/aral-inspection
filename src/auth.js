@@ -72,7 +72,7 @@ export function verifyTotp(secret, code, ts) {
   if (!/^\d{6}$/.test(c) || !secret) return false;
   return [-1, 0, 1].some((d) => safeEqual(totpCode(secret, ts + d * 30000), c));
 }
-export const otpauthUri = (secret, email, issuer = 'ARAL Inspection') =>
+export const otpauthUri = (secret, email, issuer = 'A R A L Inspection') =>
   `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(email)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
 
 function sign(secret, data) {

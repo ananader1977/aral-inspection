@@ -1,4 +1,4 @@
--- ARAL Property Inspection Service — database schema (Phase 1 draft for approval)
+-- A R A L Property Inspection Services — database schema (Phase 1 draft for approval)
 -- Engine: Node 22 built-in SQLite (node:sqlite). Same conventions as Dar Al Bunyan:
 --   * INTEGER primary keys, created_at/updated_at as epoch milliseconds (INTEGER)
 --   * business dates as ISO text 'YYYY-MM-DD' (Asia/Dubai)

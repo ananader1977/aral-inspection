@@ -152,7 +152,7 @@ export class Pdf {
     add(`<< /Type /Pages /Kids [${this.pages.map((_, i) => `${6 + i * 2} 0 R`).join(' ')}] /Count ${nPages} >>`);
     add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
     add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
-    add(`<< /Title (${esc(this.title)}) /Author (${esc(this.author)}) /Producer (ARAL Inspection App) >>`);
+    add(`<< /Title (${esc(this.title)}) /Author (${esc(this.author)}) /Producer (A R A L Inspection App) >>`);
     let next = 6 + nPages * 2;
     const imgObjs = [];
     for (const e of this.images) {

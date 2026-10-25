@@ -292,7 +292,7 @@ export function createDocs(ctx) {
     const base = ctx.config.baseUrl;
     const online = `${base}/report.html?t=${r.verify_token}`;
     const verifyUrl = `${base}/verify.html?t=${r.verify_token}`;
-    const foot = `${s.company_short || 'ARAL'} | ${[j.building, j.unit_no && `Unit ${j.unit_no}`, j.community].filter(Boolean).join(', ')}`;
+    const foot = `${s.company_short || 'A R A L'} | ${[j.building, j.unit_no && `Unit ${j.unit_no}`, j.community].filter(Boolean).join(', ')}`;
     const rec = { sections: {}, obs: {}, parts: {}, atts: {} };
     const d = new FlowDoc({
       title: `${r.title} ${r.number || ''}`.trim(), author: s.company_name, margin: { top: 78, bottom: 56, left: 46, right: 46 },

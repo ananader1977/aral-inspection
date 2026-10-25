@@ -57,7 +57,7 @@ function langButtons(after) {
 }
 
 function drawNav() {
-  $('#brand-sub').textContent = t('Property Inspection Service');
+  $('#brand-sub').textContent = t('Property Inspection Services');
   nav.replaceChildren(
     h('span', { class: 'who' }, `${S.me.name} · ${t(S.me.role_label)}`),
     h('a', { class: 'btn alt sm', href: '#account' }, t('My account')),
@@ -66,7 +66,7 @@ function drawNav() {
 
 function loginView() {
   nav.replaceChildren();
-  $('#brand-sub').textContent = t('Property Inspection Service');
+  $('#brand-sub').textContent = t('Property Inspection Services');
   const err = h('div', { class: 'alert bad hide', role: 'alert' });
   const showErr = (m) => { err.textContent = m; err.classList.remove('hide'); };
   const pwForm = h('form', { onsubmit: async (e) => {
@@ -81,7 +81,7 @@ function loginView() {
   field('Email', h('input', { name: 'email', type: 'email', autocomplete: 'username', required: true, class: 'ltr' })),
   field('Password', h('input', { name: 'password', type: 'password', autocomplete: 'current-password', required: true })), err,
   h('p', {}, h('button', { class: 'btn block cu' }, t('Sign in'))));
-  const card = h('div', { class: 'card' }, h('img', { class: 'logo', src: '/logo.jpg', alt: 'ARAL Property Inspection Service', width: 260, height: 150 }), h('h1', { class: 'center' }, t('Sign in')), pwForm, h('div', { class: 'lang' }, langButtons(loginView)));
+  const card = h('div', { class: 'card' }, h('img', { class: 'logo', src: '/logo.jpg', alt: 'A R A L Property Inspection Services', width: 260, height: 150 }), h('h1', { class: 'center' }, t('Sign in')), pwForm, h('div', { class: 'lang' }, langButtons(loginView)));
   fill(app, h('div', { class: 'login' }, card));
 
   function codeStep(token) {
@@ -90,7 +90,7 @@ function loginView() {
       e.preventDefault();
       try { await api('POST', '/api/login/code', { token, code: f.code.value }); boot(); }
       catch (x) { err2.textContent = x.message; err2.classList.remove('hide'); f.code.select(); }
-    } }, h('p', {}, t('Open your authenticator app and enter the 6-digit code for ARAL.')),
+    } }, h('p', {}, t('Open your authenticator app and enter the 6-digit code for A R A L.')),
     h('input', { name: 'code', class: 'code-in', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: 7, required: true, 'aria-label': t('6-digit code') }), err2,
     h('p', {}, h('button', { class: 'btn block cu' }, t('Continue'))), h('p', { class: 'center' }, h('button', { class: 'btn alt sm', type: 'button', onclick: loginView }, t('Back'))));
     fill(card, h('img', { class: 'logo', src: '/logo.jpg', alt: '', width: 260, height: 150 }), h('h1', { class: 'center' }, t('Two-step sign-in')), f);
@@ -112,7 +112,7 @@ async function twoFactorSetup(forced) {
   } },
   h('ol', {},
     h('li', {}, t('Install Google Authenticator or Microsoft Authenticator on your phone.')),
-    h('li', {}, t('In the app, choose "Enter a setup key". Account name: ARAL. Key:'), h('div', { class: 'secret' }, pretty), h('div', { class: 'small muted' }, t('On this phone? '), h('a', { href: r.uri }, t('Open in authenticator app')))),
+    h('li', {}, t('In the app, choose "Enter a setup key". Account name: A R A L. Key:'), h('div', { class: 'secret' }, pretty), h('div', { class: 'small muted' }, t('On this phone? '), h('a', { href: r.uri }, t('Open in authenticator app')))),
     h('li', {}, t('Type the 6-digit code the app shows:'))),
   h('input', { name: 'code', class: 'code-in', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: 7, required: true, 'aria-label': t('6-digit code') }), err,
   h('p', { class: 'actions' }, h('button', { class: 'btn cu' }, t('Turn on two-step sign-in')), forced ? null : h('a', { class: 'btn alt', href: '#account' }, t('Cancel'))));

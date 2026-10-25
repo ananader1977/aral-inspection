@@ -44,9 +44,9 @@ const LOOKUPS = {
   referral_source: ['Website', 'Google', 'Instagram', 'WhatsApp', 'Broker / agent', 'Bank', 'Repeat client', 'Friend / referral'],
 };
 
-// Report and quotation wording. ARAL's own text, marked DRAFT where a lawyer should approve it.
+// Report and quotation wording. A R A L's own text, marked DRAFT where a lawyer should approve it.
 const BLOCKS = [
-  ['rpt_intro', 'Introduction', `Thank you for choosing ARAL. Please read the whole report, then call us with any questions. We stay available to you until your purchase or handover is complete.
+  ['rpt_intro', 'Introduction', `Thank you for choosing A R A L. Please read the whole report, then call us with any questions. We stay available to you until your purchase or handover is complete.
 
 A property does not "pass" or "fail" an inspection. This report lists the conditions we saw on the day of the visit so that you can ask the developer, seller or landlord to fix them, or take them into account in your decision.
 
@@ -70,30 +70,30 @@ If a room or system has no findings, nothing needing attention was seen there on
   ['rpt_conclusion', 'Report conclusion', `We hope this report gives you a clear picture of the property's condition. Because the inspection is visual, some defects may be hidden or may develop after our visit, and not every outlet, window or door may have been tested where access was limited.
 
 This report is not a warranty or guarantee of the property's future condition. We recommend keeping suitable property insurance in place.`],
-  ['rpt_thermal_addendum', 'Thermal imaging addendum', `DRAFT: wording to be approved by ARAL's legal adviser.
+  ['rpt_thermal_addendum', 'Thermal imaging addendum', `DRAFT: wording to be approved by A R A L's legal adviser.
 
 Thermal imaging shows surface temperature differences. These can point to moisture, air leaks, missing insulation or overheating electrical parts. A thermal camera is not a moisture meter and cannot see through walls; it shows where further investigation may be needed. Thermal findings are limited to the areas scanned and the conditions on the day of the inspection.`],
-  ['tc_report', 'Terms and conditions (report)', `DRAFT: these terms are placeholders and must be replaced by text approved by ARAL's legal adviser before the first client report is issued.
+  ['tc_report', 'Terms and conditions (report)', `DRAFT: these terms are placeholders and must be replaced by text approved by A R A L's legal adviser before the first client report is issued.
 
 1. The inspection was visual and carried out under the signed service agreement.
 2. The report is for the client named on the cover. Others who rely on it do so at their own risk.
-3. ARAL does not carry out engineering, architectural or other licensed design work under this inspection.
+3. A R A L does not carry out engineering, architectural or other licensed design work under this inspection.
 4. Environmental testing (mould sampling, asbestos, radon, soil) is excluded unless agreed in writing.
 5. Any claim must be notified in writing within the period stated in the service agreement.`],
-  ['tc_quote', 'Terms and conditions (quotation)', `DRAFT: to be approved by ARAL's legal adviser.
+  ['tc_quote', 'Terms and conditions (quotation)', `DRAFT: to be approved by A R A L's legal adviser.
 
 1. Fees are in UAE dirhams. VAT is added where applicable.
 2. Payment is due in full before the inspection unless agreed otherwise.
 3. Air conditioning and DEWA must be connected on the day for a full inspection.
 4. The report is delivered within the stated time after the inspection.
 5. Rescheduling with less than 24 hours' notice may be charged.`],
-  ['tc_booking', 'Service agreement', `DRAFT: to be reviewed and approved by ARAL's legal adviser before use with clients.
+  ['tc_booking', 'Service agreement', `DRAFT: to be reviewed and approved by A R A L's legal adviser before use with clients.
 
-1. Service. ARAL Property Inspection Service ("ARAL") will carry out the inspection described in the accepted quotation at the property named in it, and deliver a written report within the stated time after the inspection.
+1. Service. A R A L Property Inspection Services ("A R A L") will carry out the inspection described in the accepted quotation at the property named in it, and deliver a written report within the stated time after the inspection.
 
-2. Nature of the inspection. The inspection is visual and non-invasive. It covers the parts of the property that are safely accessible on the day. ARAL does not open walls, lift fixed floors, move furniture or dismantle equipment. It is not a valuation, a structural engineering assessment, a survey of boundaries or a guarantee of the property's future condition.
+2. Nature of the inspection. The inspection is visual and non-invasive. It covers the parts of the property that are safely accessible on the day. A R A L does not open walls, lift fixed floors, move furniture or dismantle equipment. It is not a valuation, a structural engineering assessment, a survey of boundaries or a guarantee of the property's future condition.
 
-3. Access and site conditions. The client arranges access to the whole property on the agreed date, with air conditioning and DEWA services connected. If ARAL cannot get access, or services are not connected, the affected areas are reported as not inspected and a further visit may be charged.
+3. Access and site conditions. The client arranges access to the whole property on the agreed date, with air conditioning and DEWA services connected. If A R A L cannot get access, or services are not connected, the affected areas are reported as not inspected and a further visit may be charged.
 
 4. Fees and payment. The fee is shown in the quotation. Unless credit terms were agreed in writing, the fee is paid in full before the inspection. VAT is added where it applies.
 
@@ -101,11 +101,11 @@ Thermal imaging shows surface temperature differences. These can point to moistu
 
 6. The report. The report is prepared for the client named in it and for the purpose stated. Others who rely on it do so at their own risk. The report reflects the condition seen on the day of the inspection only.
 
-7. Liability. ARAL carries out the inspection with reasonable skill and care. ARAL's total liability arising from the inspection is limited to the fee paid, except where the law does not allow such a limit.
+7. Liability. A R A L carries out the inspection with reasonable skill and care. A R A L's total liability arising from the inspection is limited to the fee paid, except where the law does not allow such a limit.
 
-8. Claims. Any concern about the report must be raised in writing within 30 days of the report date, and ARAL must be given the chance to revisit the property before any repair is carried out.
+8. Claims. Any concern about the report must be raised in writing within 30 days of the report date, and A R A L must be given the chance to revisit the property before any repair is carried out.
 
-9. Photos and data. ARAL may take photos and videos of the property for the report. Personal data is used only to provide the service and is kept securely.
+9. Photos and data. A R A L may take photos and videos of the property for the report. Personal data is used only to provide the service and is kept securely.
 
 10. Governing law. This agreement is governed by the laws of the Emirate of Dubai and the federal laws of the United Arab Emirates.`],
   ['tc_invoice', 'Invoice notes', `Thank you for your business. Please quote the invoice number with your payment.`],

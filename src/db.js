@@ -7,8 +7,8 @@ import { fileURLToPath } from 'node:url';
 const SCHEMA = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'schema.sql'), 'utf8');
 
 export const SETTING_DEFAULTS = {
-  company_name: 'ARAL Property Inspection Service',
-  company_short: 'ARAL',
+  company_name: 'A R A L Property Inspection Services',
+  company_short: 'A R A L',
   tagline: 'Smarter Inspections | Safer Properties',
   det_licence_no: '',
   rera_reg_no: '',
@@ -70,6 +70,7 @@ export function openDb(file) {
   const ins = db.prepare('INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)');
   for (const [k, v] of Object.entries(SETTING_DEFAULTS)) ins.run(k, v);
   ins.run('_secret', crypto.randomBytes(32).toString('base64url'));
+  renameBrand(db);
   return db;
 }
 
@@ -128,4 +129,21 @@ export function tx(db, fn) {
 export function formatNumber(settings, kind, n, year) {
   const prefix = String(settings[`${kind}_prefix`] || '').replace('{YYYY}', String(year));
   return prefix + String(n).padStart(Number(settings.number_digits) || 5, '0');
+}
+
+/** One-time rename (Oct 2026): "ARAL Property Inspection Service" -> "A R A L Property Inspection Services" in stored settings and wording. */
+export function renameBrand(db) {
+  if (db.prepare("SELECT 1 FROM settings WHERE key='_m_brand_spaced'").get()) return;
+  const fix = (t) => String(t).replace(/ARAL Property Inspection Service(?!s)/g, 'A R A L Property Inspection Services').replace(/\bARAL\b(?! (Jobs|Backups)\b)/g, 'A R A L');
+  db.prepare("UPDATE settings SET value='A R A L Property Inspection Services' WHERE key='company_name' AND value='ARAL Property Inspection Service'").run();
+  db.prepare("UPDATE settings SET value='A R A L' WHERE key='company_short' AND value='ARAL'").run();
+  const has = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='content_blocks'").get();
+  if (has) {
+    const up = db.prepare('UPDATE content_blocks SET title=?, body=? WHERE id=?');
+    for (const r of db.prepare('SELECT id, title, body FROM content_blocks').all()) {
+      const t = fix(r.title), b = fix(r.body);
+      if (t !== r.title || b !== r.body) up.run(t, b, r.id);
+    }
+  }
+  db.prepare("INSERT OR IGNORE INTO settings(key,value) VALUES('_m_brand_spaced','1')").run();
 }

@@ -1,4 +1,4 @@
-# ARAL Property Inspection Service: Inspection Management App
+# A R A L Property Inspection Services: Inspection Management App
 
 Runs the inspection business end to end: request → quotation → agreement → card payment → scheduling → phone inspection with photos → technical review → English PDF report → invoice → inspector commission.
 
@@ -49,12 +49,12 @@ Built the same way as the Dar Al Bunyan app: Node.js 22 with the built-in SQLite
 8. **Review.** *Submit for review* checks the basics (date, time, a photo on every critical finding). The Technical Manager can correct, return with comments, approve, then **issue**: the report gets its `RPT-` number, the PDF is stored as an unchangeable version, and the client gets the PDF plus the online report link (with videos and a star rating).
 9. **Invoice and commission.** Issuing invoices the job (advance payments are applied, so paid jobs close at once). Banks/companies set to *monthly invoicing* get one invoice per month listing each report with its bank reference. Credit notes, part payments, aging, overdue reminders and the inspector's 42% commission (statement PDF, mark as paid) are under *Finance*.
 10. **Attachments.** On the report (phone or office) *Add attachment* takes PDF, JPEG or PNG files up to 20 MB: lab results, floor plans, DEWA bills, the developer snag list. They are numbered A1, A2… and listed in the contents. Images get a full page in the report appendix; PDFs get a QR code and link. All of them go with the report email (up to 15 MB in total) and can be downloaded from the online report. You can choose, per attachment, whether it is printed and whether it is emailed.
-11. **AI suggestions (optional).** A ✨ button under item photos and in the finding window: the AI reads the item's photos (up to 4) with the room, the item and ARAL's own wording, and suggests up to three findings with severity, trade and confidence. The inspector picks one, edits it and saves; nothing goes into the report without the inspector. Every use is in the audit log.
+11. **AI suggestions (optional).** A ✨ button under item photos and in the finding window: the AI reads the item's photos (up to 4) with the room, the item and A R A L's own wording, and suggests up to three findings with severity, trade and confidence. The inspector picks one, edits it and saves; nothing goes into the report without the inspector. Every use is in the audit log.
     - **Provider setting `AI_PROVIDER`:** `gemini` (Google, free tier; key `GEMINI_API_KEY` from aistudio.google.com; default model `gemini-3.5-flash-lite`) or `claude` (Anthropic, paid; key `ANTHROPIC_API_KEY`; default model `claude-sonnet-5-5`). `AI_MODEL` overrides the model. With no key the buttons are hidden.
     - **Gemini free tier:** Google may use what is sent to improve its products, and there are daily and per-minute limits (the app shows "free AI limit reached" when hit). Use a paid tier or Claude before sending client photos if that is not acceptable.
 12. **Re-inspection.** *Book a re-inspection* creates a linked job whose report starts with the open findings, each marked Fixed / Partly fixed / Not fixed.
 
-The **report PDF** follows the approved sample structure: cover with photo and verification QR, introduction, scope, standards, contents with page numbers, general information, colour legend, numbered sections and items with photos two per row (videos as a preview + QR to play online), glossary, summary with page numbers, conclusion, terms, thermal addendum, sign-off and back page. The footer reads `ARAL | building, unit, community` with *Page X of Y*.
+The **report PDF** follows the approved sample structure: cover with photo and verification QR, introduction, scope, standards, contents with page numbers, general information, colour legend, numbered sections and items with photos two per row (videos as a preview + QR to play online), glossary, summary with page numbers, conclusion, terms, thermal addendum, sign-off and back page. The footer reads `A R A L | building, unit, community` with *Page X of Y*.
 
 **Excel exports:** jobs, SLA by client, quotations, invoices (with a VAT summary sheet), payments, aging, commissions, equipment calibration, clients, leads, plus every settings list.
 
@@ -83,7 +83,7 @@ On the first sign-in as Super Admin you are asked to set up two-step sign-in: in
 ## Gmail (ananader1@gmail.com)
 
 1. Google Account → Security → turn on **2-Step Verification**.
-2. Google Account → Security → **App passwords** → create one called "ARAL app".
+2. Google Account → Security → **App passwords** → create one called "A R A L app".
 3. Put the 16 letters in `SMTP_PASS` on Render.
 4. In the app: **Settings → Messages → Send me a test email**.
 

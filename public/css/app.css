@@ -1,4 +1,4 @@
-/* ARAL theme. Logical properties (inline-start/end) so the layout mirrors for Arabic. */
+/* A R A L theme. Logical properties (inline-start/end) so the layout mirrors for Arabic. */
 :root{--bg:#F5F7FA;--card:#fff;--ink:#16213A;--muted:#5B6782;--line:#DDE3EC;--navy:#0A1F4A;--blue:#0B4F8C;--blue-d:#083D6E;--sky:#2283C8;--copper:#8C5A36;--copper-d:#6F4529;--copper-tint:#F4ECE4;--tint:#EAF1F8;
 --ok:#1E7B46;--ok-bg:#E3F4EA;--warn:#9A5B00;--warn-bg:#FDF1DC;--bad:#C62828;--bad-bg:#FDECEC;--grey-bg:#EEF1F5;--r:10px}
 *{box-sizing:border-box}

@@ -212,7 +212,7 @@ test('individual client: website lead to issued report, invoice and commission',
     assert.ok(v1.page_count >= 8, `pages ${v1.page_count}`);
     try {
       const txt = execFileSync('pdftotext', ['-layout', '-', '-'], { input: rpt }).toString();
-      for (const s of ['Walls overview', 'Attachments', 'A1. Floor plan', 'A2. Mould lab result', 'Swab test from the kitchen cabinet', 'RESALE', 'Contents', 'General information', 'Report summary', 'Glossary', 'Hollow sound', 'Thermal imaging addendum', 'Sign-off', 'Page 2 of', 'No defects observed', 'ARAL | IL Primo, Unit 1205, Downtown Dubai']) assert.ok(txt.includes(s), `PDF should contain "${s}"`);
+      for (const s of ['Walls overview', 'Attachments', 'A1. Floor plan', 'A2. Mould lab result', 'Swab test from the kitchen cabinet', 'RESALE', 'Contents', 'General information', 'Report summary', 'Glossary', 'Hollow sound', 'Thermal imaging addendum', 'Sign-off', 'Page 2 of', 'No defects observed', 'A R A L | IL Primo, Unit 1205, Downtown Dubai']) assert.ok(txt.includes(s), `PDF should contain "${s}"`);
     } catch (e) { if (e.code !== 'ENOENT') throw e; }
     const mailR = ctx.db.prepare("SELECT * FROM outbox WHERE template_code='report_issued'").get();
     assert.match(mailR.body, /report\.html\?t=/);

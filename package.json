@@ -1,7 +1,7 @@
 {
   "name": "aral-inspection",
   "version": "0.2.0",
-  "description": "ARAL Property Inspection Service: requests, quotations, inspections, reports and invoices. Zero dependencies (Node 22 + built-in SQLite).",
+  "description": "A R A L Property Inspection Services: requests, quotations, inspections, reports and invoices. Zero dependencies (Node 22 + built-in SQLite).",
   "type": "module",
   "main": "src/server.js",
   "engines": { "node": ">=22.13" },

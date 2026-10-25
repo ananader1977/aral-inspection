@@ -1,6 +1,6 @@
 # Inspection report — field mapping (Phase 1, for approval)
 
-Source: sample resale report (67 pages, IL Primo, Downtown). Structure is replicated; all fixed wording is ARAL's own, edited in **Admin → Content**.
+Source: sample resale report (67 pages, IL Primo, Downtown). Structure is replicated; all fixed wording is A R A L's own, edited in **Admin → Content**.
 
 Legend for **Source**: `DB` = typed by staff/inspector · `AUTO` = generated · `BLOCK` = admin text block (versioned) · `SET` = company settings · `LIB` = library pick.
 
@@ -8,8 +8,8 @@ Legend for **Source**: `DB` = typed by staff/inspector · `AUTO` = generated · 
 
 | Sample element | DB field | Source | PDF label / output |
 |---|---|---|---|
-| Header logo | `settings.brand_logo_file_id` | SET | ARAL logo (left) |
-| Footer company + address | `settings.company_short` + `properties.building`, `unit_no`, `community` | AUTO | `ARAL  |  IL Primo, Unit 1205, Downtown` |
+| Header logo | `settings.brand_logo_file_id` | SET | A R A L logo (left) |
+| Footer company + address | `settings.company_short` + `properties.building`, `unit_no`, `community` | AUTO | `A R A L  |  IL Primo, Unit 1205, Downtown` |
 | "Page X of Y" | — | AUTO (2nd pass) | `Page 7 of 67` |
 | "(continued)" | — | AUTO | `Air Conditioning (continued)` on spill-over pages |
 
@@ -17,7 +17,7 @@ Legend for **Source**: `DB` = typed by staff/inspector · `AUTO` = generated · 
 
 | Sample element | DB field | Source | PDF label |
 |---|---|---|---|
-| Company name | `settings.company_name` | SET | ARAL Property Inspection Service |
+| Company name | `settings.company_name` | SET | A R A L Property Inspection Services |
 | Property line "IL Primo, Unit XXX, Downtown" | `properties.building`, `unit_no`, `community`, `emirate` | DB | Property |
 | Report title | `reports.title` (default from `services.name`) | DB | e.g. Resale Inspection Report |
 | Inspector "Ehab Farid, GTA INSPECTORS" | `inspectors.name`, `inspectors.credentials` | DB | Inspector |

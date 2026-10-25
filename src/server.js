@@ -29,5 +29,5 @@ const tick = async () => {
 setTimeout(tick, 30000).unref();
 setInterval(tick, 60 * 60 * 1000).unref();
 
-server.listen(config.port, () => console.log(`ARAL inspection app running at ${config.baseUrl} (port ${config.port})`));
+server.listen(config.port, () => console.log(`A R A L inspection app running at ${config.baseUrl} (port ${config.port})`));
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 3000).unref(); });

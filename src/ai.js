@@ -10,7 +10,7 @@ export const DEFAULT_MODEL = { gemini: 'gemini-3.5-flash-lite', claude: 'claude-
 export const PROVIDER_LABEL = { gemini: 'Google Gemini', claude: 'Anthropic Claude' };
 const SEVERITIES = ['critical', 'attention', 'info'];
 
-const SYSTEM = `You help a property inspector in Dubai write findings for an ARAL Property Inspection Service report (resale, snagging/handover or move-in/move-out inspections of apartments, townhouses and villas).
+const SYSTEM = `You help a property inspector in Dubai write findings for an A R A L Property Inspection Services report (resale, snagging/handover or move-in/move-out inspections of apartments, townhouses and villas).
 
 You see one or more photos of ONE checklist item. Suggest findings the inspector could write about what is VISIBLE in the photos.
 
@@ -43,7 +43,7 @@ export function createAi(ctx) {
       `Property: ${propertyType || 'property'} in Dubai.`,
       `Area / system: ${section}.`,
       `Checklist item: ${item}${detail ? ` (${detail})` : ''}.`,
-      examples.length ? `Examples of ARAL wording for this kind of item:\n${examples.slice(0, 12).map((e) => `- [${e.severity}] ${e.text}`).join('\n')}` : '',
+      examples.length ? `Examples of A R A L wording for this kind of item:\n${examples.slice(0, 12).map((e) => `- [${e.severity}] ${e.text}`).join('\n')}` : '',
       'Suggest up to 3 findings, most important first.',
     ].filter(Boolean).join('\n');
     const text = provider === 'gemini' ? await callGemini(imgs, context) : await callClaude(imgs, context);

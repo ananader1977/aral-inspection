@@ -1,4 +1,4 @@
-// ARAL public website: language switch, live prices, instant estimate and booking request.
+// A R A L public website: language switch, live prices, instant estimate and booking request.
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const fmt = (n) => Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -15,7 +15,7 @@ const AR = {
   estTitle: 'السعر التقديري', estEmpty: 'اختر الخدمة والعقار لمعرفة السعر.',
   incl1: 'تقرير لكل غرفة مع الصور والفيديو', incl2: 'فحص التكييف والكهرباء والسباكة والرطوبة', incl3: 'يراجعه المدير الفني', incl4: 'مكالمة متابعة لشرح النتائج',
   step2: '2. احجز', fName: 'الاسم الكامل', fMobile: 'الجوال (واتساب)', fEmail: 'البريد الإلكتروني (اختياري)', fDate: 'التاريخ المفضل', fBuilding: 'المبنى / المشروع ورقم الوحدة', fRef: 'رمز الوسيط (إن وجد)',
-  fMsg: 'هل هناك ما يجب أن نعرفه؟ (موعد التسليم، الدخول للعقار، أسئلة)', fConsent: 'أوافق على تواصل ARAL معي هاتفيًا أو عبر واتساب أو البريد بخصوص هذا الطلب.',
+  fMsg: 'هل هناك ما يجب أن نعرفه؟ (موعد التسليم، الدخول للعقار، أسئلة)', fConsent: 'أوافق على تواصل A R A L معي هاتفيًا أو عبر واتساب أو البريد بخصوص هذا الطلب.',
   fSubmit: 'أرسل طلب الحجز', fNote: 'لا دفع الآن. نؤكد الموعد ونرسل عرض السعر أولاً.',
   doneTitle: 'شكرًا لك، استلمنا طلبك', doneText: 'سنتصل بك أو نراسلك عبر واتساب قريبًا لتأكيد الموعد. رقم المرجع:', doneWa: 'راسلنا على واتساب الآن',
   svcKick: 'سكني', svcTitle: 'فحص لكل مرحلة من مراحل امتلاك المنزل',

@@ -1,4 +1,4 @@
-# Build Prompt: ARAL Property Inspection Service — Management App (Dubai)
+# Build Prompt: A R A L Property Inspection Services — Management App (Dubai)
 
 > Version 2 — aligned with *Business Plan & Feasibility Study: Property Inspection Services in Dubai* (Sept 2026, DET activity 6820007).
 
@@ -14,7 +14,7 @@ You are a senior full-stack engineer. Build a production-ready web application (
 - All amounts in AED. Timezone Asia/Dubai. Dates DD/MM/YYYY.
 
 ## BRAND & THEME
-- **Trade name:** ARAL Property Inspection Service · Arabic: **آرال لخدمات فحص العقارات** (confirm with trade licence)
+- **Trade name:** A R A L Property Inspection Services · Arabic: **آرال لخدمات فحص العقارات** (confirm with trade licence)
 - **Tagline:** Smarter Inspections | Safer Properties · فحص أذكى | عقارات أكثر أماناً
 - **Colours (sampled from the logo file):**
   - Navy (text, top bar, headers): `#0A1F4A`
@@ -45,12 +45,12 @@ Reference implementation: GitHub repo `ananader1977/dar-al-bunyan`. Reuse its st
 - **Dependencies:** zero npm packages, exactly as in Dar Al Bunyan.
 - **PDF (English only):** all PDFs (quotation, report, invoice, receipt, credit note, statements) are **English only**. Reuse and extend Dar Al Bunyan's dependency-free `pdf.js`:
   - add **JPEG embedding** (DCTDecode pass-through: read width/height from the SOF marker and embed the bytes as-is) so phone photos go into the PDF without decoding;
-  - add multi-page flow helpers: automatic page breaks, repeating header (logo) and footer (`ARAL | {building}, Unit {unit}, {community}` + "Page X of Y", filled in a second pass), "(continued)" section headings, a 2-photo-per-row grid with captions, coloured severity text, and a table of contents with page ranges (second pass);
+  - add multi-page flow helpers: automatic page breaks, repeating header (logo) and footer (`A R A L | {building}, Unit {unit}, {community}` + "Page X of Y", filled in a second pass), "(continued)" section headings, a 2-photo-per-row grid with captions, coloured severity text, and a table of contents with page ranges (second pass);
   - target: a 60–70 page report with 200+ photos generated in under 30 s and under ~20 MB.
 - **Excel:** reuse Dar Al Bunyan's dependency-free `xlsx.js`; exports are in English (Arabic client names must still display correctly — UTF-8).
 - **Email:** reuse `smtp.js` — Gmail SMTP (`smtp.gmail.com:587`) with an **app password** for ananader1@gmail.com, `SMTP_*` env vars, Settings → "Send me a test email", all messages logged under Messages.
 - **Payments:** reuse `payments.js` — `PAYMENT_PROVIDER=mock` (**demo card checkout**, see Section 8) by default, Stripe ready behind env vars.
-- **Files & photos:** reuse `storage.js` with **Google Drive** (`drive.file` scope) for all photos, videos and issued PDFs: one Drive folder per job (`ARAL/Jobs/{job no.} – {building} {unit}/photos|videos|pdf`). The phone uploads an optimised JPEG (~1600 px); the server fetches those from Drive when building a PDF and caches them temporarily on disk. The Render disk holds only the SQLite database and temp cache.
+- **Files & photos:** reuse `storage.js` with **Google Drive** (`drive.file` scope) for all photos, videos and issued PDFs: one Drive folder per job (`A R A L/Jobs/{job no.} – {building} {unit}/photos|videos|pdf`). The phone uploads an optimised JPEG (~1600 px); the server fetches those from Drive when building a PDF and caches them temporarily on disk. The Render disk holds only the SQLite database and temp cache.
 - **i18n (screens only):** the app interface is English + Arabic: JSON dictionaries `public/i18n/en.json` and `ar.json`, a language toggle, and `dir="rtl"` + mirrored CSS (logical properties) for Arabic.
 - **Auth:** reuse `auth.js` (sessions, hashed passwords, seeded admin accounts from env vars); add TOTP 2FA for Admin, Reviewer and Accountant.
 - **Deployment:** reuse `Dockerfile` and `render.yaml` (Render Blueprint, persistent disk, health check `/api/health`). Code in a **private** GitHub repo, e.g. `ananader1977/aral-inspection`.
@@ -164,7 +164,7 @@ Flow: Proposal sent → client accepts → **service agreement e-signed** (separ
 ### 10.1 INSPECTION REPORT — STRUCTURE TO REPLICATE (from sample resale report)
 Use the sample's structure and logic; **write our own wording** (do not copy third-party text).
 
-**Every page:** header with ARAL logo; footer with `ARAL | {building}, Unit {unit}, {community}` and "Page X of Y".
+**Every page:** header with A R A L logo; footer with `A R A L | {building}, Unit {unit}, {community}` and "Page X of Y".
 
 | # | Section | Source | Fields / content |
 |---|---|---|---|
@@ -210,7 +210,7 @@ Before coding the final template, produce a **field-mapping table** (sample sect
 ## 11. PDF DOCUMENTS
 Quotation, inspection report (all types), invoice, receipt, credit note, statement of account, inspector commission statement.
 - A4, English only. Client names entered in Arabic must be transliterated/entered in English for PDFs (add an English-name field).
-- Header: ARAL logo, company name, branch address, TRN (if VAT-registered), DET licence no., DLD/RERA registration no.
+- Header: A R A L logo, company name, branch address, TRN (if VAT-registered), DET licence no., DLD/RERA registration no.
 - Footer: contact details, "Page X of Y".
 - T&Cs, addresses and disclaimers pulled from admin settings at generation time and frozen into the issued PDF.
 - Bank clients: optional white-label header (bank's logo) for the buyer handover programme.
@@ -231,7 +231,7 @@ Quotation, inspection report (all types), invoice, receipt, credit note, stateme
 - Specialist subcontractors (NDT, pool, waterproofing, drone): cost recorded per job.
 
 ## 14. EMAIL (Gmail)
-- Gmail SMTP with an app password (as in Dar Al Bunyan); sender name "ARAL Property Inspection Service"; Settings → send test email.
+- Gmail SMTP with an app password (as in Dar Al Bunyan); sender name "A R A L Property Inspection Services"; Settings → send test email.
 - Admin-editable English email templates with variables (`{{client_name}}`, `{{job_no}}`, `{{quote_link}}`, `{{pay_link}}`, `{{inspection_date}}`, `{{report_link}}`…): request acknowledgement, quotation, quote reminder, payment receipt, inspection confirmation, access-failed notice, report issued, invoice, payment reminder, re-inspection due, valuation-pack delivered to partner.
 - Attach relevant PDF; log every email; queue with retry; respect Gmail sending limits (personal Gmail ≈ 500/day — warn when near the limit).
 

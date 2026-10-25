@@ -1,7 +1,7 @@
 {
-  "name": "ARAL Property Inspection",
-  "short_name": "ARAL",
-  "description": "ARAL inspection app: jobs, on-site inspections with photos and videos, reports and invoices.",
+  "name": "A R A L Property Inspection",
+  "short_name": "A R A L",
+  "description": "A R A L inspection app: jobs, on-site inspections with photos and videos, reports and invoices.",
   "start_url": "/app/#inspect",
   "scope": "/",
   "display": "standalone",
