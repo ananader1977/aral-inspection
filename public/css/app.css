@@ -165,3 +165,12 @@ a.kpi{text-decoration:none;color:inherit;display:block}a.kpi:hover{border-color:
 .suggbtn.ai{border-style:solid;background:#FDFBF8}.suggbtn .conf{display:block;margin-top:4px;font-size:.75rem;color:var(--muted);font-weight:600}
 .aiwait{display:flex;align-items:center;gap:10px;color:var(--muted)}.spin{width:18px;height:18px;border:3px solid var(--line);border-top-color:var(--copper);border-radius:99px;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
 .small.bad{color:var(--bad)}
+
+/* phone app (Capacitor): room for the status bar and the home indicator; lock screen */
+html.native{--sat:max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px));--sab:max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px))}
+html.native .top{padding-top:var(--sat)}
+html.native body{padding-bottom:var(--sab)}
+html.native .top nav .who{display:none}
+.applock{position:fixed;inset:0;z-index:200;background:var(--navy);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center}
+.applock img{border-radius:16px;background:#fff;padding:6px}
+.applock h2{color:#fff;margin:0}

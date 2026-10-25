@@ -1,5 +1,6 @@
 // Inspection app for the phone (installable PWA). Offline-first: every change and every photo/video goes into a
 // queue in the phone's storage (IndexedDB) and is sent in order when there is signal. Nothing is lost if the app closes.
+import { hasCamera, takePhoto } from '/js/native.js';
 import { h, fill, toast, pill, t, fmtStamp, todayIso } from '/js/common.js';
 import { S, A, can, run, modal, closeModal, field, confirmBox, go } from '/js/app.js';
 
@@ -336,13 +337,15 @@ async function inspectJob(el, jobId) {
     };
     const photo = inp('image/*', 'environment', false, 'photo'), gal = inp('image/*', null, true, 'photo'), vid = inp('video/*', 'environment', false, 'video'), th = inp('image/*', null, false, 'thermal');
     const close = () => document.querySelectorAll('.capmenu').forEach((m) => m.classList.add('hide'));
+    // in the phone app the native camera is used (sharper, and keeps the app open); in the browser the file input
+    const shoot = async () => { if (!hasCamera()) return photo.click(); const f = await takePhoto(); if (f) await addFile(f, 'photo', target); };
     if (compact) return h('span', { class: 'capture compact' }, photo, gal, vid, th,
-      h('button', { type: 'button', onclick: () => { close(); photo.click(); } }, '📷 ', t('Camera')),
+      h('button', { type: 'button', onclick: () => { close(); shoot(); } }, '📷 ', t('Camera')),
       h('button', { type: 'button', onclick: () => { close(); gal.click(); } }, '🖼 ', t('Gallery')),
       h('button', { type: 'button', onclick: () => { close(); vid.click(); } }, '🎥 ', t('Video')),
       tree.report.thermal_used || J.needs_thermal ? h('button', { type: 'button', onclick: () => { close(); th.click(); } }, '🌡 ', t('Thermal')) : null);
     return h('div', { class: 'capture' }, photo, gal, vid, th,
-      h('button', { class: 'btn alt sm', type: 'button', onclick: () => photo.click() }, '📷 ', t('Photo')),
+      h('button', { class: 'btn alt sm', type: 'button', onclick: () => shoot() }, '📷 ', t('Photo')),
       h('button', { class: 'btn alt sm', type: 'button', onclick: () => gal.click() }, '🖼 ', t('Gallery')),
       h('button', { class: 'btn alt sm', type: 'button', onclick: () => vid.click() }, '🎥 ', t('Video')),
       tree.report.thermal_used || J.needs_thermal ? h('button', { class: 'btn alt sm', type: 'button', onclick: () => th.click() }, '🌡 ', t('Thermal')) : null);

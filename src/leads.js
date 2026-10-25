@@ -63,6 +63,7 @@ export function createLeads(ctx) {
       v.referral_code && `Referral code: ${v.referral_code}`, v.message && `Message: ${v.message}`,
     ].filter(Boolean);
     const office = s.email;
+    ctx.push.later(() => ctx.push.toPermission('leads.manage', { title: `New enquiry: ${v.name}`, body: svc || 'From the website', url: '/app/#leads', tag: 'lead' }));
     if (office && isEmail(office)) {
       await ctx.mailer.send({ to: office, subject: `New enquiry: ${v.name}${svc ? ' · ' + svc : ''}`, text: `A new enquiry came in from the website (${fmtStamp(ctx.now())}).\n\n${lines.join('\n')}\n\nCall or WhatsApp within 2 hours. Open the app: ${ctx.config.baseUrl}/app/#leads`, template: 'lead_office' });
     }

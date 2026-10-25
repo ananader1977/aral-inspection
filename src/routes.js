@@ -25,7 +25,7 @@ export function registerRoutes(app, ctx) {
   app.get('/api/health', (req, res) => res.json({ ok: true }));
   app.get('/api/config', (req, res) => {
     const s = ctx.settings();
-    res.json({ company: s.company_name, short: s.company_short, tagline: s.tagline, lang: s.ui_default_lang, payments: config.paymentProvider, email: !!config.smtp.host, storage: config.drive.refreshToken ? 'drive' : 'disk', ai: !!config.ai?.apiKey, ai_provider: config.ai?.apiKey ? ctx.ai.label() : '' });
+    res.json({ company: s.company_name, short: s.company_short, tagline: s.tagline, lang: s.ui_default_lang, payments: config.paymentProvider, email: !!config.smtp.host, storage: config.drive.refreshToken ? 'drive' : 'disk', ai: !!config.ai?.apiKey, ai_provider: config.ai?.apiKey ? ctx.ai.label() : '', push: ctx.push.enabled() });
   });
 
   app.post('/api/login', async (req, res) => {
@@ -36,7 +36,7 @@ export function registerRoutes(app, ctx) {
     // the language chosen on the sign-in page becomes the user's screen language
     if (['en', 'ar'].includes(lang) && lang !== u.ui_lang) { db.prepare('UPDATE users SET ui_lang=? WHERE id=?').run(lang, u.id); u.ui_lang = lang; }
     if (u.totp_secret) return res.json({ need_code: true, token: auth.pendingToken(u) });
-    auth.startSession(res, u);
+    auth.startSession(res, u, req);
     db.prepare('UPDATE users SET last_login_at=? WHERE id=?').run(ctx.now(), u.id);
     admin.audit(u, 'users', u.id, 'login', null, null, ip(req));
     res.json({ user: me({ id: u.id, email: u.email, name: u.name, role: u.role, ui_lang: u.ui_lang, has2fa: false, must_setup_2fa: auth.needs2fa(u) }) });
@@ -48,7 +48,7 @@ export function registerRoutes(app, ctx) {
     if (!uid) throw new HttpError(401, 'Your sign-in expired. Please enter your password again.');
     const u = db.prepare('SELECT * FROM users WHERE id=? AND active=1').get(uid);
     if (!u || !verifyTotp(u.totp_secret, code, ctx.now())) throw new HttpError(401, 'That code is not right. Check the time on your phone and try the newest code.');
-    auth.startSession(res, u);
+    auth.startSession(res, u, req);
     db.prepare('UPDATE users SET last_login_at=? WHERE id=?').run(ctx.now(), u.id);
     admin.audit(u, 'users', u.id, 'login', null, null, ip(req));
     res.json({ ok: true });
@@ -107,7 +107,7 @@ export function registerRoutes(app, ctx) {
     if (!verifyPassword(String(current || ''), u.password_hash)) throw new HttpError(400, 'Your current password is wrong.');
     validatePasswordStrength(password);
     db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hashPassword(password), u.id);
-    auth.startSession(res, db.prepare('SELECT * FROM users WHERE id=?').get(u.id));
+    auth.startSession(res, db.prepare('SELECT * FROM users WHERE id=?').get(u.id), req);
     admin.audit(req.user, 'users', u.id, 'change_password', null, null, ip(req));
     res.json({ ok: true });
   });

@@ -447,8 +447,9 @@ export function createJobs(ctx) {
     return pid;
   }
 
-  async function notifyOffice(subject, text) {
+  async function notifyOffice(subject, text, { url = '/app/#jobs', perm = 'jobs.manage' } = {}) {
     const s = S();
+    ctx.push.later(() => ctx.push.toPermission(perm, { title: subject, body: String(text || '').split('\n')[0], url, tag: 'office' }));
     if (s.email && isEmail(s.email)) await ctx.mailer.send({ to: s.email, subject: `[A R A L] ${subject}`, text, template: 'office' });
   }
 
@@ -517,6 +518,7 @@ export function createJobs(ctx) {
     if (j.client_email) await ctx.mailer.send({ to: j.client_email, jobId, template: 'inspection_confirmation', subject: `${resched ? 'New date for' : 'Confirmed:'} your inspection – ${when}`,
       text: `Dear ${j.client_name},\n\nYour inspection is ${resched ? 'now' : ''} booked for ${when} at ${where}. Inspector: ${j.inspector_name}.\n\nPlease make sure the AC and DEWA are connected and we can get access to the property.\n\n${s.company_name}`,
       html: layout(s, resched ? 'Your inspection has a new date' : 'Your inspection is booked', `<p>Dear ${j.client_name},</p>${rows([['When', when], ['Where', where], ['Inspector', j.inspector_name], ['Job', j.number]])}<p><b>Before we come:</b> please make sure the air conditioning and DEWA are connected and we can get access to the property.</p>`), attachments: [ics] });
+    ctx.push.later(() => ctx.push.toInspector(j.inspector_id, { title: `${resched ? 'Rescheduled' : 'New job'}: ${j.number}`, body: `${when} · ${where}`, url: `/app/#inspect/${j.id}`, tag: j.number }));
     const ins = db.prepare('SELECT email FROM inspectors WHERE id=?').get(j.inspector_id);
     if (ins?.email) await ctx.mailer.send({ to: ins.email, jobId, template: 'inspector_assignment', subject: `${resched ? 'Rescheduled' : 'New job'}: ${j.number} – ${when}`, text: plainRows([['Job', j.number], ['Service', j.service_name], ['When', when], ['Where', where], ['Client', j.client_name], ['Mobile', j.client_mobile], ['Access', j.access_notes]]) + `\n\nOpen the inspection app: ${ctx.config.baseUrl}/app/#inspect/${j.id}`, attachments: [ics] });
   }

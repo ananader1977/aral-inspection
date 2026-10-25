@@ -1,0 +1,26 @@
+{
+  "appId": "com.aralinspection.app",
+  "appName": "A R A L Inspection",
+  "webDir": "www",
+  "server": {
+    "url": "https://aral-inspection.onrender.com/app/",
+    "errorPath": "offline.html",
+    "androidScheme": "https"
+  },
+  "appendUserAgent": "ARALApp/1.0.0",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "contentInset": "never",
+    "limitsNavigationsToAppBoundDomains": true,
+    "backgroundColor": "#0A1F4A"
+  },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 1200, "launchAutoHide": true, "backgroundColor": "#FFFFFF", "showSpinner": false, "androidScaleType": "CENTER_INSIDE" },
+    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] },
+    "SystemBars": { "insetsHandling": "css", "style": "DARK" }
+  }
+}

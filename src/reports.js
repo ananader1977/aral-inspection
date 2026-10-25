@@ -405,7 +405,7 @@ export function createReports(ctx) {
       db.prepare("UPDATE reports SET status='submitted', submitted_at=?, time_out=COALESCE(NULLIF(time_out,''),?), updated_at=? WHERE id=?").run(ctx.now(), hhmm, ctx.now(), r.id);
       J().move(user, jobId, 'under_review', 'Report submitted for review');
     });
-    await J().notifyOffice(`Report ready for review: ${J().getJob(jobId).number}`, `${ctx.config.baseUrl}/app/#job/${jobId}`);
+    await J().notifyOffice(`Report ready for review: ${J().getJob(jobId).number}`, `${ctx.config.baseUrl}/app/#job/${jobId}`, { url: `/app/#job/${jobId}`, perm: 'reports.review' });
   }
   function returnReport(user, jobId, note) {
     const r = reportOfJob(jobId);
@@ -416,6 +416,7 @@ export function createReports(ctx) {
       J().move(user, jobId, 'report_draft', `Returned to inspector: ${clampStr(note, 300)}`);
     });
     const j = J().getJob(jobId);
+    ctx.push.later(() => ctx.push.toInspector(j.inspector_id, { title: `Report returned: ${j.number}`, body: clampStr(note, 200), url: `/app/#inspect/${jobId}`, tag: j.number }));
     const ins = db.prepare('SELECT email FROM inspectors WHERE id=?').get(j.inspector_id);
     if (ins?.email) ctx.mailer.send({ to: ins.email, jobId, template: 'report_returned', subject: `Report returned: ${j.number}`, text: `${note}\n\nOpen: ${ctx.config.baseUrl}/app/#inspect/${jobId}` });
   }

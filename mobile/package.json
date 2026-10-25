@@ -1,0 +1,32 @@
+{
+  "name": "aral-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ARAL Property Inspection staff app for Android and iPhone (Capacitor). It opens the live ARAL system and adds the phone camera, notifications and Face ID / fingerprint lock.",
+  "type": "module",
+  "scripts": {
+    "native": "node scripts/prepare.mjs",
+    "android": "node scripts/prepare.mjs android",
+    "ios": "node scripts/prepare.mjs ios",
+    "open:android": "cap open android",
+    "open:ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/browser": "^8.0.0",
+    "@capacitor/camera": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/haptics": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/push-notifications": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0",
+    "@capgo/capacitor-native-biometric": "^8.4.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.0.0"
+  },
+  "engines": { "node": ">=22" }
+}

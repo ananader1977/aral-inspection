@@ -1,3 +1,5 @@
+import { pushConfig } from './push.js';
+
 // Runtime configuration, read from environment variables (see .env.example).
 export function loadConfig(env = process.env) {
   const port = Number(env.PORT) || 3000;
@@ -24,6 +26,8 @@ export function loadConfig(env = process.env) {
     ai: aiConfig(env),
     // Nightly database backup (Google Drive when set up). BACKUP_KEY encrypts the copies; keep it safe, it is needed to restore.
     backup: { key: env.BACKUP_KEY || '', keep: Number(env.BACKUP_KEEP) || 30 },
+    // Phone notifications for the mobile app (Android: FCM_SERVICE_ACCOUNT, iPhone: APNS_*). Optional.
+    push: pushConfig(env),
     stripe: { secretKey: env.STRIPE_SECRET_KEY || '', webhookSecret: env.STRIPE_WEBHOOK_SECRET || '' },
     smtp: {
       host: (env.SMTP_HOST || '').trim(),

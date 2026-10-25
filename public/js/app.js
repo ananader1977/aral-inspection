@@ -7,6 +7,7 @@ import { calendarView } from '/js/calendar.js';
 import { inspectView } from '/js/inspect.js';
 import { reviewsView } from '/js/reviews.js';
 import { financeView } from '/js/finance.js';
+import { isApp, startNative, forgetDevice, lockAvailable, lockOn, setLock, sendTestPush } from '/js/native.js';
 
 const app = $('#app'), dlg = $('#dlg'), nav = $('#nav');
 export const S = { me: null, cfg: null, lk: null };
@@ -46,6 +47,7 @@ async function boot() {
   S.lk = await A('GET', '/lookups').catch(() => ({}));
   drawNav();
   route();
+  startNative(S.me, S.cfg);
 }
 
 function langButtons(after) {
@@ -61,7 +63,7 @@ function drawNav() {
   nav.replaceChildren(
     h('span', { class: 'who' }, `${S.me.name} · ${t(S.me.role_label)}`),
     h('a', { class: 'btn alt sm', href: '#account' }, t('My account')),
-    h('button', { class: 'btn alt sm', onclick: async () => { await api('POST', '/api/logout', {}); location.hash = ''; location.reload(); } }, t('Sign out')));
+    h('button', { class: 'btn alt sm', onclick: async () => { await forgetDevice(); await api('POST', '/api/logout', {}); location.hash = ''; location.reload(); } }, t('Sign out')));
 }
 
 function loginView() {
@@ -197,12 +199,23 @@ async function accountView(el) {
       me.has2fa ? null : h('button', { class: 'btn cu', onclick: () => twoFactorSetup(false) }, t('Set up')),
       me.has2fa && !me.needs2fa ? h('button', { class: 'btn danger', onclick: () => disable2fa() }, t('Turn off')) : null,
       me.has2fa && me.needs2fa ? h('span', { class: 'small muted' }, t('Required for your role. Ask the Super Admin to reset it if you change phone.')) : null));
+  const phone = isApp ? h('div', { class: 'card' }, h('h2', {}, t('This phone')), h('p', { class: 'muted' }, t('Loading…'))) : null;
+  if (phone) (async () => {
+    const lockOk = await lockAvailable();
+    const dev = await A('GET', '/devices').catch(() => ({ rows: [], push: {} }));
+    const lockBox = h('input', { type: 'checkbox', checked: lockOn(), onchange: () => { setLock(lockBox.checked); toast(t(lockBox.checked ? 'The app will ask for Face ID / fingerprint.' : 'The app lock is off.')); } });
+    phone.replaceChildren(h('h2', {}, t('This phone')),
+      lockOk ? h('label', { class: 'check' }, lockBox, ' ', t('Lock the app with Face ID / fingerprint (after 5 minutes away)')) : h('p', { class: 'small muted' }, t('Set a screen lock (Face ID, fingerprint or PIN) on this phone to lock the app.')),
+      h('h3', {}, t('Notifications')),
+      dev.rows.length ? h('p', {}, pill(t('On'), 'ok'), ' ', t('New jobs, returned reports and office alerts arrive on this phone.')) : h('p', { class: 'small muted' }, t(Object.values(dev.push || {}).some(Boolean) ? 'Allow notifications for A R A L in the phone settings, then open the app again.' : 'Notifications are not set up on the server yet.')),
+      dev.rows.length ? h('p', {}, h('button', { class: 'btn alt sm', onclick: () => run(sendTestPush, 'Test sent') }, t('Send a test notification'))) : null);
+  })();
   fill(el, h('h1', {}, t('My account')),
     h('div', { class: 'grid2' },
       h('div', { class: 'card' }, h('dl', { class: 'kv' }, h('dt', {}, t('Name')), h('dd', {}, me.name), h('dt', {}, t('Email')), h('dd', { class: 'ltr' }, me.email), h('dt', {}, t('Role')), h('dd', {}, t(me.role_label))),
         h('h3', {}, t('Language')), h('div', { class: 'actions' }, langButtons(() => { drawNav(); route(); }))),
       h('div', { class: 'card' }, pw)),
-    twofa);
+    phone, twofa);
   function disable2fa() {
     const f = h('form', { onsubmit: async (e) => { e.preventDefault(); if (await run(() => api('POST', '/api/me/2fa/disable', { code: f.code.value }), 'Two-step sign-in is off')) { closeModal(); boot(); } } },
       h('h2', {}, t('Turn off two-step sign-in')), field('6-digit code', h('input', { name: 'code', class: 'code-in', inputmode: 'numeric', required: true })),

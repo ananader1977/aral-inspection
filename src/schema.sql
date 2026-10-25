@@ -642,3 +642,15 @@ CREATE TABLE IF NOT EXISTS leads (
   notes TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS ix_leads_status ON leads(status, created_at);
+
+CREATE TABLE IF NOT EXISTS devices (               -- phones with the ARAL mobile app, for notifications
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL CHECK (platform IN ('android','ios')),
+  token TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL DEFAULT '',
+  app_version TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  last_seen_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_devices_user ON devices(user_id);

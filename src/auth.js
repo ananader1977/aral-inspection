@@ -4,6 +4,9 @@ import { ROLES_2FA, STAFF_ROLES } from './roles.js';
 
 const SESSION_COOKIE = 'aral_session';
 const SESSION_TTL_MS = 12 * 3600 * 1000;
+// The ARAL phone app (user agent "ARALApp/…") stays signed in for a week; the app locks itself with Face ID / fingerprint.
+const APP_SESSION_TTL_MS = 7 * 24 * 3600 * 1000;
+export const isMobileApp = (req) => /\bARALApp\//.test(req?.headers?.['user-agent'] || '');
 const PENDING_TTL_MS = 5 * 60 * 1000; // password accepted, waiting for the 2FA code
 
 export function hashPassword(password) {
@@ -95,9 +98,10 @@ export function createAuth(ctx) {
   const secret = () => ctx.db.prepare("SELECT value FROM settings WHERE key='_secret'").get().value;
   const needs2fa = (u) => ctx.config.require2fa && ROLES_2FA.includes(u.role);
 
-  function startSession(res, user) {
+  function startSession(res, user, req) {
     // pv = password version: changing the password signs out other devices
-    res.setCookie(SESSION_COOKIE, sign(secret(), { uid: user.id, pv: user.password_hash.slice(-12), exp: ctx.now() + SESSION_TTL_MS }), { maxAge: SESSION_TTL_MS / 1000, secure: ctx.config.secureCookies });
+    const ttl = isMobileApp(req) && user.role !== 'super_admin' ? APP_SESSION_TTL_MS : SESSION_TTL_MS;
+    res.setCookie(SESSION_COOKIE, sign(secret(), { uid: user.id, pv: user.password_hash.slice(-12), exp: ctx.now() + ttl }), { maxAge: ttl / 1000, secure: ctx.config.secureCookies });
   }
   function endSession(res) {
     res.setCookie(SESSION_COOKIE, '', { maxAge: 0, secure: ctx.config.secureCookies });
@@ -106,8 +110,24 @@ export function createAuth(ctx) {
   const pendingToken = (user) => sign(secret(), { uid: user.id, stage: '2fa', exp: ctx.now() + PENDING_TTL_MS });
   const readPending = (token) => { const d = unsign(secret(), token, ctx.now()); return d?.stage === '2fa' ? d.uid : null; };
 
+  /**
+   * A link for one download that works for 5 minutes without the session cookie. The phone app opens PDFs and Excel
+   * files in the phone's own viewer, which does not share the app's sign-in. Only for GET, only for that one path.
+   */
+  function downloadLink(user, target) {
+    const u = new URL(String(target || ''), 'http://x');
+    if (!u.pathname.startsWith('/api/app/')) throw new HttpError(400, 'Not a download.');
+    const full = ctx.db.prepare('SELECT password_hash FROM users WHERE id=?').get(user.id);
+    u.searchParams.set('dl', sign(secret(), { uid: user.id, pv: full.password_hash.slice(-12), p: u.pathname, dl: 1, exp: ctx.now() + 5 * 60 * 1000 }));
+    return `${ctx.config.baseUrl}${u.pathname}${u.search}`;
+  }
   function currentUser(req) {
-    const s = unsign(secret(), req.cookies[SESSION_COOKIE], ctx.now());
+    let s = unsign(secret(), req.cookies[SESSION_COOKIE], ctx.now());
+    if (s?.dl) s = null; // a download link is never a session
+    if (!s && req.query?.dl && (req.method === 'GET' || req.method === 'HEAD')) {
+      const d = unsign(secret(), req.query.dl, ctx.now());
+      if (d?.dl && d.p === req.path) s = d;
+    }
     if (!s || !s.uid) return null;
     const u = ctx.db.prepare('SELECT id,email,name,role,ui_lang,totp_secret,password_hash,inspector_id,client_id FROM users WHERE id=? AND active=1').get(s.uid);
     if (!u || u.password_hash.slice(-12) !== s.pv) return null;
@@ -127,7 +147,7 @@ export function createAuth(ctx) {
     if (user.must_setup_2fa && !req.path.startsWith('/api/me')) throw new HttpError(403, 'Set up two-step sign-in first.', { setup_2fa: true });
     req.user = user;
   }
-  return { startSession, endSession, currentUser, requireUser, pendingToken, readPending, needs2fa };
+  return { startSession, endSession, currentUser, requireUser, pendingToken, readPending, needs2fa, downloadLink };
 }
 
 /** Creates the Super Admin on first start. A SUPERADMIN_PASSWORD set in the environment resets the password on every start. */

@@ -17,6 +17,7 @@ import { createDocs } from './docs.js';
 import { createPayments } from './payments.js';
 import { createAi } from './ai.js';
 import { createBackup } from './backup.js';
+import { createPush } from './push.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,6 +32,7 @@ export function createContext({ config, now = () => Date.now() }) {
   ctx.auth = createAuth(ctx);
   ctx.pricing = createPricing(ctx);
   ctx.leads = createLeads(ctx);
+  ctx.push = createPush(ctx);
   ctx.storage = createStorage(ctx);
   ctx.jobs = createJobs(ctx);
   ctx.reports = createReports(ctx);

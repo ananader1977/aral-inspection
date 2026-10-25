@@ -379,6 +379,16 @@ export function registerOpsRoutes(app, ctx) {
     res.json({ ok: true });
   });
 
+  // ---------- phones with the mobile app (notifications) ----------
+  app.get('/api/app/devices', U, (req, res) => res.json({ rows: ctx.push.listFor(req.user.id), push: ctx.push.enabled() }));
+  app.post('/api/app/devices', U, async (req, res) => res.json(ctx.push.register(req.user, await req.json())));
+  app.delete('/api/app/devices', U, async (req, res) => res.json(ctx.push.unregister(req.user, (await req.json()).token)));
+  app.post('/api/app/download-link', U, async (req, res) => res.json({ url: ctx.auth.downloadLink(req.user, (await req.json()).path) }));
+  app.post('/api/app/devices/test', U, async (req, res) => {
+    ctx.limit(req, 'push-test', 5, 10 * 60 * 1000);
+    res.json(await ctx.push.toUsers([req.user.id], { title: 'A R A L', body: 'Notifications are working on this phone.', url: '/app/#dashboard' }));
+  });
+
   // ---------- database backups (Super Admin) ----------
   app.get('/api/app/backups', U, P('settings.edit'), (req, res) => res.json({ rows: ctx.backup.list(), ...ctx.backup.status() }));
   app.post('/api/app/backups', U, P('settings.edit'), async (req, res) => res.json(await ctx.backup.run(req.user, 'manual')));
