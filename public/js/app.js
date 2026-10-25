@@ -7,7 +7,7 @@ import { calendarView } from '/js/calendar.js';
 import { inspectView } from '/js/inspect.js';
 import { reviewsView } from '/js/reviews.js';
 import { financeView } from '/js/finance.js';
-import { isApp, startNative, forgetDevice, lockAvailable, lockOn, setLock, sendTestPush } from '/js/native.js';
+import { isApp, startNative, forgetDevice, lockAvailable, lockOn, setLock, sendTestPush, canRemember, rememberOn, rememberLogin, forgetLogin, savedLogin, markFreshLogin } from '/js/native.js';
 
 const app = $('#app'), dlg = $('#dlg'), nav = $('#nav');
 export const S = { me: null, cfg: null, lk: null };
@@ -63,27 +63,43 @@ function drawNav() {
   nav.replaceChildren(
     h('span', { class: 'who' }, `${S.me.name} · ${t(S.me.role_label)}`),
     h('a', { class: 'btn alt sm', href: '#account' }, t('My account')),
-    h('button', { class: 'btn alt sm', onclick: async () => { await forgetDevice(); await api('POST', '/api/logout', {}); location.hash = ''; location.reload(); } }, t('Sign out')));
+    h('button', { class: 'btn alt sm', onclick: async () => { await forgetDevice(); await api('POST', '/api/logout', {}); try { sessionStorage.setItem('aral.signedOut', '1'); } catch { /* ignore */ } location.hash = ''; location.reload(); } }, t('Sign out')));
 }
+
+const localStorageHas = (k) => { try { return localStorage.getItem(k) !== null; } catch { return false; } };
 
 function loginView() {
   nav.replaceChildren();
   $('#brand-sub').textContent = t('Property Inspection Services');
   const err = h('div', { class: 'alert bad hide', role: 'alert' });
   const showErr = (m) => { err.textContent = m; err.classList.remove('hide'); };
-  const pwForm = h('form', { onsubmit: async (e) => {
-    e.preventDefault();
-    const v = Object.fromEntries(new FormData(pwForm));
+  // phone app: "Remember me" keeps the email and password in the phone's secure storage (Keychain / Keystore)
+  const remember = isApp && canRemember();
+  const rememberBox = remember ? h('input', { type: 'checkbox', name: 'remember', checked: rememberOn() || !localStorageHas('aral.remember') }) : null;
+  async function signIn(v, fromSaved) {
     try {
-      const r = await api('POST', '/api/login', { ...v, lang: getLang() });
+      const r = await api('POST', '/api/login', { email: v.email, password: v.password, lang: getLang() });
+      if (remember) { if (fromSaved || rememberBox.checked) await rememberLogin(v.email, v.password); else await forgetLogin(); }
+      markFreshLogin();
       if (r.need_code) return codeStep(r.token);
       boot();
-    } catch (x) { showErr(x.message); }
-  } },
+    } catch (x) {
+      if (fromSaved && x.status === 401) { await forgetLogin(); showErr(t('Your saved password no longer works. Sign in with your password.')); if (savedBtn) savedBtn.remove(); }
+      else showErr(x.message);
+    }
+  }
+  const pwForm = h('form', { onsubmit: (e) => { e.preventDefault(); signIn(Object.fromEntries(new FormData(pwForm)), false); } },
   field('Email', h('input', { name: 'email', type: 'email', autocomplete: 'username', required: true, class: 'ltr' })),
-  field('Password', h('input', { name: 'password', type: 'password', autocomplete: 'current-password', required: true })), err,
+  field('Password', h('input', { name: 'password', type: 'password', autocomplete: 'current-password', required: true })),
+  remember ? h('label', { class: 'check' }, rememberBox, ' ', t('Remember me on this phone')) : null, err,
   h('p', {}, h('button', { class: 'btn block cu' }, t('Sign in'))));
-  const card = h('div', { class: 'card' }, h('img', { class: 'logo', src: '/logo.jpg', alt: 'A R A L Property Inspection Services', width: 260, height: 150 }), h('h1', { class: 'center' }, t('Sign in')), pwForm, h('div', { class: 'lang' }, langButtons(loginView)));
+  const useSaved = async () => { const c = await savedLogin(); if (c) { pwForm.email.value = c.email; signIn(c, true); } };
+  const savedBtn = remember && rememberOn() ? h('p', {}, h('button', { class: 'btn block', type: 'button', onclick: useSaved }, '🔓 ', t('Sign in with Face ID / fingerprint'))) : null;
+  const card = h('div', { class: 'card' }, h('img', { class: 'logo', src: '/logo.jpg', alt: 'A R A L Property Inspection Services', width: 260, height: 150 }), h('h1', { class: 'center' }, t('Sign in')), savedBtn, pwForm, h('div', { class: 'lang' }, langButtons(loginView)));
+  // opening the app asks for Face ID straight away; after pressing "Sign out" it waits for the button
+  let signedOut = false;
+  try { signedOut = sessionStorage.getItem('aral.signedOut') === '1'; sessionStorage.removeItem('aral.signedOut'); } catch { /* ignore */ }
+  if (savedBtn && !signedOut) setTimeout(useSaved, 300);
   fill(app, h('div', { class: 'login' }, card));
 
   function codeStep(token) {
@@ -187,7 +203,7 @@ async function accountView(el) {
     e.preventDefault();
     const v = Object.fromEntries(new FormData(pw));
     if (v.password !== v.again) return toast(t('The two new passwords are different.'));
-    if (await run(() => api('POST', '/api/me/password', { current: v.current, password: v.password }), 'Password changed')) pw.reset();
+    if (await run(() => api('POST', '/api/me/password', { current: v.current, password: v.password }), 'Password changed')) { if (isApp && rememberOn()) await rememberLogin(me.email, v.password); pw.reset(); }
   } }, h('h2', {}, t('Change your password')),
   field('Current password', h('input', { name: 'current', type: 'password', required: true, autocomplete: 'current-password' })),
   field('New password', h('input', { name: 'password', type: 'password', required: true, minlength: 10, autocomplete: 'new-password' }), 'At least 10 characters, with letters and numbers.'),
@@ -206,6 +222,8 @@ async function accountView(el) {
     const lockBox = h('input', { type: 'checkbox', checked: lockOn(), onchange: () => { setLock(lockBox.checked); toast(t(lockBox.checked ? 'The app will ask for Face ID / fingerprint.' : 'The app lock is off.')); } });
     phone.replaceChildren(h('h2', {}, t('This phone')),
       lockOk ? h('label', { class: 'check' }, lockBox, ' ', t('Lock the app with Face ID / fingerprint (after 5 minutes away)')) : h('p', { class: 'small muted' }, t('Set a screen lock (Face ID, fingerprint or PIN) on this phone to lock the app.')),
+      rememberOn() ? h('p', { class: 'actions' }, h('span', { class: 'small muted' }, t('Your password is saved on this phone (Remember me).')),
+        h('button', { class: 'btn alt sm', onclick: async (e) => { await forgetLogin(); e.target.closest('p').remove(); toast(t('The saved password was removed from this phone.')); } }, t('Forget saved password'))) : null,
       h('h3', {}, t('Notifications')),
       dev.rows.length ? h('p', {}, pill(t('On'), 'ok'), ' ', t('New jobs, returned reports and office alerts arrive on this phone.')) : h('p', { class: 'small muted' }, t(Object.values(dev.push || {}).some(Boolean) ? 'Allow notifications for A R A L in the phone settings, then open the app again.' : 'Notifications are not set up on the server yet.')),
       dev.rows.length ? h('p', {}, h('button', { class: 'btn alt sm', onclick: () => run(sendTestPush, 'Test sent') }, t('Send a test notification'))) : null);

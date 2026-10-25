@@ -83,10 +83,12 @@ export const lockAvailable = async () => {
 };
 export const lockOn = () => store.get(LOCK_KEY) !== 'off';
 export const setLock = (v) => store.set(LOCK_KEY, v ? 'on' : 'off');
-let hiddenAt = 0, locked = false;
+let hiddenAt = 0, locked = false, freshLogin = false;
+/** The user has just signed in (password or Face ID): no lock screen straight after. */
+export const markFreshLogin = () => { freshLogin = true; };
 async function lockSetup() {
   if (!(await lockAvailable())) return;
-  if (lockOn()) showLock();
+  if (lockOn() && !freshLogin) showLock();
   if (has('App')) on('App', 'appStateChange', ({ isActive }) => {
     if (!isActive) hiddenAt = Date.now();
     else if (lockOn() && hiddenAt && Date.now() - hiddenAt > AFTER_MS) showLock();
@@ -106,6 +108,31 @@ async function showLock() {
     h('button', { class: 'btn cu', type: 'button', onclick: go }, t('Unlock')));
   document.body.append(overlay);
   go();
+}
+
+// ---------- remember me ----------
+// The email and password are kept in the phone's secure storage (iPhone Keychain / Android Keystore), never in the
+// web page storage. Signing in again takes Face ID / fingerprint when the phone has it.
+const REMEMBER_KEY = 'aral.remember';
+const credServer = () => location.host;
+export const canRemember = () => has('NativeBiometric');
+export const rememberOn = () => store.get(REMEMBER_KEY) === 'on';
+export async function rememberLogin(username, password) {
+  if (!canRemember()) return;
+  try { await call('NativeBiometric', 'setCredentials', { username, password, server: credServer() }); store.set(REMEMBER_KEY, 'on'); } catch (e) { console.warn('remember', e); }
+}
+export async function forgetLogin() {
+  store.set(REMEMBER_KEY, 'off');
+  if (canRemember()) await call('NativeBiometric', 'deleteCredentials', { server: credServer() }).catch(() => {});
+}
+/** Asks for Face ID / fingerprint (when the phone has it) and gives back the saved email and password, or null. */
+export async function savedLogin() {
+  if (!canRemember() || !rememberOn()) return null;
+  try {
+    if (await lockAvailable()) await call('NativeBiometric', 'verifyIdentity', { reason: t('Sign in to A R A L'), title: 'A R A L', subtitle: t('Sign in to A R A L'), useFallback: true, maxAttempts: 3 });
+    const c = await call('NativeBiometric', 'getCredentials', { server: credServer() });
+    return c?.username && c?.password ? { email: c.username, password: c.password } : null;
+  } catch { return null; }
 }
 
 // ---------- notifications ----------

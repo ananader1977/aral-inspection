@@ -1147,5 +1147,12 @@
 "Test sent": "تم إرسال الإشعار التجريبي",
 "Not a download.": "هذا ليس ملفًا للتنزيل.",
 "Missing device token.": "رمز الجهاز مفقود.",
-"Unknown phone type.": "نوع الهاتف غير معروف."
+"Unknown phone type.": "نوع الهاتف غير معروف.",
+"Remember me on this phone": "تذكرني على هذا الهاتف",
+"Sign in with Face ID / fingerprint": "تسجيل الدخول ببصمة الوجه / الإصبع",
+"Sign in to A R A L": "تسجيل الدخول إلى A R A L",
+"Your saved password no longer works. Sign in with your password.": "كلمة المرور المحفوظة لم تعد صالحة. سجّل الدخول بكلمة المرور.",
+"Your password is saved on this phone (Remember me).": "كلمة المرور محفوظة على هذا الهاتف (تذكرني).",
+"The saved password was removed from this phone.": "تم حذف كلمة المرور المحفوظة من هذا الهاتف.",
+"Forget saved password": "حذف كلمة المرور المحفوظة"
 }
