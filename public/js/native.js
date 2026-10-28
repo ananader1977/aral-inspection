@@ -18,6 +18,7 @@ export const hasCamera = () => has('Camera');
 
 /** Opens the phone camera. Returns a File (JPEG), or null when the inspector cancels. */
 export async function takePhoto() {
+  nativeUi = true;
   try {
     const p = await call('Camera', 'getPhoto', { source: 'CAMERA', resultType: 'base64', quality: 85, width: 2560, height: 2560, correctOrientation: true, saveToGallery: false, allowEditing: false });
     const bin = atob(p.base64String);
@@ -30,7 +31,7 @@ export async function takePhoto() {
     if (/denied|permission/i.test(e?.message || '')) toast(t('Allow the camera for A R A L in the phone settings.'), 6000);
     else toast(e?.message || t('The camera could not be opened.'), 6000);
     return null;
-  }
+  } finally { nativeUi = false; resumedAt = performance.now(); }
 }
 
 // ---------- start-up ----------
@@ -83,6 +84,46 @@ export const lockAvailable = async () => {
 };
 export const lockOn = () => store.get(LOCK_KEY) !== 'off';
 export const setLock = (v) => store.set(LOCK_KEY, v ? 'on' : 'off');
+
+// One fingerprint / Face ID request at a time, and only once the app is really on screen. Asking while the app is
+// still opening (splash screen) or coming back from the background makes Android cancel the request ("cancelled by
+// the system"), which looked like the fingerprint not working.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let resumedAt = performance.now(), pending = null, nativeUi = false;
+const codeOf = (e) => String(e?.code ?? (/\b(\d{1,2})\b/.exec(e?.message || '') || [])[1] ?? '');
+const BIO_MSG = {
+  2: 'Fingerprint / Face ID is locked after too many tries. Unlock the phone with its PIN, then try again.',
+  4: 'Too many tries. Wait 30 seconds, or use the phone PIN.',
+  3: 'No fingerprint or face is set up on this phone.',
+  14: 'Set a screen lock (PIN) on this phone first.',
+  10: 'Not recognised. Try again.',
+};
+/** Shows the fingerprint / Face ID prompt. Resolves { ok } or { ok: false, code, message } (message empty when the user cancelled). */
+export function biometric(reason) {
+  if (pending) return pending;
+  pending = (async () => {
+    // wait until the app is visible and has settled (splash screen 1.2 s, resume animation)
+    for (let i = 0; i < 40 && document.visibilityState !== 'visible'; i++) await sleep(100);
+    const wait = Math.max(1500 - performance.now(), 600 - (performance.now() - resumedAt), 0);
+    if (wait) await sleep(wait);
+    nativeUi = true;
+    try {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          await call('NativeBiometric', 'verifyIdentity', { reason, title: 'A R A L', subtitle: reason, useFallback: true, maxAttempts: 5 });
+          return { ok: true };
+        } catch (e) {
+          const code = codeOf(e);
+          // cancelled by the system / app or an unknown failure: try once more after a moment
+          if (attempt === 0 && ['0', '11', '15', ''].includes(code)) { await sleep(700); continue; }
+          return { ok: false, code, message: code === '16' || code === '17' ? '' : t(BIO_MSG[code] || 'Fingerprint / Face ID did not work. Try again or use your password.') };
+        }
+      }
+    } finally { nativeUi = false; resumedAt = performance.now(); pending = null; }
+  })();
+  return pending;
+}
+
 let hiddenAt = 0, locked = false, freshLogin = false;
 /** The user has just signed in (password or Face ID): no lock screen straight after. */
 export const markFreshLogin = () => { freshLogin = true; };
@@ -90,22 +131,35 @@ async function lockSetup() {
   if (!(await lockAvailable())) return;
   if (lockOn() && !freshLogin) showLock();
   if (has('App')) on('App', 'appStateChange', ({ isActive }) => {
-    if (!isActive) hiddenAt = Date.now();
-    else if (lockOn() && hiddenAt && Date.now() - hiddenAt > AFTER_MS) showLock();
+    if (!isActive) { if (!nativeUi) hiddenAt = Date.now(); return; }
+    resumedAt = performance.now();
+    const away = hiddenAt ? Date.now() - hiddenAt : 0;
+    hiddenAt = 0;
+    if (lockOn() && away > AFTER_MS) showLock();
   });
 }
 async function showLock() {
   if (locked) return;
   locked = true;
+  const msg = h('p', { class: 'small', role: 'status' });
+  const btn = h('button', { class: 'btn cu', type: 'button', onclick: () => go() }, t('Unlock'));
   const go = async () => {
-    try {
-      await call('NativeBiometric', 'verifyIdentity', { reason: t('Unlock the A R A L app'), title: 'A R A L', subtitle: t('Unlock the A R A L app'), useFallback: true, maxAttempts: 3 });
-      overlay.remove(); locked = false;
-    } catch { /* stays locked; the button tries again */ }
+    btn.disabled = true; msg.textContent = '';
+    const r = await biometric(t('Unlock the A R A L app'));
+    btn.disabled = false;
+    if (r.ok) { overlay.remove(); locked = false; return; }
+    msg.textContent = r.message;
+    if (r.code === '3' || r.code === '14') { setLock(false); overlay.remove(); locked = false; }
   };
+  // never stuck: sign in with the password instead
+  const usePassword = h('button', { class: 'btn alt sm', type: 'button', onclick: async () => {
+    try { await api('POST', '/api/logout', {}); } catch { /* offline: the sign-in screen still shows */ }
+    try { sessionStorage.setItem('aral.signedOut', '1'); } catch { /* ignore */ }
+    location.reload();
+  } }, t('Use my password instead'));
   const overlay = h('div', { class: 'applock', role: 'dialog', 'aria-modal': 'true' },
     h('img', { src: '/mark.png', alt: '', width: 72, height: 72 }), h('h2', {}, 'A R A L'), h('p', {}, t('The app is locked.')),
-    h('button', { class: 'btn cu', type: 'button', onclick: go }, t('Unlock')));
+    btn, msg, usePassword);
   document.body.append(overlay);
   go();
 }
@@ -125,11 +179,14 @@ export async function forgetLogin() {
   store.set(REMEMBER_KEY, 'off');
   if (canRemember()) await call('NativeBiometric', 'deleteCredentials', { server: credServer() }).catch(() => {});
 }
-/** Asks for Face ID / fingerprint (when the phone has it) and gives back the saved email and password, or null. */
+/** Asks for Face ID / fingerprint (when the phone has it) and gives back the saved email and password, { error } or null. */
 export async function savedLogin() {
   if (!canRemember() || !rememberOn()) return null;
+  if (await lockAvailable()) {
+    const r = await biometric(t('Sign in to A R A L'));
+    if (!r.ok) return { error: r.message };
+  }
   try {
-    if (await lockAvailable()) await call('NativeBiometric', 'verifyIdentity', { reason: t('Sign in to A R A L'), title: 'A R A L', subtitle: t('Sign in to A R A L'), useFallback: true, maxAttempts: 3 });
     const c = await call('NativeBiometric', 'getCredentials', { server: credServer() });
     return c?.username && c?.password ? { email: c.username, password: c.password } : null;
   } catch { return null; }

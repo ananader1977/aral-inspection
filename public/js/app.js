@@ -93,7 +93,7 @@ function loginView() {
   field('Password', h('input', { name: 'password', type: 'password', autocomplete: 'current-password', required: true })),
   remember ? h('label', { class: 'check' }, rememberBox, ' ', t('Remember me on this phone')) : null, err,
   h('p', {}, h('button', { class: 'btn block cu' }, t('Sign in'))));
-  const useSaved = async () => { const c = await savedLogin(); if (c) { pwForm.email.value = c.email; signIn(c, true); } };
+  const useSaved = async () => { const c = await savedLogin(); if (c?.error) showErr(c.error); else if (c) { err.classList.add('hide'); pwForm.email.value = c.email; signIn(c, true); } };
   const savedBtn = remember && rememberOn() ? h('p', {}, h('button', { class: 'btn block', type: 'button', onclick: useSaved }, '🔓 ', t('Sign in with Face ID / fingerprint'))) : null;
   const card = h('div', { class: 'card' }, h('img', { class: 'logo', src: '/logo.jpg', alt: 'A R A L Property Inspection Services', width: 260, height: 150 }), h('h1', { class: 'center' }, t('Sign in')), savedBtn, pwForm, h('div', { class: 'lang' }, langButtons(loginView)));
   // opening the app asks for Face ID straight away; after pressing "Sign out" it waits for the button

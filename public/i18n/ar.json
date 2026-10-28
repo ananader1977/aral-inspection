@@ -1154,5 +1154,12 @@
 "Your saved password no longer works. Sign in with your password.": "كلمة المرور المحفوظة لم تعد صالحة. سجّل الدخول بكلمة المرور.",
 "Your password is saved on this phone (Remember me).": "كلمة المرور محفوظة على هذا الهاتف (تذكرني).",
 "The saved password was removed from this phone.": "تم حذف كلمة المرور المحفوظة من هذا الهاتف.",
-"Forget saved password": "حذف كلمة المرور المحفوظة"
+"Forget saved password": "حذف كلمة المرور المحفوظة",
+"Fingerprint / Face ID is locked after too many tries. Unlock the phone with its PIN, then try again.": "تم قفل البصمة / بصمة الوجه بعد محاولات كثيرة. افتح قفل الهاتف برمز PIN ثم حاول مرة أخرى.",
+"Too many tries. Wait 30 seconds, or use the phone PIN.": "محاولات كثيرة. انتظر 30 ثانية أو استخدم رمز PIN للهاتف.",
+"No fingerprint or face is set up on this phone.": "لا توجد بصمة إصبع أو وجه مسجّلة على هذا الهاتف.",
+"Set a screen lock (PIN) on this phone first.": "اضبط قفل الشاشة (PIN) على هذا الهاتف أولاً.",
+"Not recognised. Try again.": "لم يتم التعرّف. حاول مرة أخرى.",
+"Fingerprint / Face ID did not work. Try again or use your password.": "لم تعمل البصمة / بصمة الوجه. حاول مرة أخرى أو استخدم كلمة المرور.",
+"Use my password instead": "استخدام كلمة المرور بدلاً من ذلك"
 }
