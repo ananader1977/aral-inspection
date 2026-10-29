@@ -1161,5 +1161,20 @@
 "Set a screen lock (PIN) on this phone first.": "اضبط قفل الشاشة (PIN) على هذا الهاتف أولاً.",
 "Not recognised. Try again.": "لم يتم التعرّف. حاول مرة أخرى.",
 "Fingerprint / Face ID did not work. Try again or use your password.": "لم تعمل البصمة / بصمة الوجه. حاول مرة أخرى أو استخدم كلمة المرور.",
-"Use my password instead": "استخدام كلمة المرور بدلاً من ذلك"
+"Use my password instead": "استخدام كلمة المرور بدلاً من ذلك",
+"converted (create job order)": "تم التحويل (إنشاء أمر عمل)",
+"Job order created": "تم إنشاء أمر العمل",
+"Convert to a job order?": "تحويل إلى أمر عمل؟",
+"A job order is created with this client, property, service, preferred date and notes. The lead is then closed and cannot go back.": "سيتم إنشاء أمر عمل بهذا العميل والعقار والخدمة والتاريخ المفضل والملاحظات. بعد ذلك يُغلق العميل المحتمل ولا يمكن إرجاعه.",
+"Create job order": "إنشاء أمر عمل",
+"Close this lead as lost?": "إغلاق هذا العميل المحتمل كخسارة؟",
+"A lost lead is closed and its status cannot change again.": "العميل المحتمل الخاسر يُغلق ولا يمكن تغيير حالته مرة أخرى.",
+"Close as lost": "إغلاق كخسارة",
+"Converted to a job order.": "تم التحويل إلى أمر عمل.",
+"Open the job": "فتح المهمة",
+"Closed: the status cannot change.": "مغلق: لا يمكن تغيير الحالة.",
+"A lead only moves forward. Converted and lost are final.": "تتقدم حالة العميل المحتمل إلى الأمام فقط. حالتا «تم التحويل» و«خسارة» نهائيتان.",
+"Convert to job order": "تحويل إلى أمر عمل",
+"High Price": "سعر مرتفع",
+"Customer Not Interested": "العميل غير مهتم"
 }

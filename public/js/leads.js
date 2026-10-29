@@ -1,7 +1,10 @@
 import { h, fill, toast, pill, t, fmtStamp, fmtDay, num2 } from '/js/common.js';
-import { S, A, run, modal, closeModal, field, confirmBox } from '/js/app.js';
+import { S, A, run, modal, closeModal, field, confirmBox, go } from '/js/app.js';
 
 const KIND = { new: 'warn', contacted: 'attention', qualified: 'attention', onboarding: 'cu', converted: 'ok', lost: '' };
+// a lead only moves forward; converted and lost are final (the server checks this too)
+const STEP = { new: 0, contacted: 1, qualified: 2, onboarding: 3, converted: 4, lost: 4 };
+const allowed = (from, all) => (from === 'converted' || from === 'lost' ? [from] : all.filter((s) => s === from || STEP[s] > STEP[from]));
 const ref = (l) => `L-${String(l.id).padStart(5, '0')}`;
 const waHref = (m) => { const d = String(m || '').replace(/\D/g, '').replace(/^00/, '').replace(/^0(5\d{8})$/, '971$1'); return d ? `https://wa.me/${d}` : null; };
 
@@ -30,11 +33,28 @@ export async function leadsView(el) {
   };
   const edit = (l, statuses) => {
     const wa = waHref(l.mobile);
+    const closed = l.status === 'converted' || l.status === 'lost';
+    const reasons = S.lk?.lost_reason || [];
+    const reasonSel = h('select', { name: 'lost_reason', disabled: l.status === 'lost' }, h('option', { value: '' }, '-'), reasons.map((r) => h('option', { value: r, selected: r === l.lost_reason }, t(r))),
+      l.lost_reason && !reasons.includes(l.lost_reason) ? h('option', { value: l.lost_reason, selected: true }, l.lost_reason) : null);
+    const reasonBox = field('Lost reason', reasonSel);
+    const statusSel = h('select', { name: 'status', disabled: closed, onchange: () => showReason() }, allowed(l.status, statuses).map((s) => h('option', { value: s, selected: s === l.status }, t(s === 'converted' && l.status !== 'converted' ? 'converted (create job order)' : s))));
+    const showReason = () => { const lost = statusSel.value === 'lost'; reasonBox.classList.toggle('hide', !lost); reasonSel.required = lost; };
+    const CONVERT_TEXT = 'A job order is created with this client, property, service, preferred date and notes. The lead is then closed and cannot go back.';
+    const save = async (v) => {
+      const r = await run(() => A('PUT', `/leads/${l.id}`, v), v.status === 'converted' && l.status !== 'converted' ? 'Job order created' : 'Saved');
+      if (!r) return;
+      closeModal();
+      if (r.row?.job_id && l.status !== 'converted') go(`jobs/${r.row.job_id}`); else load();
+    };
     const f = h('form', { onsubmit: async (e) => {
       e.preventDefault();
-      const v = { status: f.status.value, lost_reason: f.lost_reason.value, notes: f.notes.value };
-      if (await run(() => A('PUT', `/leads/${l.id}`, v), 'Saved')) { closeModal(); load(); }
+      const v = { status: statusSel.value, lost_reason: statusSel.value === 'lost' ? reasonSel.value : '', notes: f.notes.value };
+      if (v.status === 'converted' && l.status !== 'converted' && !(await confirmBox('Convert to a job order?', t(CONVERT_TEXT), 'Create job order', false))) return;
+      if (v.status === 'lost' && l.status !== 'lost' && !(await confirmBox('Close this lead as lost?', t('A lost lead is closed and its status cannot change again.'), 'Close as lost'))) return;
+      save(v);
     } }, h('div', { class: 'actions' }, h('h2', {}, `${ref(l)} · ${l.name}`), h('span', { class: 'spacer' }), pill(t(l.status), KIND[l.status])),
+    l.job_id ? h('div', { class: 'alert ok' }, t('Converted to a job order.'), ' ', h('a', { class: 'btn sm', href: `#jobs/${l.job_id}`, onclick: closeModal }, t('Open the job'))) : null,
     h('dl', { class: 'kv' },
       h('dt', {}, t('Mobile')), h('dd', { class: 'ltr' }, l.mobile, ' ', wa ? h('a', { class: 'btn alt sm', href: wa, target: '_blank', rel: 'noopener' }, 'WhatsApp') : null),
       h('dt', {}, t('Email')), h('dd', { class: 'ltr' }, l.email || '-'),
@@ -44,12 +64,15 @@ export async function leadsView(el) {
       h('dt', {}, t('Estimate shown')), h('dd', {}, l.estimate_total != null ? `AED ${num2(l.estimate_total)}` : '-'),
       h('dt', {}, t('Referral code')), h('dd', { class: 'ltr' }, l.referral_code || '-'),
       h('dt', {}, t('Message')), h('dd', {}, l.message || '-')),
-    h('div', { class: 'grid2' },
-      field('Status', h('select', { name: 'status' }, statuses.map((s) => h('option', { value: s, selected: s === l.status }, t(s))))),
-      field('Lost reason', h('select', { name: 'lost_reason' }, h('option', { value: '' }, '-'), (S.lk?.lost_reason || []).map((r) => h('option', { value: r, selected: r === l.lost_reason }, r))))),
+    h('div', { class: 'grid2' }, field('Status', statusSel, closed ? 'Closed: the status cannot change.' : 'A lead only moves forward. Converted and lost are final.'), reasonBox),
     field('Notes', h('textarea', { name: 'notes', rows: 3 }, l.notes || '')),
-    h('p', { class: 'actions' }, h('button', { class: 'btn cu' }, t('Save')), h('button', { class: 'btn alt', type: 'button', onclick: closeModal }, t('Close'))));
+    h('p', { class: 'actions' }, h('button', { class: 'btn cu' }, t('Save')),
+      !closed ? h('button', { class: 'btn', type: 'button', onclick: async () => {
+        if (await confirmBox('Convert to a job order?', t(CONVERT_TEXT), 'Create job order', false)) save({ status: 'converted', notes: f.notes.value });
+      } }, t('Convert to job order')) : null,
+      h('button', { class: 'btn alt', type: 'button', onclick: closeModal }, t('Close'))));
     modal(f);
+    showReason();
   };
   const add = () => {
     const f = h('form', { onsubmit: async (e) => {

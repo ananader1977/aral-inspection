@@ -108,21 +108,29 @@ export function createJobs(ctx) {
     });
   }
 
+  /** Lead → job order: client, property, service, preferred date, message, notes and add-ons are copied over. */
   function convertLead(user, leadId) {
     const l = db.prepare('SELECT * FROM leads WHERE id=?').get(leadId);
     if (!l) throw new HttpError(404, 'Lead not found');
     if (l.job_id) return l.job_id;
+    if (l.status === 'lost') throw new HttpError(409, 'This lead is closed as lost and cannot be converted.');
     const svc = l.service_code || db.prepare("SELECT code FROM services WHERE active=1 AND is_addon=0 ORDER BY sort LIMIT 1").get().code;
-    const id = createJob(user, {
-      service_code: svc, channel: l.source === 'website' || l.source === 'broker' ? 'web' : l.source === 'whatsapp' ? 'whatsapp' : 'internal', lead_id: l.id,
-      client: { name: l.name, mobile: l.mobile, email: l.email, type: l.client_type, referral_source: l.referral_code ? `Agent ${l.referral_code}` : l.source },
-      property: { property_type: l.property_type || 'apartment', bedrooms: l.bedrooms, community: l.community, building: l.building },
-      preferred_dates: l.preferred_date || '', access_notes: l.message,
+    const ref = `L-${String(l.id).padStart(5, '0')}`;
+    return tx(db, () => {
+      const id = createJob(user, {
+        service_code: svc, channel: l.source === 'website' || l.source === 'broker' ? 'web' : l.source === 'whatsapp' ? 'whatsapp' : 'internal', lead_id: l.id,
+        client: { name: l.name, mobile: l.mobile, email: l.email, type: l.client_type, referral_source: l.referral_code ? `Agent ${l.referral_code}` : l.source },
+        property: { property_type: l.property_type || 'apartment', bedrooms: l.bedrooms, bua_sqft: l.sqft, community: l.community, building: l.building },
+        preferred_dates: l.preferred_date || '', access_notes: l.message,
+      });
+      db.prepare("UPDATE leads SET status='converted', job_id=?, lost_reason='', contacted_at=COALESCE(contacted_at, ?) WHERE id=?").run(id, ctx.now(), leadId);
+      // remember the add-ons the client chose on the website for the first quotation
+      db.prepare("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)").run(`_job_addons_${id}`, l.addons || '[]');
+      const extra = [l.estimate_total != null ? `Website estimate AED ${l.estimate_total}` : '', l.notes ? `Lead notes: ${l.notes}` : ''].filter(Boolean).join('. ');
+      if (extra) event(user, id, `From lead ${ref}: ${extra}`);
+      audit(user, 'leads', l.id, 'convert', { status: l.status }, { status: 'converted', job_id: id });
+      return id;
     });
-    db.prepare("UPDATE leads SET status='converted', job_id=?, contacted_at=COALESCE(contacted_at, ?) WHERE id=?").run(id, ctx.now(), leadId);
-    // remember the add-ons the client chose on the website for the first quotation
-    db.prepare("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)").run(`_job_addons_${id}`, l.addons || '[]');
-    return id;
   }
 
   function updateJob(user, id, body) {
@@ -539,7 +547,7 @@ export function createJobs(ctx) {
     const s = S();
     return calendar(ctx.now() - 60 * DAY, ctx.now() + 180 * DAY, { inspector_id: inspectorId }).map((e) => ({
       uid: `${e.number}@aral-inspection`, start: e.start, end: e.end, summary: `${e.number} · ${e.service} · ${e.inspector || ''}`,
-      description: plainRows([['Client', e.client], ['Status', e.status_label], ['Open', `${ctx.config.baseUrl}/app/#job/${e.id}`]]), location: e.where, status: 'CONFIRMED',
+      description: plainRows([['Client', e.client], ['Status', e.status_label], ['Open', `${ctx.config.baseUrl}/app/#jobs/${e.id}`]]), location: e.where, status: 'CONFIRMED',
       color: ['report_issued', 'invoiced', 'closed'].includes(e.status) ? 'green' : 'blue', _s: s,
     }));
   }

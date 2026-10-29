@@ -405,7 +405,7 @@ export function createReports(ctx) {
       db.prepare("UPDATE reports SET status='submitted', submitted_at=?, time_out=COALESCE(NULLIF(time_out,''),?), updated_at=? WHERE id=?").run(ctx.now(), hhmm, ctx.now(), r.id);
       J().move(user, jobId, 'under_review', 'Report submitted for review');
     });
-    await J().notifyOffice(`Report ready for review: ${J().getJob(jobId).number}`, `${ctx.config.baseUrl}/app/#job/${jobId}`, { url: `/app/#job/${jobId}`, perm: 'reports.review' });
+    await J().notifyOffice(`Report ready for review: ${J().getJob(jobId).number}`, `${ctx.config.baseUrl}/app/#jobs/${jobId}`, { url: `/app/#jobs/${jobId}`, perm: 'reports.review' });
   }
   function returnReport(user, jobId, note) {
     const r = reportOfJob(jobId);

@@ -99,17 +99,34 @@ export function createLeads(ctx) {
     return db.prepare(`SELECT l.*, u.name AS assigned_name, s.name AS service_name FROM leads l LEFT JOIN users u ON u.id=l.assigned_to LEFT JOIN services s ON s.code=l.service_code ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY l.id DESC LIMIT 1000`).all(...args);
   }
 
+  // A lead only moves forward: new → contacted → qualified → onboarding → converted (job order created) or lost.
+  // Converted and lost are final.
+  const STEP = { new: 0, contacted: 1, qualified: 2, onboarding: 3, converted: 4, lost: 4 };
+  const nextStatuses = (from) => (from === 'converted' || from === 'lost' ? [from] : LEAD_STATUSES.filter((s) => s === from || STEP[s] > STEP[from]));
+
   function update(user, id, body, ip) {
     const before = get(id);
     if (!before) throw new HttpError(404, 'Lead not found');
     const status = body.status ?? before.status;
     if (!LEAD_STATUSES.includes(status)) throw new HttpError(400, 'Choose a status.');
+    if (!nextStatuses(before.status).includes(status)) {
+      throw new HttpError(409, before.status === 'converted' || before.status === 'lost'
+        ? `This lead is closed (${before.status}). Its status cannot change.`
+        : `A lead cannot go back from "${before.status}" to "${status}".`);
+    }
     const lost = clampStr(body.lost_reason ?? before.lost_reason, 120);
     if (status === 'lost' && !lost) throw new HttpError(400, 'Choose a reason why the lead was lost.');
     const assigned = body.assigned_to === undefined ? before.assigned_to : body.assigned_to ? Number(body.assigned_to) : null;
     const contactedAt = before.contacted_at || (status !== 'new' ? ctx.now() : null);
+    const notes = clampStr(body.notes ?? before.notes, 4000);
+    if (status === 'converted' && before.status !== 'converted') {
+      // converting creates the job order straight away, with the lead's details
+      db.prepare('UPDATE leads SET assigned_to=?, notes=?, contacted_at=? WHERE id=?').run(assigned, notes, contactedAt, id);
+      ctx.jobs.convertLead(user, id);
+      return get(id);
+    }
     db.prepare('UPDATE leads SET status=?, lost_reason=?, assigned_to=?, notes=?, contacted_at=? WHERE id=?')
-      .run(status, status === 'lost' ? lost : '', assigned, clampStr(body.notes ?? before.notes, 4000), contactedAt, id);
+      .run(status, status === 'lost' ? lost : '', assigned, notes, contactedAt, id);
     const after = get(id);
     ctx.admin.audit(user, 'leads', id, 'update', { status: before.status }, { status: after.status, lost_reason: after.lost_reason }, ip);
     return after;
@@ -125,5 +142,5 @@ export function createLeads(ctx) {
     };
   }
 
-  return { createPublic, createManual, list, get, update, stats };
+  return { createPublic, createManual, list, get, update, stats, nextStatuses };
 }

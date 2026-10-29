@@ -40,7 +40,7 @@ const LOOKUPS = {
   attendance: ['Owner', 'Buyer', 'Seller', 'Agent', 'Tenant', 'Landlord', 'Developer representative', 'None'],
   occupancy: ['Vacant', 'Occupied by owner', 'Tenanted', 'Furnished, vacant'],
   weather: ['Sunny', 'Hot and humid', 'Cloudy', 'Rain', 'Dusty / windy'],
-  lost_reason: ['Price', 'Out of area', 'Timing', 'Valuation only (referred to partner)', 'No response', 'Chose a competitor'],
+  lost_reason: ['High Price', 'Customer Not Interested', 'Out of area', 'Timing', 'Valuation only (referred to partner)', 'No response', 'Chose a competitor'],
   referral_source: ['Website', 'Google', 'Instagram', 'WhatsApp', 'Broker / agent', 'Bank', 'Repeat client', 'Friend / referral'],
 };
 
@@ -174,6 +174,21 @@ const SYSTEM_COMMENTS = [
 ];
 
 /** Puts the proper system items in place on databases created before they existed (keeps everything else). */
+/** Existing systems: lost reasons "High Price" (was "Price") and "Customer Not Interested". Runs once. */
+export function upgradeLookups(db) {
+  if (db.prepare("SELECT value FROM settings WHERE key='_lookups_version'").get()?.value === '2') return false;
+  tx(db, () => {
+    const has = (v) => db.prepare("SELECT 1 FROM lookups WHERE list='lost_reason' AND value=?").get(v);
+    if (has('Price') && !has('High Price')) db.prepare("UPDATE lookups SET value='High Price' WHERE list='lost_reason' AND value='Price'").run();
+    db.prepare("UPDATE leads SET lost_reason='High Price' WHERE lost_reason='Price'").run();
+    const ins = db.prepare("INSERT INTO lookups(list,value,sort) SELECT 'lost_reason',?,? WHERE NOT EXISTS (SELECT 1 FROM lookups WHERE list='lost_reason' AND value=?)");
+    ins.run('High Price', 0, 'High Price');
+    ins.run('Customer Not Interested', 1, 'Customer Not Interested');
+    db.prepare("INSERT INTO settings(key,value) VALUES('_lookups_version','2') ON CONFLICT(key) DO UPDATE SET value='2'").run();
+  });
+  return true;
+}
+
 export function upgradeChecklists(db, now) {
   const done = db.prepare("SELECT value FROM settings WHERE key='_checklist_version'").get()?.value;
   if (Number(done) >= 2) return false;

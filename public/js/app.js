@@ -151,6 +151,7 @@ const VIEWS = { leads: ['leads.manage', (b) => leadsView(b)], jobs: ['jobs.view'
 async function route() {
   if (!S.me) return;
   const parts = (location.hash.slice(1) || 'dashboard').split('/');
+  if (parts[0] === 'job') parts[0] = 'jobs'; // older links in emails and notifications
   const name = parts[0];
   const tabs = h('div', { class: 'tabs' }, TABS().map(([k, l]) => h('a', { class: name === k || (name === 'clients' && k === 'jobs') ? 'on' : '', href: `#${k}` }, t(l))));
   const body = h('div', {}, h('p', { class: 'muted' }, t('Loading…')));
