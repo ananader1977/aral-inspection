@@ -38,6 +38,8 @@ const P = {
   'finance.view': ['super_admin', 'admin', 'accountant'],
   'finance.manage': ['super_admin', 'accountant'], // invoices, credit notes, payments
   'commissions.manage': ['super_admin', 'accountant'],
+  'books.manage': ['super_admin'], // expenses, owner / loan / VAT movements, equipment
+  'statements.view': ['super_admin'], // income statement, balance sheet, cash flow, trial balance
 };
 
 export const can = (role, perm) => !!P[perm]?.includes(role);

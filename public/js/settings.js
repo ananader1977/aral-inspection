@@ -7,7 +7,7 @@ const meta = async () => (META ||= await A('GET', '/meta'));
 const SETTING_LABELS = {
   company_name: 'Company name', company_short: 'Short name (page footers)', tagline: 'Tagline', det_licence_no: 'DET licence no.', rera_reg_no: 'DLD / RERA registration no.',
   phone: 'Office phone', mobile: 'Mobile', email: 'Email', website: 'Website',
-  vat_registered: 'VAT registered', trn: 'TRN', vat_rate: 'VAT rate (%)', vat_effective_date: 'VAT effective date',
+  vat_registered: 'VAT registered', trn: 'TRN', vat_rate: 'VAT rate (%)', vat_effective_date: 'VAT effective date', fy_start_month: 'Financial year starts (month 1–12)',
   bank_name: 'Bank name', bank_account_name: 'Account name', bank_account_number: 'Account number', bank_iban: 'IBAN', bank_swift: 'SWIFT code',
   job_prefix: 'Job prefix', next_job_no: 'Next job no.', quote_prefix: 'Quotation prefix', next_quote_no: 'Next quotation no.', report_prefix: 'Report prefix', next_report_no: 'Next report no.',
   invoice_prefix: 'Invoice prefix', next_invoice_no: 'Next invoice no.', credit_prefix: 'Credit note prefix', next_credit_no: 'Next credit note no.', number_digits: 'Digits in numbers',

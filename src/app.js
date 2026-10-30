@@ -18,6 +18,7 @@ import { createPayments } from './payments.js';
 import { createAi } from './ai.js';
 import { createBackup } from './backup.js';
 import { createPush } from './push.js';
+import { createAccounts } from './accounts.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,6 +38,7 @@ export function createContext({ config, now = () => Date.now() }) {
   ctx.jobs = createJobs(ctx);
   ctx.reports = createReports(ctx);
   ctx.finance = createFinance(ctx);
+  ctx.accounts = createAccounts(ctx);
   ctx.docs = createDocs(ctx);
   ctx.payments = createPayments(ctx);
   ctx.ai = createAi(ctx);

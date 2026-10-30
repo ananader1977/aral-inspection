@@ -16,6 +16,7 @@ export const SETTING_DEFAULTS = {
   vat_registered: '0',
   vat_rate: '5',
   vat_effective_date: '',
+  fy_start_month: '1', // financial year start month for the statements (1 = January)
   phone: '',
   mobile: '',
   email: 'ananader1@gmail.com',
@@ -53,7 +54,7 @@ export const SETTING_DEFAULTS = {
 /** Groups shown on the Company settings screen, in order. */
 export const SETTING_GROUPS = [
   ['Company', ['company_name', 'company_short', 'tagline', 'det_licence_no', 'rera_reg_no', 'phone', 'mobile', 'email', 'website']],
-  ['VAT', ['vat_registered', 'trn', 'vat_rate', 'vat_effective_date']],
+  ['VAT and accounts', ['vat_registered', 'trn', 'vat_rate', 'vat_effective_date', 'fy_start_month']],
   ['Bank details (printed on quotations and invoices)', ['bank_name', 'bank_account_name', 'bank_account_number', 'bank_iban', 'bank_swift']],
   ['Document numbers', ['job_prefix', 'next_job_no', 'quote_prefix', 'next_quote_no', 'report_prefix', 'next_report_no', 'invoice_prefix', 'next_invoice_no', 'credit_prefix', 'next_credit_no', 'number_digits']],
   ['Quotations and payment', ['quote_validity_days', 'deposit_pct', 'payment_terms_days', 'reminder_days', 'default_turnaround']],

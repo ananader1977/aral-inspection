@@ -263,13 +263,13 @@ export class FlowDoc {
     };
     drawHead();
     rows.forEach((row, ri) => {
-      const cells = row.map((v, i) => this.pdf.wrap(String(v ?? ''), ws[i] - pad * 2, size, !!cols[i].bold));
+      const cells = row.map((v, i) => this.pdf.wrap(String(v ?? ''), ws[i] - pad * 2, size, !!cols[i].bold || !!row.bold));
       const h = Math.max(...cells.map((c) => c.length)) * size * 1.3 + pad * 2;
       if (this.y + h > this.bottom) { this.newPage(); drawHead(); }
       if (ri % 2 && zebra) this.pdf.rect(this.x, this.y, this.width, h, { fill: zebra });
       let x = this.x;
       cells.forEach((lines, i) => {
-        lines.forEach((ln, li) => this.pdf.text(ln, cols[i].align === 'right' ? x + ws[i] - pad : x + pad, this.y + pad + size + li * size * 1.3, { size, bold: !!cols[i].bold, align: cols[i].align === 'right' ? 'right' : 'left', fill: row.fill?.[i] || '#16213A' }));
+        lines.forEach((ln, li) => this.pdf.text(ln, cols[i].align === 'right' ? x + ws[i] - pad : x + pad, this.y + pad + size + li * size * 1.3, { size, bold: !!cols[i].bold || !!row.bold, align: cols[i].align === 'right' ? 'right' : 'left', fill: row.fill?.[i] || '#16213A' }));
         x += ws[i];
       });
       this.y += h;

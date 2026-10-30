@@ -166,6 +166,7 @@ export function createAdmin(ctx) {
       if (!(k in SETTING_DEFAULTS)) continue;
       let val = clampStr(v, 500);
       if (/^next_.*_no$|^number_digits$|_days$|_pct$|^vat_rate$|^monthly_job_target$/.test(k) && val !== '' && !(Number(val) >= 0)) throw new HttpError(400, `${k}: enter a number.`);
+      if (k === 'fy_start_month' && !(Number(val) >= 1 && Number(val) <= 12)) throw new HttpError(400, 'Financial year start: a month number from 1 to 12.');
       if (k === 'vat_registered') val = val === '1' || val === 'true' ? '1' : '0';
       if (k.startsWith('brand_') && k !== 'ui_default_lang' && !/^#[0-9a-f]{6}$/i.test(val)) throw new HttpError(400, 'Colours must look like #0A1F4A.');
       if (k === 'ui_default_lang' && !['en', 'ar'].includes(val)) throw new HttpError(400, 'Language must be en or ar.');

@@ -654,3 +654,48 @@ CREATE TABLE IF NOT EXISTS devices (               -- phones with the ARAL mobil
   last_seen_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_devices_user ON devices(user_id);
+
+-- ---------- books: expenses, owner / loan / VAT movements and equipment, for the financial statements ----------
+CREATE TABLE IF NOT EXISTS expenses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,                              -- YYYY-MM-DD (date of the bill)
+  account TEXT NOT NULL,                           -- expense account code, see src/accounts.js
+  supplier TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  reference TEXT NOT NULL DEFAULT '',              -- supplier invoice number
+  net REAL NOT NULL,                               -- AED excl. VAT
+  vat REAL NOT NULL DEFAULT 0,                     -- recoverable input VAT
+  paid_from TEXT CHECK (paid_from IN ('bank','cash','owner')),  -- NULL = not paid yet (owed to the supplier)
+  paid_on TEXT,
+  job_id INTEGER REFERENCES jobs(id),
+  file_id INTEGER REFERENCES files(id),            -- photo / PDF of the bill
+  void INTEGER NOT NULL DEFAULT 0,
+  created_by INTEGER REFERENCES users(id),
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_expenses_date ON expenses(date);
+CREATE TABLE IF NOT EXISTS money_entries (         -- capital, drawings, loans, VAT paid to / refunded by the FTA
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('capital','drawing','loan_in','loan_repay','vat_paid','vat_refund')),
+  amount REAL NOT NULL,
+  account TEXT NOT NULL DEFAULT 'bank' CHECK (account IN ('bank','cash')),
+  note TEXT NOT NULL DEFAULT '',
+  void INTEGER NOT NULL DEFAULT 0,
+  created_by INTEGER REFERENCES users(id),
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS fixed_assets (          -- equipment, thermal cameras, vehicles, laptops (depreciated monthly)
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  purchase_date TEXT NOT NULL,
+  cost REAL NOT NULL,                              -- AED excl. VAT
+  vat REAL NOT NULL DEFAULT 0,
+  life_months INTEGER NOT NULL DEFAULT 36,
+  residual REAL NOT NULL DEFAULT 0,
+  paid_from TEXT NOT NULL DEFAULT 'bank' CHECK (paid_from IN ('bank','cash','owner')),
+  note TEXT NOT NULL DEFAULT '',
+  void INTEGER NOT NULL DEFAULT 0,
+  created_by INTEGER REFERENCES users(id),
+  created_at INTEGER NOT NULL
+);

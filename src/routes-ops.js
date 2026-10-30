@@ -8,6 +8,7 @@ import { buildIcs } from './ics.js';
 import { dateKey, parseDateKey, DAY, round2 } from './time.js';
 import { safeEqual } from './auth.js';
 import { MAX_VIDEO, MAX_ATTACHMENT } from './reports.js';
+import { ACCOUNTS, EXPENSE_ACCOUNTS, MONEY_KINDS } from './accounts.js';
 
 export function registerOpsRoutes(app, ctx) {
   const { db, auth, config } = ctx;
@@ -378,6 +379,63 @@ export function registerOpsRoutes(app, ctx) {
     db.prepare('INSERT INTO feedback(job_id,score,comment,created_at) VALUES(?,?,?,?) ON CONFLICT(job_id) DO UPDATE SET score=excluded.score, comment=excluded.comment').run(r.job_id, Math.round(n), String(comment || '').slice(0, 1000), ctx.now());
     res.json({ ok: true });
   });
+
+  // ---------- books and financial statements (Super Admin) ----------
+  const B = ctx.accounts;
+  const period = (q) => {
+    const to = q.to || dateKey(ctx.now());
+    return { from: q.from || `${to.slice(0, 7)}-01`, to };
+  };
+  app.get('/api/app/books/meta', U, P('statements.view', 'books.manage'), (req, res) => res.json({ accounts: ACCOUNTS, expense_accounts: EXPENSE_ACCOUNTS, money_kinds: MONEY_KINDS, fy_start: B.fyStart(dateKey(ctx.now())), vat_registered: ctx.settings().vat_registered === '1' }));
+  app.get('/api/app/books/statements', U, P('statements.view'), (req, res) => {
+    const { from, to } = period(req.query);
+    const asOf = req.query.as_of || to;
+    const entries = B.journal(asOf > to ? asOf : to);
+    const prev = B.previousPeriod(from, to);
+    res.json({ income: B.incomeStatement(from, to, entries), previous: { ...B.incomeStatement(prev.from, prev.to, B.journal(prev.to)) }, balance: B.balanceSheet(asOf, entries), cashflow: B.cashFlow(from, to, entries), trial: B.trialBalance(asOf, entries) });
+  });
+  app.get('/api/app/books/statements.pdf', U, P('statements.view'), (req, res) => {
+    const { from, to } = period(req.query);
+    const asOf = req.query.as_of || to;
+    const want = String(req.query.kind || 'all');
+    const entries = B.journal(asOf > to ? asOf : to);
+    const prev = B.previousPeriod(from, to);
+    const income = ['all', 'income'].includes(want) ? B.incomeStatement(from, to, entries) : null;
+    ctx.admin.audit(req.user, 'statements', null, 'pdf', null, { kind: want, from, to, asOf }, ip(req));
+    pdf(res, ctx.docs.statementsPdf({ income, previous: income && req.query.compare !== '0' ? B.incomeStatement(prev.from, prev.to, B.journal(prev.to)) : null,
+      balance: ['all', 'balance'].includes(want) ? B.balanceSheet(asOf, entries) : null, cashflow: ['all', 'cashflow'].includes(want) ? B.cashFlow(from, to, entries) : null }), `Financial-statements-${from}-to-${to}.pdf`);
+  });
+  app.get('/api/app/books/statements.xlsx', U, P('statements.view'), (req, res) => {
+    const { from, to } = period(req.query);
+    const asOf = req.query.as_of || to;
+    const entries = B.journal(asOf > to ? asOf : to);
+    const inc = B.incomeStatement(from, to, entries), bal = B.balanceSheet(asOf, entries), cf = B.cashFlow(from, to, entries), tb = B.trialBalance(asOf, entries);
+    const cols = [{ header: 'Line', key: 'name', width: 46 }, { header: 'AED', key: 'amount', type: 'money', width: 16 }];
+    const L = (name, amount) => ({ name, amount });
+    ctx.admin.audit(req.user, 'statements', null, 'excel', null, { from, to, asOf }, ip(req));
+    sendXlsx(res, 'financial-statements', [
+      { name: 'Income statement', columns: cols, rows: [L(`Period ${from} to ${to}`), L('Revenue'), ...inc.revenue.map((l) => L(`  ${l.name}`, l.amount)), L('Total revenue', inc.net_revenue), L('Cost of sales'), ...inc.cogs.map((l) => L(`  ${l.name}`, l.amount)), L('Total cost of sales', inc.cogs_total), L('Gross profit', inc.gross_profit), L('Operating expenses'), ...inc.opex.map((l) => L(`  ${l.name}`, l.amount)), L('Total operating expenses', inc.opex_total), L('Net profit', inc.net_profit)] },
+      { name: 'Balance sheet', columns: cols, rows: [L(`At ${asOf}`), L('Current assets'), ...bal.assets.current.map((l) => L(`  ${l.name}`, l.amount)), L('Non-current assets'), ...bal.assets.non_current.map((l) => L(`  ${l.name}`, l.amount)), L('Total assets', bal.totals.assets), L('Current liabilities'), ...bal.liabilities.current.map((l) => L(`  ${l.name}`, l.amount)), L('Non-current liabilities'), ...bal.liabilities.non_current.map((l) => L(`  ${l.name}`, l.amount)), L('Total liabilities', bal.totals.liabilities), L("Owner's equity"), ...bal.equity.map((l) => L(`  ${l.name}`, l.amount)), L('Total equity', bal.totals.equity), L('Total liabilities and equity', bal.totals.liabilities_and_equity)] },
+      { name: 'Cash flow', columns: cols, rows: [L('Cash and bank at the start', cf.opening), L('Operating activities'), ...cf.operating.map((l) => L(`  ${l.name}`, l.amount)), L('Net cash from operating', cf.totals.operating), L('Investing activities'), ...cf.investing.map((l) => L(`  ${l.name}`, l.amount)), L('Net cash from investing', cf.totals.investing), L('Financing activities'), ...cf.financing.map((l) => L(`  ${l.name}`, l.amount)), L('Net cash from financing', cf.totals.financing), L('Net change in cash', cf.net_change), L('Cash and bank at the end', cf.closing)] },
+      { name: 'Trial balance', columns: [{ header: 'Code', key: 'code', width: 8 }, { header: 'Account', key: 'name', width: 40 }, { header: 'Debit', key: 'debit', type: 'money', width: 16 }, { header: 'Credit', key: 'credit', type: 'money', width: 16 }], rows: [...tb.rows, { name: 'Total', debit: tb.debit, credit: tb.credit }] },
+      { name: 'Journal', columns: [{ header: 'Date', key: 'date', width: 12 }, { header: 'Ref', key: 'ref', width: 16 }, { header: 'Description', key: 'memo', width: 44 }, { header: 'Code', key: 'code', width: 8 }, { header: 'Account', key: 'account', width: 34 }, { header: 'Debit', key: 'debit', type: 'money', width: 14 }, { header: 'Credit', key: 'credit', type: 'money', width: 14 }], rows: B.ledger(from, to, entries) },
+    ]);
+  });
+  app.get('/api/app/books/expenses', U, P('books.manage'), (req, res) => res.json({ rows: B.listExpenses(req.query) }));
+  app.post('/api/app/books/expenses', U, P('books.manage'), async (req, res) => res.json({ id: B.addExpense(req.user, await req.json()) }));
+  app.put('/api/app/books/expenses/:id', U, P('books.manage'), async (req, res) => { B.updateExpense(req.user, id(req), await req.json()); res.json({ ok: true }); });
+  app.post('/api/app/books/expenses/:id/bill', U, P('books.manage'), async (req, res) => res.json({ file_id: await B.attachBill(req.user, id(req), { buf: await req.rawBody(15 * 1024 * 1024 + 1024), mime: req.headers['content-type'], name: req.query.name }) }));
+  app.get('/api/app/books/expenses/:id/bill', U, P('books.manage'), async (req, res) => {
+    const e = db.prepare('SELECT file_id FROM expenses WHERE id=?').get(id(req));
+    if (!e?.file_id) throw new HttpError(404, 'No bill attached');
+    const f = db.prepare('SELECT name, mime FROM files WHERE id=?').get(e.file_id);
+    res.send(await ctx.storage.read(e.file_id), f.mime, 200, { 'Content-Disposition': `inline; filename="${String(f.name).replace(/"/g, '')}"`, 'Cache-Control': 'private, max-age=3600' });
+  });
+  app.get('/api/app/books/money', U, P('books.manage'), (req, res) => res.json({ rows: B.listMoney() }));
+  app.post('/api/app/books/money', U, P('books.manage'), async (req, res) => res.json({ id: B.addMoney(req.user, await req.json()) }));
+  app.get('/api/app/books/assets', U, P('books.manage'), (req, res) => res.json({ rows: B.listAssets() }));
+  app.post('/api/app/books/assets', U, P('books.manage'), async (req, res) => res.json({ id: B.addAsset(req.user, await req.json()) }));
+  app.post('/api/app/books/:table/:id/void', U, P('books.manage'), async (req, res) => { B.voidEntry(req.user, req.params.table, id(req), (await req.json()).reason); res.json({ ok: true }); });
 
   // ---------- phones with the mobile app (notifications) ----------
   app.get('/api/app/devices', U, (req, res) => res.json({ rows: ctx.push.listFor(req.user.id), push: ctx.push.enabled() }));

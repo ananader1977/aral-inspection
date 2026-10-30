@@ -174,3 +174,10 @@ html.native .top nav .who{display:none}
 .applock{position:fixed;inset:0;z-index:200;background:var(--navy);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center}
 .applock img{border-radius:16px;background:#fff;padding:6px}
 .applock h2{color:#fff;margin:0}
+
+/* financial statements */
+table.stmt td,table.stmt th{padding:7px 10px}
+table.stmt tr.grp td{font-weight:700;color:var(--navy);padding-top:14px;border-bottom:0}
+table.stmt tr.sub td{font-weight:700;border-top:1px solid var(--line,#DDE3EC)}
+table.stmt tr.tot td{font-weight:800;background:#F4ECE4;border-top:2px solid var(--navy)}
+table.stmt td:first-child{white-space:pre-wrap}

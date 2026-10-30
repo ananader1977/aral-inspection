@@ -2,16 +2,23 @@
 import { h, fill, pill, t, fmtDay, num2, money, todayIso } from '/js/common.js';
 import { S, A, can, run, modal, closeModal, field, confirmBox, go } from '/js/app.js';
 import { paymentForm } from '/js/jobs.js';
+import { statementsView, expensesView, moneyView, assetsView } from '/js/books.js';
 
 const IKIND = { paid: 'ok', part_paid: 'warn', issued: 'attention', cancelled: '', draft: '' };
-const SUB = [['invoices', 'Invoices'], ['payments', 'Payments'], ['aging', 'Aging'], ['commissions', 'Commissions']];
+const SUB = [['invoices', 'Invoices'], ['payments', 'Payments'], ['aging', 'Aging'], ['commissions', 'Commissions'],
+  // Super Admin only
+  ['statements', 'Statements', 'statements.view'], ['expenses', 'Expenses', 'books.manage'], ['money', 'Owner, loans and VAT', 'books.manage'], ['assets', 'Equipment', 'books.manage']];
 
 export async function financeView(el, parts) {
   const sub = parts[0] || 'invoices';
-  const side = h('div', { class: 'tabs sub' }, SUB.filter(([k]) => k !== 'commissions' || can('commissions.manage') || can('finance.view')).map(([k, l]) => h('a', { class: sub === k || (sub === 'invoice' && k === 'invoices') ? 'on' : '', href: `#finance/${k}` }, t(l))));
+  const side = h('div', { class: 'tabs sub' }, SUB.filter(([k, , perm]) => (perm ? can(perm) : k !== 'commissions' || can('commissions.manage') || can('finance.view'))).map(([k, l]) => h('a', { class: sub === k || (sub === 'invoice' && k === 'invoices') ? 'on' : '', href: `#finance/${k}` }, t(l))));
   const body = h('div', {});
   fill(el, side, body);
   if (sub === 'invoice') return invoiceDetail(body, Number(parts[1]));
+  if (sub === 'statements' && can('statements.view')) return statementsView(body);
+  if (sub === 'expenses' && can('books.manage')) return expensesView(body);
+  if (sub === 'money' && can('books.manage')) return moneyView(body);
+  if (sub === 'assets' && can('books.manage')) return assetsView(body);
   if (sub === 'payments') return payments(body);
   if (sub === 'aging') return aging(body);
   if (sub === 'commissions') return commissions(body);

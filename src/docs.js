@@ -546,5 +546,68 @@ export function createDocs(ctx) {
     return { buf, pages: d.pdf.pages.length, marks: rec };
   }
 
-  return { quotePdf, agreementPdf: agreementPdfAsync, agreementPdfSync: agreementPdf, receiptPdf, invoicePdf, commissionPdf, reportPdf, amountInWords };
+  // ---------- financial statements (Super Admin) ----------
+  /** One PDF with the statements asked for: { income, previous, balance, cashflow }. */
+  function statementsPdf({ income, previous, balance, cashflow }) {
+    const amt = (v) => (v == null ? '' : v < 0 ? `(${money(-v)})` : money(v));
+    const period = income ? `${dmy(income.from)} to ${dmy(income.to)}` : cashflow ? `${dmy(cashflow.from)} to ${dmy(cashflow.to)}` : '';
+    const d = businessDoc('Financial statements', [...(period ? [['Period', period]] : []), ...(balance ? [['Balance sheet at', dmy(balance.as_of)]] : []), ['Prepared', fmtStamp(ctx.now())]]);
+    const cols = previous ? [{ label: '', w: 6 }, { label: 'This period (AED)', w: 2, align: 'right' }, { label: 'Same period last year', w: 2.4, align: 'right' }] : [{ label: '', w: 7 }, { label: 'AED', w: 2.4, align: 'right' }];
+    const row = (label, v, pv, bold) => { const r = previous ? [label, amt(v), amt(pv)] : [label, amt(v)]; if (bold) r.bold = true; return r; };
+    const prevOf = (arr, code) => previous ? (arr.find((l) => l.code === code)?.amount ?? 0) : null;
+    if (income) {
+      heading(d, 'Income statement');
+      const codes = (k) => [...new Set([...income[k], ...(previous ? previous[k] : [])].map((l) => l.code))];
+      const lineOf = (arr, code) => arr.find((l) => l.code === code);
+      const rows = [];
+      const block = (k, title, total, ptotal) => {
+        rows.push(row(title, null, null, true));
+        for (const c of codes(k)) { const l = lineOf(income[k], c) || lineOf(previous?.[k] || [], c); rows.push(row(`   ${l.name}`, lineOf(income[k], c)?.amount ?? 0, previous ? prevOf(previous[k], c) : null)); }
+        rows.push(row(`Total ${title.toLowerCase()}`, total, ptotal, true));
+      };
+      block('revenue', 'Revenue', income.net_revenue, previous?.net_revenue);
+      block('cogs', 'Cost of sales', income.cogs_total, previous?.cogs_total);
+      rows.push(row(`Gross profit${income.gross_margin != null ? ` (${income.gross_margin}%)` : ''}`, income.gross_profit, previous?.gross_profit, true));
+      block('opex', 'Operating expenses', income.opex_total, previous?.opex_total);
+      rows.push(row(`Net profit${income.net_margin != null ? ` (${income.net_margin}%)` : ''}`, income.net_profit, previous?.net_profit, true));
+      d.table(cols, rows, { zebra: false });
+      d.para('Accrual basis: revenue when invoiced, inspector commissions when payable, expenses on the bill date. Amounts exclude VAT. Corporate tax is not included.', { size: 7.5, fill: C.muted });
+    }
+    const c2 = [{ label: '', w: 7 }, { label: 'AED', w: 2.4, align: 'right' }];
+    const r2 = (label, v, bold) => { const r = [label, amt(v)]; if (bold) r.bold = true; return r; };
+    if (balance) {
+      if (income) d.newPage();
+      heading(d, `Balance sheet at ${dmy(balance.as_of)}`);
+      const T = balance.totals;
+      d.table(c2, [
+        r2('Current assets', null, true), ...balance.assets.current.map((l) => r2(`   ${l.name}`, l.amount)), r2('Total current assets', T.current_assets, true),
+        r2('Non-current assets', null, true), ...balance.assets.non_current.map((l) => r2(`   ${l.name}`, l.amount)), r2('Total non-current assets', T.non_current_assets, true),
+        r2('TOTAL ASSETS', T.assets, true),
+        r2('Current liabilities', null, true), ...balance.liabilities.current.map((l) => r2(`   ${l.name}`, l.amount)), r2('Total current liabilities', T.current_liabilities, true),
+        r2('Non-current liabilities', null, true), ...balance.liabilities.non_current.map((l) => r2(`   ${l.name}`, l.amount)),
+        r2('TOTAL LIABILITIES', T.liabilities, true),
+        r2("Owner's equity", null, true), ...balance.equity.map((l) => r2(`   ${l.name}`, l.amount)), r2('TOTAL EQUITY', T.equity, true),
+        r2('TOTAL LIABILITIES AND EQUITY', T.liabilities_and_equity, true),
+      ], { zebra: false });
+      if (Math.abs(T.difference) > 0.009) d.para(`Check: assets differ from liabilities and equity by AED ${money(T.difference)}.`, { size: 8, bold: true, fill: C.red });
+    }
+    if (cashflow) {
+      if (income || balance) d.newPage();
+      heading(d, 'Cash flow statement');
+      const cf = cashflow;
+      d.table(c2, [
+        r2('Cash and bank at the start', cf.opening, true),
+        r2('Operating activities', null, true), ...cf.operating.map((l) => r2(`   ${l.name}`, l.amount)), r2('Net cash from operating activities', cf.totals.operating, true),
+        r2('Investing activities', null, true), ...cf.investing.map((l) => r2(`   ${l.name}`, l.amount)), r2('Net cash from investing activities', cf.totals.investing, true),
+        r2('Financing activities', null, true), ...cf.financing.map((l) => r2(`   ${l.name}`, l.amount)), r2('Net cash from financing activities', cf.totals.financing, true),
+        r2('Net change in cash', cf.net_change, true),
+        r2('Cash and bank at the end', cf.closing, true),
+        r2('For reference: net profit for the period', cf.net_profit),
+      ], { zebra: false });
+      d.para('Direct method: actual money in and out of the bank and cash accounts. Amounts include VAT.', { size: 7.5, fill: C.muted });
+    }
+    return d.finish();
+  }
+
+  return { quotePdf, agreementPdf: agreementPdfAsync, agreementPdfSync: agreementPdf, receiptPdf, invoicePdf, commissionPdf, reportPdf, amountInWords, statementsPdf };
 }
