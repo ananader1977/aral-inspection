@@ -1,6 +1,6 @@
 {
   "name": "aral-mobile",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "ARAL Property Inspection staff app for Android and iPhone (Capacitor). It opens the live ARAL system and adds the phone camera, notifications and Face ID / fingerprint lock.",
   "type": "module",

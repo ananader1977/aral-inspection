@@ -1,7 +1,7 @@
 # A R A L mobile app (Android and iPhone)
 
 The staff app (inspectors, office, technical manager, accounts). It opens the live A R A L system
-(`https://aral-inspection.onrender.com/app/`) inside a real phone app and adds:
+(`https://www.araluae.com/app/`) inside a real phone app and adds:
 
 - **Native camera** for inspection photos (sharper, stays inside the app); gallery, video and thermal as before
 - **Notifications**: new or rescheduled job → the inspector; report returned → the inspector;

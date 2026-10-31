@@ -3,7 +3,7 @@
   "appName": "A R A L Inspection",
   "webDir": "www",
   "server": {
-    "url": "https://aral-inspection.onrender.com/app/",
+    "url": "https://www.araluae.com/app/",
     "errorPath": "offline.html",
     "androidScheme": "https"
   },
