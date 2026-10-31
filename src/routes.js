@@ -141,11 +141,26 @@ export function registerRoutes(app, ctx) {
     res.json({ ok: true });
   });
 
+  /** Super Admin: use the address the app is open at for every emailed link (after moving to a custom domain). */
+  app.post('/api/app/settings/public-url', U, P('settings.edit'), async (req, res) => {
+    const host = String(req.headers['x-forwarded-host'] || req.headers.host || '');
+    const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0] || (req.socket?.encrypted ? 'https' : 'http');
+    let url;
+    try { url = new URL(String((await req.json()).url || '')).origin; } catch { throw new HttpError(400, 'Not a web address.'); }
+    if (!host || url !== `${proto}://${host}`) throw new HttpError(400, 'Open the app at the new address first, then press the button there.');
+    if (config.secureCookies && !url.startsWith('https://')) throw new HttpError(400, 'The address must start with https://');
+    const before = config.baseUrl;
+    db.prepare("INSERT INTO settings(key,value) VALUES('_public_url',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(url);
+    config.baseUrl = url;
+    admin.audit(req.user, 'settings', null, 'public_url', { base_url: before }, { base_url: url }, ip(req));
+    res.json({ base_url: url });
+  });
+
   // ---------- dashboard (Phase 2: set-up checklist and counts) ----------
   app.get('/api/app/dashboard', U, (req, res) => {
     const n = (sql) => db.prepare(sql).get().n;
     const host = String(req.headers['x-forwarded-host'] || req.headers.host || '');
-    const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0] || (config.baseUrl.startsWith('https') ? 'https' : 'http');
+    const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0] || (req.socket?.encrypted ? 'https' : 'http');
     const using = host ? `${proto}://${host}` : '';
     res.json({
       links: can(req.user.role, 'settings.edit') ? { base_url: config.baseUrl, using, mismatch: !!using && new URL(using).host !== new URL(config.baseUrl).host } : null,

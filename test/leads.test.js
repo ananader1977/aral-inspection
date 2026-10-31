@@ -76,3 +76,34 @@ test('existing systems: "Price" becomes "High Price" and "Customer Not Intereste
     assert.equal(upgradeLookups(db), false, 'runs once');
   } finally { await t.close(); }
 });
+
+test('the lead email reaches the job even when the client already exists with another email', async () => {
+  const t = await startTestApp();
+  try {
+    await t.login('sa', SA.email, SA.password);
+    t.ctx.db.prepare("INSERT INTO clients(type,name,mobile,email,created_at) VALUES('individual','Omar Client','+971507654321','old@example.com',1)").run();
+    const id = await newLead(t, { email: 'omar.new@example.com' });
+    const r = await t.call('sa', 'PUT', `/api/app/leads/${id}`, { status: 'converted' });
+    const j = (await t.call('sa', 'GET', `/api/app/jobs/${r.body.row.job_id}`)).body;
+    assert.equal((j.job || j).client_email, 'omar.new@example.com');
+    assert.equal(t.ctx.db.prepare('SELECT COUNT(*) n FROM clients').get().n, 1, 'same client, updated');
+  } finally { await t.close(); }
+});
+
+test('Super Admin can switch emailed links to the address the app is open at', async () => {
+  const t = await startTestApp();
+  try {
+    await t.login('sa', SA.email, SA.password);
+    const here = t.url;
+    t.ctx.config.baseUrl = 'https://aral-inspection.onrender.com';
+    assert.equal((await t.call('sa', 'GET', '/api/app/dashboard')).body.links.mismatch, true);
+    assert.equal((await t.call('sa', 'POST', '/api/app/settings/public-url', { url: 'https://evil.example' })).status, 400);
+    const r = await t.call('sa', 'POST', '/api/app/settings/public-url', { url: here });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(t.ctx.config.baseUrl, here);
+    assert.equal((await t.call('sa', 'GET', '/api/app/dashboard')).body.links.mismatch, false);
+    assert.equal(t.ctx.db.prepare("SELECT value FROM settings WHERE key='_public_url'").get().value, here);
+    await t.addUser('adm', 'admin');
+    assert.equal((await t.call('adm', 'POST', '/api/app/settings/public-url', { url: here })).status, 403);
+  } finally { await t.close(); }
+});

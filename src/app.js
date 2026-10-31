@@ -27,6 +27,9 @@ export function createContext({ config, now = () => Date.now() }) {
   const db = openDb(config.dbPath);
   const ctx = { config, db, now };
   ctx.settings = () => getSettings(db);
+  // the public address chosen in the app (dashboard → "Use this address") wins over BASE_URL
+  const pub = db.prepare("SELECT value FROM settings WHERE key='_public_url'").get()?.value;
+  if (pub && /^https?:\/\/[^/]+$/.test(pub)) config.baseUrl = pub;
   ctx.limit = createRateLimiter(() => now());
   ctx.mailer = createMailer(ctx);
   ctx.admin = createAdmin(ctx);

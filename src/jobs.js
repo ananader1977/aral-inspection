@@ -57,6 +57,12 @@ export function createJobs(ctx) {
   const event = (user, jobId, note) => db.prepare('INSERT INTO job_events(job_id,ts,user_id,from_status,to_status,note) VALUES(?,?,?,?,?,?)').run(jobId, ctx.now(), user?.id ?? null, null, db.prepare('SELECT status FROM jobs WHERE id=?').get(jobId).status, clampStr(note, 500));
 
   // ---------- clients & properties ----------
+  /** 050 123 4567, +971501234567 and 00971 50 123 4567 are the same number: compare the last 9 digits. */
+  function findByMobile(mobile) {
+    const tail = String(mobile).replace(/\D/g, '').slice(-9);
+    if (tail.length < 7) return null;
+    return db.prepare("SELECT * FROM clients WHERE replace(replace(replace(replace(mobile,' ',''),'-',''),'+',''),'(','') LIKE ? ORDER BY id").all(`%${tail}`)[0] || null;
+  }
   function upsertClient(c) {
     const name = clampStr(c.name, 160);
     if (!name) throw new HttpError(400, 'Client name is required.');
@@ -70,8 +76,17 @@ export function createJobs(ctx) {
         .run(type, name, clampStr(c.name_ar, 160), clampStr(c.contact_person, 120), email, mobile, clampStr(c.address, 300), clampStr(c.trn, 30), Number(c.credit_terms_days) || 0, c.monthly_invoicing ? 1 : 0, clampStr(c.referral_source, 60), c.id);
       return Number(c.id);
     }
-    const existing = (mobile && db.prepare('SELECT id FROM clients WHERE mobile=?').get(mobile)) || (email && db.prepare('SELECT id FROM clients WHERE email=? COLLATE NOCASE').get(email));
-    if (existing) return existing.id;
+    // same person: email first, then mobile. The details just entered are the newest, so they update the client
+    // (before, a client found by mobile kept its old email and the job showed the wrong address).
+    const existing = (email && db.prepare('SELECT * FROM clients WHERE email=? COLLATE NOCASE').get(email)) || (mobile && findByMobile(mobile));
+    if (existing) {
+      const upd = {};
+      if (email && email.toLowerCase() !== String(existing.email || '').toLowerCase()) upd.email = email;
+      if (name && !existing.name) upd.name = name;
+      const keys = Object.keys(upd);
+      if (keys.length) db.prepare(`UPDATE clients SET ${keys.map((k) => `${k}=?`).join(',')} WHERE id=?`).run(...keys.map((k) => upd[k]), existing.id);
+      return existing.id;
+    }
     return Number(db.prepare('INSERT INTO clients(type,name,name_ar,contact_person,email,mobile,address,trn,credit_terms_days,monthly_invoicing,referral_source,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')
       .run(type, name, clampStr(c.name_ar, 160), clampStr(c.contact_person, 120), email, mobile, clampStr(c.address, 300), clampStr(c.trn, 30), Number(c.credit_terms_days) || 0, c.monthly_invoicing ? 1 : 0, clampStr(c.referral_source, 60), ctx.now()).lastInsertRowid);
   }

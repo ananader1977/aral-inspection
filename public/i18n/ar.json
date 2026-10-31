@@ -1331,5 +1331,10 @@
 "VAT paid to / refunded by the FTA": "الضريبة المدفوعة / المستردة من الهيئة",
 "Equipment and vehicles bought": "شراء معدات ومركبات",
 "Owner drawings": "مسحوبات المالك",
-"Loans received less repaid": "القروض المستلمة ناقص المسددة"
+"Loans received less repaid": "القروض المستلمة ناقص المسددة",
+"Emailed links use another address.": "الروابط المرسلة بالبريد تستخدم عنوانًا آخر.",
+"Emails and the client link use {a}, but this app is at {b}.": "رسائل البريد ورابط العميل تستخدم {a}، لكن هذا التطبيق على {b}.",
+"Use {b} for all links": "استخدام {b} لجميع الروابط",
+"Emailed links now use this address": "الروابط المرسلة تستخدم الآن هذا العنوان",
+"Open the app at the new address first, then press the button there.": "افتح التطبيق على العنوان الجديد أولاً، ثم اضغط الزر هناك."
 }
