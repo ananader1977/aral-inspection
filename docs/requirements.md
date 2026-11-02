@@ -14,7 +14,7 @@ You are a senior full-stack engineer. Build a production-ready web application (
 - All amounts in AED. Timezone Asia/Dubai. Dates DD/MM/YYYY.
 
 ## BRAND & THEME
-- **Trade name:** A R A L Property Inspection Services · Arabic: **آرال لخدمات فحص العقارات** (confirm with trade licence)
+- **Trade name:** A R A L Property Inspection Services · Arabic: **أي أر أي ال لخدمات فحص العقارات** (confirm with trade licence)
 - **Tagline:** Smarter Inspections | Safer Properties · فحص أذكى | عقارات أكثر أماناً
 - **Colours (sampled from the logo file):**
   - Navy (text, top bar, headers): `#0A1F4A`
