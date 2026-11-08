@@ -40,9 +40,11 @@ const AR = {
   agBtn: 'احصل على رمز الإحالة',
   faqTitle: 'أسئلة شائعة', q1: 'ماذا تحتاجون مني يوم الفحص؟', a1: 'دخول كامل إلى العقار دون قيود، مع توصيل التكييف وديوا وتفعيلهما. بدونهما لا يمكن فحص التبريد والكهرباء والسباكة بشكل صحيح.',
   q2: 'كم يستغرق الفحص؟', a2: 'حوالي ساعتين إلى ثلاث للشقة، ومن أربع إلى ست ساعات للفيلا.',
-  q3: 'هل تقدمون خدمة التقييم؟', a3: 'لا. نحن نفحص الحالة. للتقييم نعمل مع شريك تقييم مسجل لدى ريرا ويمكننا تزويده بتقرير الفحص.',
+  q3: 'هل تقدمون خدمة التقييم؟', a3: 'نحن نفحص الحالة فقط. للتقييم نعمل مع شريك تقييم مسجل لدى ريرا ويمكننا تزويده بتقرير الفحص.',
   q4: 'هل تصلحون العيوب؟', a4: 'لا. لا نبيع الإصلاحات حتى يبقى تقريرنا مستقلاً، ونخبرك بالجهة المختصة لكل ملاحظة.',
   staff: 'دخول الموظفين',
+  heroIntro: 'شركة A R A L لخدمات فحص العقارات في دبي. نقدّم فحصًا احترافيًا غير تدخّلي وفحص تسليم للمنازل، ونوثّق كل عيب ظاهر، بسيطًا كان أو كبيرًا، لتشتري أو تستلم أو تستأجر بثقة.',
+  communityOther: 'أخرى',
   scopeText: 'نجري فحصًا بصريًا غير تدخّلي وفحص تسليم (سناجنج) للمنازل. نشمل الأنظمة غير الإنشائية والميكانيكية والكهربائية والسباكة ما لم يُتفق على غير ذلك، ونوثّق كل عيب ظاهر، بسيطًا كان أو كبيرًا، بالصور والفيديو ووصف واضح في تقرير منظّم واحد. يعكس التقرير حالة العقار يوم الفحص وليس ضمانًا لأدائه مستقبلًا.',
   regAlt: 'مسجلون لدى دائرة الأراضي والأملاك / ريرا',
   prNote: 'الأسعار بالدرهم. خدمة إضافية: التصوير الحراري 500.',
@@ -80,6 +82,7 @@ function applyLang() {
     if (!(k in EN)) EN[k] = el.innerHTML;
     el.innerHTML = lang === 'ar' ? AR[k] || EN[k] : EN[k];
   }
+  { const last = [...$('#communities').options].at(-1); if (last && [AR.communityOther, 'Other'].includes(last.value)) last.value = lang === 'ar' ? AR.communityOther : 'Other'; }
   for (const el of $$('[data-i18n-alt]')) { const k = el.dataset.i18nAlt; el.alt = lang === 'ar' ? AR[k] || '' : 'Registered with DLD / RERA'; }
   $('#lang').textContent = lang === 'ar' ? 'English' : 'العربية';
   if (site) { fillSelects(); fillPrices(); update(); }
@@ -248,7 +251,7 @@ $('#bizBtn').addEventListener('click', () => { business = true; const m = $('#me
   const wa = waLink(lang === 'ar' ? 'مرحبًا، أرغب في حجز فحص عقار' : 'Hello, I would like to book a property inspection');
   if (wa) { $('#waHero').href = wa; $('#waHero').classList.remove('hide'); }
   if (site.rera) $('#trustRera').classList.remove('hide');
-  $('#communities').replaceChildren(...site.communities.map((c) => new Option(c)));
+  $('#communities').replaceChildren(...[...site.communities, lang === 'ar' ? AR.communityOther : 'Other'].map((c) => new Option(c)));
   const contact = $('#contact');
   const lines = [site.company, site.address, site.phone && `Tel ${site.phone}`, site.mobile && `Mobile / WhatsApp ${site.mobile}`, site.email, site.licence && `DET licence ${site.licence}`, site.rera && `RERA Registration ${site.rera}`].filter(Boolean);
   contact.replaceChildren(...lines.flatMap((l, i) => (i ? [document.createElement('br'), l] : [l])));

@@ -148,6 +148,6 @@ details{border-bottom:1px solid var(--line);padding:14px 0}summary{cursor:pointe
 .foot .flogo img.reg{background:none;padding:0;border-radius:0;width:140px}
 .scope{max-width:760px;margin:0 0 28px;color:var(--ink-2,#3A465E);font-size:1.02rem;line-height:1.65}
 @media(max-width:520px){.logo img{height:40px}.hero .reg{width:170px}}
+.hero .intro{max-width:34rem;margin:0 0 4px;color:#C9D3E6;font-size:.98rem;line-height:1.65}
+.sh-foot .reg{height:36px;width:auto;margin:-4px 0}
 .cta{align-items:center}
-.cta .cta-reg,.hero .cta .cta-reg{height:49px;width:auto;align-self:center;margin:0}
-@media(min-width:521px){.hero .cta{flex-wrap:nowrap}}
