@@ -50,7 +50,7 @@ export function createDocs(ctx) {
     return {
       address: branch?.address || 'Dubai, United Arab Emirates',
       contact: [s.phone && `Tel ${s.phone}`, s.mobile && `Mobile ${s.mobile}`, s.email, s.website].filter(Boolean).join('  ·  '),
-      regs: [s.det_licence_no && `DET licence ${s.det_licence_no}`, s.rera_reg_no && `RERA ${s.rera_reg_no}`, s.vat_registered === '1' && s.trn && `TRN ${s.trn}`].filter(Boolean).join('  ·  '),
+      regs: [s.det_licence_no && `DET licence ${s.det_licence_no}`, s.rera_reg_no && `RERA Registration ${s.rera_reg_no}`, s.vat_registered === '1' && s.trn && `TRN ${s.trn}`].filter(Boolean).join('  ·  '),
     };
   }
   /** Business document (quote, invoice…): logo + title block on every page, company footer, Page X of Y. */
@@ -503,7 +503,7 @@ export function createDocs(ctx) {
     signer(d.x, 'Inspected by', ins?.name || j.inspector_name, ins?.credentials, insSig, r.inspection_date ? `Inspected ${dmy(r.inspection_date)}` : '');
     signer(d.x + colW, 'Reviewed and approved by', reviewer?.name, reviewer?.credentials, revSig, r.approved_at ? `Approved ${fmtDate(r.approved_at)}` : '');
     d.y += 120;
-    d.para([s.company_name, s.rera_reg_no && `RERA registration ${s.rera_reg_no}`, s.det_licence_no && `DET licence ${s.det_licence_no}`].filter(Boolean).join('  ·  '), { size: 8.5, fill: C.muted });
+    d.para([s.company_name, s.rera_reg_no && `RERA Registration ${s.rera_reg_no}`, s.det_licence_no && `DET licence ${s.det_licence_no}`].filter(Boolean).join('  ·  '), { size: 8.5, fill: C.muted });
     qrBox(d, online, 'Open the online report (photos and videos)');
 
     // 15a. attachments (appendix): an index, each image on its own page, PDF documents linked by QR code

@@ -250,7 +250,7 @@ $('#bizBtn').addEventListener('click', () => { business = true; const m = $('#me
   if (site.rera) $('#trustRera').classList.remove('hide');
   $('#communities').replaceChildren(...site.communities.map((c) => new Option(c)));
   const contact = $('#contact');
-  const lines = [site.company, site.address, site.phone && `Tel ${site.phone}`, site.mobile && `Mobile / WhatsApp ${site.mobile}`, site.email, site.licence && `DET licence ${site.licence}`, site.rera && `RERA ${site.rera}`].filter(Boolean);
+  const lines = [site.company, site.address, site.phone && `Tel ${site.phone}`, site.mobile && `Mobile / WhatsApp ${site.mobile}`, site.email, site.licence && `DET licence ${site.licence}`, site.rera && `RERA Registration ${site.rera}`].filter(Boolean);
   contact.replaceChildren(...lines.flatMap((l, i) => (i ? [document.createElement('br'), l] : [l])));
   $('#date').min = new Date().toISOString().slice(0, 10);
   applyLang();
