@@ -198,7 +198,7 @@ export function upgradeLookups(db) {
  * A block that someone at A R A L has already edited by hand is left alone. Runs once.
  */
 export function upgradeBlocks(db, now) {
-  if (db.prepare("SELECT value FROM settings WHERE key='_blocks_version'").get()?.value === '2') return 0;
+  if (db.prepare("SELECT value FROM settings WHERE key='_blocks_version'").get()?.value === '3') return 0;
   let n = 0;
   tx(db, () => {
     const today = new Date(now()).toISOString().slice(0, 10);
@@ -208,7 +208,7 @@ export function upgradeBlocks(db, now) {
       db.prepare('INSERT INTO content_blocks(code,version,title,body,effective_from,created_at) VALUES(?,?,?,?,?,?)').run(code, (last?.version || 0) + 1, title, body, today, now());
       n++;
     }
-    db.prepare("INSERT INTO settings(key,value) VALUES('_blocks_version','2') ON CONFLICT(key) DO UPDATE SET value='2'").run();
+    db.prepare("INSERT INTO settings(key,value) VALUES('_blocks_version','3') ON CONFLICT(key) DO UPDATE SET value='3'").run();
   });
   return n;
 }

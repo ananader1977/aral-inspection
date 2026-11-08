@@ -32,7 +32,7 @@ function draw() {
       q.components.length ? h('p', { class: 'small' }, h('b', {}, t('In scope')), ': ', q.components.map((x) => t(x)).join(', ')) : null,
       q.prerequisites.length ? h('p', { class: 'small' }, h('b', {}, t('Please arrange before the visit')), ': ', q.prerequisites.map((x) => t(x)).join(', ')) : null,
       lines, h('p', {}, h('a', { class: 'btn alt sm', href: `/api/public/quote/${encodeURIComponent(tok)}/pdf`, target: '_blank' }, t('Download the PDF')))),
-    q.quote_terms ? h('details', { class: 'card' }, h('summary', {}, h('b', {}, t('Terms and conditions'))), paras(q.quote_terms)) : null);
+    q.quote_terms || q.terms ? h('details', { class: 'card' }, h('summary', {}, h('b', {}, t('Terms and conditions'))), q.quote_terms ? paras(q.quote_terms) : null, q.terms ? h('h3', {}, t('Service agreement terms')) : null, q.terms ? paras(q.terms) : null) : null);
 }
 
 function action() {

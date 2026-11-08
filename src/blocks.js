@@ -44,11 +44,9 @@ We do not sell repairs and are not linked to any repair or maintenance company, 
   ['tc_quote', 'Terms and conditions (quotation)', `DRAFT: to be approved by A R A L's legal adviser.
 
 1. Fees are in UAE dirhams. VAT is added where applicable.
-2. Payment is due in full before the inspection unless agreed otherwise, by bank transfer or by card through our payment link.
-3. AC and DEWA must be connected and activated, and our team must have full access to the property, given by the landlord without any restriction. Otherwise the affected areas are reported as not inspected.
-4. The report is delivered within the stated time after the inspection. It includes photos, videos and defects graded by severity.
-5. The inspection is visual and non-invasive and covers the visible condition on the day. Environmental testing and structural testing are excluded unless agreed in writing.
-6. Rescheduling with less than 24 hours' notice may be charged.`],
+2. This quotation is valid until the date shown.
+3. Payment is due in full before the inspection unless agreed otherwise, by bank transfer or by card through our payment link.
+4. Accepting this quotation means accepting the service agreement terms that follow.`],
   ['tc_booking', 'Service agreement', `DRAFT: to be reviewed and approved by A R A L's legal adviser before use with clients.
 
 1. Service. A R A L Property Inspection Services ("A R A L") will carry out the inspection in the accepted quotation at the property named in it, and deliver a written report within the stated time (normally 24 hours) after the inspection.

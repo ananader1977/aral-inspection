@@ -162,6 +162,9 @@ export function createDocs(ctx) {
     const tc = (q.tc_block_id && db.prepare('SELECT body FROM content_blocks WHERE id=?').get(q.tc_block_id)?.body) || block('tc_quote');
     heading(d, 'Terms and conditions');
     bodyText(d, tc, { size: 8.5 });
+    // the full service agreement terms are part of the quotation, so the client sees everything in one document
+    const agTerms = block('tc_booking');
+    if (agTerms) { heading(d, 'Service agreement terms'); d.para('By accepting this quotation you agree to these terms and will sign the service agreement online.', { size: 8.5, fill: C.muted }); bodyText(d, agTerms, { size: 8.5 }); }
     return d.finish();
   }
 
