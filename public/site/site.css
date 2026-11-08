@@ -151,3 +151,8 @@ details{border-bottom:1px solid var(--line);padding:14px 0}summary{cursor:pointe
 .hero .intro{max-width:34rem;margin:0 0 4px;color:#C9D3E6;font-size:.98rem;line-height:1.65}
 .sh-foot .reg{height:36px;width:auto;margin:-4px 0}
 .cta{align-items:center}
+/* new colour logo (transparent) */
+.logo img{height:40px;width:auto}
+.sh-top img{width:96px;height:auto}
+.flogo>img:first-child{background:#fff;border-radius:8px;padding:8px 12px;height:auto}
+@media(max-width:520px){.logo img{height:32px}}
