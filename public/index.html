@@ -14,7 +14,7 @@
 <a class="skip" href="#book" data-i18n="skip">Skip to booking</a>
 <header class="bar">
   <div class="in">
-    <a class="logo" href="#top" aria-label="A R A L Property Inspection Services"><img src="/mark.png" alt="" width="40" height="40"><span><b>A R A L</b><small data-i18n="brandSub">Property Inspection Services</small></span></a>
+    <a class="logo" href="#top" aria-label="A R A L Property Inspection Services"><img src="/brand/aral-logo-900.png" alt="A R A L Property Inspection Services" width="90" height="50"></a>
     <nav class="menu" aria-label="Main">
       <a href="#services" data-i18n="navServices">Services</a>
       <a href="#prices" data-i18n="navPrices">Prices</a>
@@ -45,10 +45,11 @@
         <li data-i18n="trust3">Report within 24 hours</li>
         <li class="hide" id="trustRera" data-i18n="trust4">Registered with DLD / RERA</li>
       </ul>
+      <img class="reg" src="/brand/registered-badge.png" alt="Registered with DLD / RERA" width="200" height="112" data-i18n-alt="regAlt">
     </div>
     <figure class="sample" aria-label="Example of a finding in an A R A L report">
       <div class="sheet">
-        <div class="sh-top"><img src="/logo.jpg" alt="" width="96" height="55"><span>RESALE INSPECTION REPORT</span></div>
+        <div class="sh-top"><img src="/brand/aral-logo-900.png" alt="" width="96" height="53"><span>RESALE INSPECTION REPORT</span></div>
         <p class="sh-sec">Master Bathroom</p>
         <p class="sh-item">3. Traps/Drains/Supply Condition</p>
         <p class="sh-crit">• The bathtub drain appears blocked: the water level did not drop for over 20 minutes. Please get it checked by a licensed plumber.</p>
@@ -75,7 +76,7 @@
         <div class="two">
           <div><label for="ptype" data-i18n="fType">Property type</label><select id="ptype" name="property_type" required></select></div>
           <div id="bedsWrap"><label for="beds" data-i18n="fBeds">Bedrooms</label>
-            <select id="beds" name="bedrooms"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6+</option></select></div>
+            <select id="beds" name="bedrooms" disabled></select></div>
         </div>
         <label for="community" data-i18n="fCommunity">Community</label>
         <input id="community" name="community" list="communities" autocomplete="off">
@@ -128,6 +129,7 @@
   <div class="in">
     <p class="kick" data-i18n="svcKick">Residential</p>
     <h2 data-i18n="svcTitle">Inspections for every stage of owning a home</h2>
+    <p class="scope" data-i18n="scopeText">We carry out a non-invasive visual inspection and snagging of homes. We cover the non-structural, mechanical, electrical and plumbing systems unless agreed otherwise, and record every visible defect, minor or major, with photos, videos and clear descriptions in one structured report. It shows the condition on the day and is not a guarantee of future performance.</p>
     <div class="cards three">
       <article><h3 data-i18n="s1t">Resale inspection</h3><p data-i18n="s1d">Before you sign the MOU or transfer: a full condition report you can use to negotiate with the seller. Includes one re-inspection.</p><p class="from"><span data-i18n="from">From</span> <b id="p_OWN-PPI">AED 1,200</b></p></article>
       <article><h3 data-i18n="s2t">Snagging and handover</h3><p data-i18n="s2d">Before you accept the keys to a new unit: 200+ checks and a defect list in the developer's format, with a re-inspection after repairs.</p><p class="from"><span data-i18n="from">From</span> <b id="p_OWN-SNG">AED 1,200</b></p></article>
@@ -172,7 +174,7 @@
     <h2 data-i18n="howTitle">From booking to report in four steps</h2>
     <ol class="steps">
       <li><b data-i18n="h1t">Book</b><span data-i18n="h1d">Get your price here or on WhatsApp. We send the quotation and agreement to sign online.</span></li>
-      <li><b data-i18n="h2t">Prepare</b><span data-i18n="h2d">Make sure the AC and DEWA are connected and we can get the keys. That's all we need.</span></li>
+      <li><b data-i18n="h2t">Prepare</b><span data-i18n="h2d">Make sure AC and DEWA are connected and activated and our team should have full access to the property by the landlord without any restriction.</span></li>
       <li><b data-i18n="h3t">Inspect</b><span data-i18n="h3d">Our inspector checks every room with thermal camera, moisture meter and socket tester. You are welcome to join.</span></li>
       <li><b data-i18n="h4t">Report</b><span data-i18n="h4d">Within 24 hours you get the report with photos, videos and a summary to send to the developer or seller.</span></li>
     </ol>
@@ -198,7 +200,7 @@
 <section class="faq">
   <div class="in">
     <h2 data-i18n="faqTitle">Questions</h2>
-    <details><summary data-i18n="q1">What do you need from me on the day?</summary><p data-i18n="a1">Access to the property, with the air conditioning and DEWA connected. Without them we cannot test cooling, electrics or plumbing properly.</p></details>
+    <details><summary data-i18n="q1">What do you need from me on the day?</summary><p data-i18n="a1">Full access to the property without restriction, with AC and DEWA connected and activated. Without them we cannot test cooling, electrics or plumbing properly.</p></details>
     <details><summary data-i18n="q2">How long does an inspection take?</summary><p data-i18n="a2">About 2 to 3 hours for an apartment and 4 to 6 hours for a villa.</p></details>
     <details><summary data-i18n="q3">Do you do valuations?</summary><p data-i18n="a3">No. We inspect condition. For a valuation we work with a RERA-registered valuation partner and can pass on our inspection to them.</p></details>
     <details><summary data-i18n="q4">Will you fix the defects?</summary><p data-i18n="a4">No. We never sell repairs, so our report stays independent. We tell you which trade to call for each finding.</p></details>
@@ -208,7 +210,7 @@
 
 <footer class="foot">
   <div class="in">
-    <div><img src="/logo.jpg" alt="A R A L Property Inspection Services" width="150" height="87"></div>
+    <div class="flogo"><img src="/brand/aral-logo-900.png" alt="A R A L Property Inspection Services" width="150" height="83"><img class="reg" src="/brand/registered-badge.png" alt="Registered with DLD / RERA" width="140" height="78"></div>
     <div class="contact" id="contact"></div>
     <div class="small"><a href="/app/" data-i18n="staff">Staff sign-in</a></div>
   </div>

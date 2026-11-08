@@ -208,7 +208,7 @@ async function quoteEditor(j, draft, reload) {
   };
   const comps = ['Interior finishes', 'MEP (electrical and plumbing)', 'Air conditioning', 'Water leak and moisture', 'Thermal imaging', 'Exterior', 'Structure (visual)', 'Pool / spa', 'Life safety'];
   const chosen = new Set(draft?.components || comps.slice(0, 4));
-  const pre = ['AC connected', 'DEWA connected', 'Keys and access arranged', 'Unit empty and clean'];
+  const pre = ['AC connected and activated', 'DEWA connected and activated', 'Full access given by the landlord without restriction', 'Unit empty and clean'];
   const chosenPre = new Set(draft?.prerequisites || pre.slice(0, 3));
   const f = h('form', { onsubmit: async (e) => {
     e.preventDefault();

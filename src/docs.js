@@ -145,6 +145,7 @@ export function createDocs(ctx) {
     const ptitle = [j.bedrooms ? `${j.bedrooms} Bedroom` : j.property_type === 'studio' ? 'Studio' : '', j.property_type === 'studio' ? '' : j.property_type.charAt(0).toUpperCase() + j.property_type.slice(1), j.community && `– ${j.community}`].filter(Boolean).join(' ');
     kv(d, [['Client', c.name], ['Attention', c.contact_person], ['Email', c.email], ['Mobile', c.mobile], ['Property', ptitle], ['Address', addr(j)], ['Service', j.service_name], ['Re-inspection', j.includes_reinspection ? 'One re-inspection included' : 'Not included']]);
     heading(d, 'Scope of the inspection');
+    if (block('qt_about')) bodyText(d, block('qt_about'), { size: 9.5 });
     const comps = JSON.parse(q.components || '[]'), pre = JSON.parse(q.prerequisites || '[]');
     if (comps.length) d.para(`Components in scope: ${comps.join(', ')}.`, { size: 9.5 });
     if (pre.length) d.para(`Please arrange before the visit: ${pre.join(', ')}.`, { size: 9.5 });
@@ -338,6 +339,11 @@ export function createDocs(ctx) {
     bodyText(d, block('rpt_what_we_inspect', onDate));
     heading(d, 'Inspection standards followed');
     bodyText(d, block('rpt_standards', onDate));
+    for (const [code, title] of [['rpt_scope_components', 'What the inspection covers'], ['rpt_environmental', 'Environmental testing'], ['rpt_equipment', 'Equipment we use']]) {
+      if (!block(code, onDate)) continue;
+      heading(d, title);
+      bodyText(d, block(code, onDate));
+    }
 
     // 5. contents (one page; page numbers come from the first pass)
     part('toc', 'Contents');

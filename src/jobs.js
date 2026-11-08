@@ -274,7 +274,7 @@ export function createJobs(ctx) {
     const deposit = Math.min(100, Math.max(0, Number(body.deposit_pct ?? s.deposit_pct) || 100));
     const validDays = Number(body.valid_days ?? s.quote_validity_days) || 14;
     const comps = JSON.stringify(Array.isArray(body.components) ? body.components.slice(0, 12).map((x) => clampStr(x, 60)) : ['Interior finishes', 'MEP (electrical and plumbing)', 'Air conditioning', 'Water leak and moisture']);
-    const prereq = JSON.stringify(Array.isArray(body.prerequisites) ? body.prerequisites.slice(0, 8).map((x) => clampStr(x, 80)) : ['AC connected', 'DEWA connected', 'Keys and access arranged']);
+    const prereq = JSON.stringify(Array.isArray(body.prerequisites) ? body.prerequisites.slice(0, 8).map((x) => clampStr(x, 80)) : ['AC connected and activated', 'DEWA connected and activated', 'Full access given by the landlord without restriction']);
     const tc = ctx.admin.currentBlock('tc_quote');
     return tx(db, () => {
       const draft = db.prepare("SELECT * FROM quotations WHERE job_id=? AND status='draft' ORDER BY id DESC").get(jobId);
@@ -539,7 +539,7 @@ export function createJobs(ctx) {
     const where = [j.building, j.unit_no && `Unit ${j.unit_no}`, j.community].filter(Boolean).join(', ');
     const ics = { filename: `${j.number}.ics`, contentType: 'text/calendar; charset=utf-8; method=PUBLISH', content: Buffer.from(icsFor(j, s)) };
     if (j.client_email) await ctx.mailer.send({ to: j.client_email, jobId, template: 'inspection_confirmation', subject: `${resched ? 'New date for' : 'Confirmed:'} your inspection – ${when}`,
-      text: `Dear ${j.client_name},\n\nYour inspection is ${resched ? 'now' : ''} booked for ${when} at ${where}. Inspector: ${j.inspector_name}.\n\nPlease make sure the AC and DEWA are connected and we can get access to the property.\n\n${s.company_name}`,
+      text: `Dear ${j.client_name},\n\nYour inspection is ${resched ? 'now' : ''} booked for ${when} at ${where}. Inspector: ${j.inspector_name}.\n\nPlease make sure AC and DEWA are connected and activated and our team should have full access to the property by the landlord without any restriction.\n\n${s.company_name}`,
       html: layout(s, resched ? 'Your inspection has a new date' : 'Your inspection is booked', `<p>Dear ${j.client_name},</p>${rows([['When', when], ['Where', where], ['Inspector', j.inspector_name], ['Job', j.number]])}<p><b>Before we come:</b> please make sure the air conditioning and DEWA are connected and we can get access to the property.</p>`), attachments: [ics] });
     ctx.push.later(() => ctx.push.toInspector(j.inspector_id, { title: `${resched ? 'Rescheduled' : 'New job'}: ${j.number}`, body: `${when} · ${where}`, url: `/app/#inspect/${j.id}`, tag: j.number }));
     const ins = db.prepare('SELECT email FROM inspectors WHERE id=?').get(j.inspector_id);

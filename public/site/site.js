@@ -32,17 +32,19 @@ const AR = {
   rStudio: 'استوديو', r1: 'شقة غرفة نوم', r2: 'شقة غرفتين', r3: 'شقة 3 غرف', rTh: 'تاون هاوس', rV4: 'فيلا حتى 4 غرف', rV5: 'فيلا 5 غرف أو أكثر',
   howKick: 'كيف نعمل', howTitle: 'من الحجز إلى التقرير في أربع خطوات',
   h1t: 'احجز', h1d: 'احصل على السعر هنا أو عبر واتساب. نرسل عرض السعر والاتفاقية للتوقيع إلكترونيًا.',
-  h2t: 'جهّز العقار', h2d: 'تأكد من توصيل التكييف وديوا وإمكانية استلام المفاتيح. هذا كل ما نحتاجه.',
+  h2t: 'جهّز العقار', h2d: 'تأكد من توصيل التكييف وديوا وتفعيلهما، وأن يتمكن فريقنا من دخول العقار بالكامل من المالك دون أي قيود.',
   h3t: 'الفحص', h3d: 'يفحص المفتش كل غرفة بالكاميرا الحرارية وجهاز الرطوبة وفاحص المقابس. يمكنك الحضور.',
   h4t: 'التقرير', h4d: 'خلال 24 ساعة تستلم التقرير بالصور والفيديو وملخصًا ترسله للمطور أو البائع.',
   agKick: 'للوسطاء العقاريين', agTitle: 'امنح عملاءك راحة البال، واربح من كل إحالة.',
   ag1: 'عمولة إحالة 10% على كل فحص مدفوع ترسله لنا', ag2: 'رمز إحالة خاص بك ليُحتسب لك كل حجز', ag3: 'التقرير خلال 24 ساعة حتى لا تتأخر صفقتك', ag4: 'مستقلون: لا نبيع الإصلاحات، فيثق البائع والمشتري بالتقرير',
   agBtn: 'احصل على رمز الإحالة',
-  faqTitle: 'أسئلة شائعة', q1: 'ماذا تحتاجون مني يوم الفحص؟', a1: 'الدخول إلى العقار مع توصيل التكييف وديوا. بدونها لا يمكن فحص التبريد والكهرباء والسباكة بشكل صحيح.',
+  faqTitle: 'أسئلة شائعة', q1: 'ماذا تحتاجون مني يوم الفحص؟', a1: 'دخول كامل إلى العقار دون قيود، مع توصيل التكييف وديوا وتفعيلهما. بدونهما لا يمكن فحص التبريد والكهرباء والسباكة بشكل صحيح.',
   q2: 'كم يستغرق الفحص؟', a2: 'حوالي ساعتين إلى ثلاث للشقة، ومن أربع إلى ست ساعات للفيلا.',
   q3: 'هل تقدمون خدمة التقييم؟', a3: 'لا. نحن نفحص الحالة. للتقييم نعمل مع شريك تقييم مسجل لدى ريرا ويمكننا تزويده بتقرير الفحص.',
   q4: 'هل تصلحون العيوب؟', a4: 'لا. لا نبيع الإصلاحات حتى يبقى تقريرنا مستقلاً، ونخبرك بالجهة المختصة لكل ملاحظة.',
   staff: 'دخول الموظفين',
+  scopeText: 'نجري فحصًا بصريًا غير تدخّلي وفحص تسليم (سناجنج) للمنازل. نشمل الأنظمة غير الإنشائية والميكانيكية والكهربائية والسباكة ما لم يُتفق على غير ذلك، ونوثّق كل عيب ظاهر، بسيطًا كان أو كبيرًا، بالصور والفيديو ووصف واضح في تقرير منظّم واحد. يعكس التقرير حالة العقار يوم الفحص وليس ضمانًا لأدائه مستقبلًا.',
+  regAlt: 'مسجلون لدى دائرة الأراضي والأملاك / ريرا',
   prNote: 'الأسعار بالدرهم. خدمة إضافية: التصوير الحراري 500.',
 };
 const EN = {};
@@ -53,6 +55,7 @@ const MSG = {
   total: ['Total', 'الإجمالي'], vat: ['VAT', 'الضريبة'], excl: ['Price before VAT', 'السعر قبل الضريبة'], noVat: ['No VAT is charged', 'لا تُضاف ضريبة'],
   report: ['Report within {h} hours', 'التقرير خلال {h} ساعة'], reinsp: ['Includes one re-inspection', 'يشمل إعادة فحص واحدة'],
   needName: ['Please enter your name.', 'يرجى إدخال الاسم.'], needMobile: ['Please enter your mobile number.', 'يرجى إدخال رقم الجوال.'], needConsent: ['Please tick the box to agree to be contacted.', 'يرجى الموافقة على التواصل معك.'],
+  needType: ['Please choose the property type and bedrooms.', 'يرجى اختيار نوع العقار وعدد غرف النوم.'], choose: ['Select…', 'اختر…'],
   sending: ['Sending…', 'جارٍ الإرسال…'], net: ['Network problem. Please try again or WhatsApp us.', 'مشكلة في الاتصال. حاول مرة أخرى أو راسلنا عبر واتساب.'],
   agentMsg: ['I am a broker / agent and would like a referral code.', 'أنا وسيط عقاري وأرغب في الحصول على رمز إحالة.'],
   bizMsg: ['Business enquiry (bank / developer / owners association): ', 'استفسار للشركات (بنك / مطور / جمعية ملاك): '],
@@ -77,6 +80,7 @@ function applyLang() {
     if (!(k in EN)) EN[k] = el.innerHTML;
     el.innerHTML = lang === 'ar' ? AR[k] || EN[k] : EN[k];
   }
+  for (const el of $$('[data-i18n-alt]')) { const k = el.dataset.i18nAlt; el.alt = lang === 'ar' ? AR[k] || '' : 'Registered with DLD / RERA'; }
   $('#lang').textContent = lang === 'ar' ? 'English' : 'العربية';
   if (site) { fillSelects(); fillPrices(); update(); }
 }
@@ -98,10 +102,11 @@ function fillSelects() {
   const sel = $('#service'), cur = sel.value;
   sel.replaceChildren(...site.services.filter((s) => !s.is_addon).map((s) => new Option(svcName(s), s.code)));
   if (cur) sel.value = cur;
-  const pt = $('#ptype'), curT = pt.value || 'apartment';
-  const og = (label, list) => { const g = document.createElement('optgroup'); g.label = label; for (const tp of list) g.append(new Option(L(TYPES[tp] || [tp, tp]), tp)); return g; };
-  pt.replaceChildren(...site.residential_types.map((tp) => new Option(L(TYPES[tp] || [tp, tp]), tp)));
-  pt.value = curT;
+  // Studio is a choice under Apartment (in the bedrooms list), not a property type of its own. Nothing is pre-selected.
+  const pt = $('#ptype'), curT = pt.value;
+  pt.replaceChildren(new Option(L(MSG.choose), ''), ...site.residential_types.filter((tp) => tp !== 'studio').map((tp) => new Option(L(TYPES[tp] || [tp, tp]), tp)));
+  pt.value = [...pt.options].some((o) => o.value === curT) ? curT : '';
+  fillBeds();
   const box = $('#addons'), checked = new Set($$('input', box).filter((i) => i.checked).map((i) => i.value));
   box.replaceChildren(...site.services.filter((s) => s.is_addon).map((s) => {
     const l = document.createElement('label');
@@ -109,6 +114,26 @@ function fillSelects() {
     l.append(i, ` ${svcName(s)}${site.addon_prices[s.code] ? ` +${fmt(site.addon_prices[s.code])}` : ''}`);
     return l;
   }));
+}
+
+/** Bedrooms stay empty and locked until a property type is chosen; Apartment also offers Studio. */
+function fillBeds() {
+  const type = $('#ptype').value, sel = $('#beds'), cur = sel.value;
+  sel.disabled = !type;
+  const opts = [new Option('', '')];
+  if (type) {
+    if (type === 'apartment') opts.push(new Option(L(TYPES.studio), '0'));
+    for (let n = 1; n <= 5; n++) opts.push(new Option(String(n), String(n)));
+    opts.push(new Option('6+', '6'));
+  }
+  sel.replaceChildren(...opts);
+  sel.value = [...sel.options].some((o) => o.value === cur) ? cur : '';
+}
+/** The property as the system stores it: Apartment + Studio is the "studio" type with no bedrooms. Null until both are chosen. */
+function chosen() {
+  const type = $('#ptype').value, b = $('#beds').value;
+  if (!type || b === '') return null;
+  return type === 'apartment' && b === '0' ? { type: 'studio', beds: 0 } : { type, beds: Number(b) };
 }
 
 function fillPrices() {
@@ -129,10 +154,15 @@ function fillPrices() {
 let lastEstimate = null;
 let seq = 0;
 async function update() {
-  const type = $('#ptype').value;
-  $('#bedsWrap').classList.toggle('hide', type === 'studio');
-  const body = { service: $('#service').value, property_type: type, bedrooms: type === 'studio' ? 0 : Number($('#beds').value), addons: $$('#addons input:checked').map((i) => i.value) };
+  const c = chosen();
   const my = ++seq;
+  if (!c) {
+    lastEstimate = null;
+    const e = p((lang === 'ar' ? AR : EN).estEmpty || '', 'muted'); e.dataset.i18n = 'estEmpty';
+    $('#est').replaceChildren(e); $('#mbarPrice').textContent = ''; mbar.ready = false; mbar.sync();
+    return;
+  }
+  const body = { service: $('#service').value, property_type: c.type, bedrooms: c.beds, addons: $$('#addons input:checked').map((i) => i.value) };
   try {
     const r = await (await fetch('/api/public/estimate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
     if (my !== seq) return;
@@ -173,6 +203,7 @@ document.addEventListener('focusin', (e) => { if (e.target.matches('input,select
 document.addEventListener('focusout', () => { setTimeout(() => { mbar.typing = !!document.activeElement?.matches?.('input,select,textarea'); mbar.sync(); }, 50); });
 $('#mbar a').addEventListener('click', (e) => { e.preventDefault(); $('#step2').scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('#name').focus({ preventScroll: true }), 450); });
 
+$('#ptype').addEventListener('change', fillBeds);
 $('#bookForm').addEventListener('input', (e) => { if (e.target.closest('.panel:not(.wide)')) update(); });
 $('#bookForm').addEventListener('change', (e) => { if (e.target.closest('.panel:not(.wide)')) update(); });
 
@@ -184,11 +215,12 @@ $('#bookForm').addEventListener('submit', async (e) => {
   if (!f.name.value.trim()) return show(L(MSG.needName));
   if (!f.mobile.value.trim()) return show(L(MSG.needMobile));
   if (!f.consent.checked) return show(L(MSG.needConsent));
-  const type = f.property_type.value;
+  const c = chosen();
+  if (!c) return show(L(MSG.needType));
   const body = {
     name: f.name.value, mobile: f.mobile.value, email: f.email.value, preferred_date: f.preferred_date.value, building: f.building.value, community: f.community.value,
     referral_code: f.referral_code.value, message: f.message.value, consent: true, website: f.website.value, pref_lang: lang,
-    service_code: business ? '' : f.service_code.value, property_type: type, bedrooms: type === 'studio' ? 0 : Number(f.bedrooms.value),
+    service_code: business ? '' : f.service_code.value, property_type: c.type, bedrooms: c.beds,
     addons: $$('#addons input:checked').map((i) => i.value), client_type: business ? 'company' : 'individual',
     estimate_total: !business && lastEstimate && !lastEstimate.quote_needed ? lastEstimate.total : null,
   };

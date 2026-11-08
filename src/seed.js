@@ -1,5 +1,6 @@
 // Reference data loaded on first start: service catalogue, prices, picklists, report wording (draft),
 // checklists, comment library and glossary. Everything here can be edited in Settings afterwards.
+import { NEW_BLOCKS } from './blocks.js';
 import crypto from 'node:crypto';
 import { tx } from './db.js';
 import { hashPassword } from './auth.js';
@@ -45,7 +46,7 @@ const LOOKUPS = {
 };
 
 // Report and quotation wording. A R A L's own text, marked DRAFT where a lawyer should approve it.
-const BLOCKS = [
+const OLD_BLOCKS = [
   ['rpt_intro', 'Introduction', `Thank you for choosing A R A L. Please read the whole report, then call us with any questions. We stay available to you until your purchase or handover is complete.
 
 A property does not "pass" or "fail" an inspection. This report lists the conditions we saw on the day of the visit so that you can ask the developer, seller or landlord to fix them, or take them into account in your decision.
@@ -118,6 +119,8 @@ Please review the proposal below. Once you accept it, you will receive the servi
   ['sec_intro_electrical', 'Electrical (section intro)', `We inspect the visible parts of the electrical installation: the distribution board, breakers and residual-current device (RCD), and a representative number of sockets, switches and light fittings. Sockets are tested for correct wiring and earthing. Electrical findings can be safety risks and should be repaired by a licensed electrician.`],
   ['sec_intro_water_heater', 'Water Heater (section intro)', `We check the water heater, its supply and outlet pipes, valves and the hot water temperature at the taps.`],
 ];
+// Wording from the scope-of-service review lives in blocks.js; it replaces the older text of the same code.
+const BLOCKS = [...OLD_BLOCKS.filter(([c]) => !NEW_BLOCKS.some(([n]) => n === c)), ...NEW_BLOCKS];
 
 // Checklist for apartments and villas: sections and the items inside them.
 const ITEMS = {
@@ -187,6 +190,27 @@ export function upgradeLookups(db) {
     db.prepare("INSERT INTO settings(key,value) VALUES('_lookups_version','2') ON CONFLICT(key) DO UPDATE SET value='2'").run();
   });
   return true;
+}
+
+/**
+ * Existing systems: puts the new report / quotation / agreement wording in place as a NEW VERSION of each block
+ * (old versions stay, so signed agreements and issued reports keep the wording they were made with).
+ * A block that someone at A R A L has already edited by hand is left alone. Runs once.
+ */
+export function upgradeBlocks(db, now) {
+  if (db.prepare("SELECT value FROM settings WHERE key='_blocks_version'").get()?.value === '2') return 0;
+  let n = 0;
+  tx(db, () => {
+    const today = new Date(now()).toISOString().slice(0, 10);
+    for (const [code, title, body] of NEW_BLOCKS) {
+      const last = db.prepare('SELECT * FROM content_blocks WHERE code=? ORDER BY version DESC LIMIT 1').get(code);
+      if (last && (last.created_by || last.body === body)) continue;
+      db.prepare('INSERT INTO content_blocks(code,version,title,body,effective_from,created_at) VALUES(?,?,?,?,?,?)').run(code, (last?.version || 0) + 1, title, body, today, now());
+      n++;
+    }
+    db.prepare("INSERT INTO settings(key,value) VALUES('_blocks_version','2') ON CONFLICT(key) DO UPDATE SET value='2'").run();
+  });
+  return n;
 }
 
 export function upgradeChecklists(db, now) {
