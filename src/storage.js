@@ -67,6 +67,7 @@ export function createStorage(ctx) {
 
   return {
     kind: driveOn ? 'drive' : 'disk',
+    baseDir,
     /** Saves bytes and returns the new files.id. purpose: photo, video, thermal, thumb, pdf_quote, pdf_report, signature, proof, logo… */
     async save({ name, mime, buf, jobId = null, purpose = 'attachment', userId = null }) {
       const sha = crypto.createHash('sha256').update(buf).digest('hex');

@@ -36,6 +36,7 @@ boot();
 
 async function boot() {
   S.cfg = await api('GET', '/api/config').catch(() => ({ lang: 'en' }));
+  if (S.cfg.env === 'test') document.body.prepend(h('div', { class: 'testbar', role: 'status' }, 'TEST SYSTEM: nothing here is real. No emails or notifications are sent, and numbers are separate from the live system.'));
   await setLang(savedLang(S.cfg.lang || 'en'));
   try { S.me = (await api('GET', '/api/me')).user; }
   catch (e) {

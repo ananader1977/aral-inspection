@@ -181,3 +181,7 @@ table.stmt tr.grp td{font-weight:700;color:var(--navy);padding-top:14px;border-b
 table.stmt tr.sub td{font-weight:700;border-top:1px solid var(--line,#DDE3EC)}
 table.stmt tr.tot td{font-weight:800;background:#F4ECE4;border-top:2px solid var(--navy)}
 table.stmt td:first-child{white-space:pre-wrap}
+.suggbtn.on{outline:2px solid var(--copper);outline-offset:1px}
+.aidone{color:#0b6b3a;margin:4px 0}
+.testbar{background:#B42318;color:#fff;text-align:center;font-weight:700;font-size:.85rem;padding:6px 12px}
+.ok{color:#0b6b3a}

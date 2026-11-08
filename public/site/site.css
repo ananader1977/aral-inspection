@@ -158,3 +158,5 @@ details{border-bottom:1px solid var(--line);padding:14px 0}summary{cursor:pointe
 @media(max-width:520px){.logo img{height:32px}}
 .logo span{line-height:1.15}
 @media(max-width:520px){.logo span{display:none}}
+.testbar{background:#B42318;color:#fff;text-align:center;font-weight:700;font-size:.85rem;padding:6px 12px}
+.logo small{font-size:.74rem}

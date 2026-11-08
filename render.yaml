@@ -31,7 +31,7 @@ services:
       - key: REQUIRE_2FA
         value: "true"
       - key: SEED_DEMO
-        value: "true"        # demo users, inspectors and equipment; set to false before real use
+        value: "true"        # demo users, inspectors and equipment. After go-live set this to false (the Go live / reset screen also switches the demo logins off)
       - key: DEMO_PASSWORD
         sync: false
       - key: SMTP_HOST
@@ -72,3 +72,48 @@ services:
         sync: false          # only when AI_PROVIDER=claude
       - key: AI_MODEL
         sync: false          # optional; default gemini-3.5-flash-lite (Gemini) or claude-sonnet-5-5 (Claude)
+
+  # A separate TEST system: its own database, numbers and files. Red banner, no real emails or phone notifications.
+  # Use it to try changes and to train staff; the live system is never touched. Needs its own paid instance and disk.
+  - type: web
+    name: aral-inspection-test
+    runtime: node
+    plan: starter
+    buildCommand: "true"
+    startCommand: node --disable-warning=ExperimentalWarning src/server.js
+    healthCheckPath: /api/health
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: APP_ENV
+        value: test
+      - key: DB_PATH
+        value: /var/data/app.db
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+      - key: TRUST_PROXY
+        value: "true"
+      - key: BASE_URL
+        sync: false          # e.g. https://aral-inspection-test.onrender.com
+      - key: SUPERADMIN_EMAIL
+        value: ananader1@gmail.com
+      - key: SUPERADMIN_NAME
+        value: Anas
+      - key: SUPERADMIN_PASSWORD
+        sync: false
+      - key: REQUIRE_2FA
+        value: "false"
+      - key: SEED_DEMO
+        value: "true"
+      - key: DEMO_PASSWORD
+        sync: false
+      - key: PAYMENT_PROVIDER
+        value: mock
+      - key: AI_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false

@@ -22,6 +22,7 @@ const P = {
   'users.manage': ['super_admin'],
   'settings.view': ['super_admin', 'admin', 'reviewer', 'accountant'],
   'settings.edit': ['super_admin'],
+  'system.reset': ['super_admin'],
   'content.edit': ['super_admin'], // terms & conditions and report wording
   'catalogue.edit': ['super_admin'], // services, prices, surcharges, lookups, valuation partners
   'technical.edit': ['super_admin', 'reviewer'], // checklists, comment library, glossary

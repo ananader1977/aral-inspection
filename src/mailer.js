@@ -10,6 +10,7 @@ export function createMailer(ctx) {
         JSON.stringify((m.attachments || []).map((a) => a.filename)), status, error, status === 'logged' ? 0 : 1);
 
   async function send(m) {
+    if (config.appEnv === 'test') { log(m, 'logged', 'Test system: email not sent'); return { status: 'logged' }; }
     if (!config.smtp.host) { log(m, 'logged', 'Email not configured (SMTP_HOST)'); return { status: 'logged' }; }
     try {
       const s = ctx.settings();

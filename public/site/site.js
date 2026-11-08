@@ -248,6 +248,7 @@ $('#bizBtn').addEventListener('click', () => { business = true; const m = $('#me
 (async function init() {
   applyLang();
   try { site = await (await fetch('/api/public/site')).json(); } catch { return; }
+  if (site.env === 'test') { const b = document.createElement('div'); b.className = 'testbar'; b.textContent = 'TEST SYSTEM: not the real A R A L website. Nothing you send here is real.'; document.body.prepend(b); }
   const wa = waLink(lang === 'ar' ? 'مرحبًا، أرغب في حجز فحص عقار' : 'Hello, I would like to book a property inspection');
   if (wa) { $('#waHero').href = wa; $('#waHero').classList.remove('hide'); }
   if (site.rera) $('#trustRera').classList.remove('hide');

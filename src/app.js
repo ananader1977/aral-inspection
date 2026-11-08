@@ -17,6 +17,7 @@ import { createDocs } from './docs.js';
 import { createPayments } from './payments.js';
 import { createAi } from './ai.js';
 import { createBackup } from './backup.js';
+import { createGoLive } from './golive.js';
 import { createPush } from './push.js';
 import { createAccounts } from './accounts.js';
 
@@ -46,6 +47,7 @@ export function createContext({ config, now = () => Date.now() }) {
   ctx.payments = createPayments(ctx);
   ctx.ai = createAi(ctx);
   ctx.backup = createBackup(ctx);
+  ctx.golive = createGoLive(ctx);
   ctx.seeded = seedReference(db, now);
   if (upgradeLookups(db)) console.log('[setup] Lost reasons updated: High Price, Customer Not Interested.');
   { const n = upgradeBlocks(db, now); if (n) console.log(`[setup] Report, quotation and agreement wording updated (${n} texts, new versions).`); }

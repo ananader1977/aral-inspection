@@ -467,17 +467,26 @@ async function inspectJob(el, jobId) {
     // ---- AI: read the photos and suggest wording ----
     const aiPhotos = opts.photoIds?.length ? opts.photoIds : [...(o ? o.media : []), ...(it.media || [])].filter((x) => typeof x === 'number');
     const aiBox = h('div', { class: 'aibox' });
+    let aiText = '';
     const askAi = async () => {
       if (!navigator.onLine) return fill(aiBox, h('p', { class: 'small muted' }, t('AI suggestions need an internet connection.')));
       fill(aiBox, h('p', { class: 'aiwait' }, h('span', { class: 'spin' }), t('Reading the photo…')));
       try {
         const r = await A('POST', '/ai/suggest', { item_id: it.id, media_ids: aiPhotos.slice(0, 4) });
+        // The best suggestion goes straight into the form, so the inspector only checks and saves. Text the inspector
+        // typed or picked is never overwritten; the other suggestions stay one tap away.
+        const apply = (x) => {
+          text.value = x.text; sev = x.severity; trade.value = x.trade || ''; inSum.checked = sev !== 'info'; libId = null; aiText = x.text; drawSev();
+          if (r.caption && opts.photoIds?.length) opts.caption = r.caption;
+        };
+        const mine = text.value.trim() && text.value.trim() !== aiText;
+        if (r.findings.length && !mine) apply(r.findings[0]);
+        const btns = r.findings.map((x, i) => h('button', { type: 'button', class: `suggbtn ai ${x.severity} ${!mine && i === 0 ? 'on' : ''}`, onclick: () => { apply(x); btns.forEach((b) => b.classList.remove('on')); btns[i].classList.add('on'); text.focus(); } },
+          x.text, h('span', { class: `conf ${x.confidence}` }, `${t(SEV.find(([k]) => k === x.severity)?.[1] || x.severity)} · ${t(`confidence ${x.confidence}`)}${x.trade ? ` · ${x.trade}` : ''}`)));
         fill(aiBox,
           h('div', { class: 'aihead' }, h('b', {}, '✨ ', t('AI suggestions')), h('span', { class: 'small muted' }, `${S.cfg?.ai_provider ? `${S.cfg.ai_provider} · ` : ''}${t('Check before saving. You are responsible for the report.')}`)),
-          r.findings.length ? h('div', { class: 'sugg' }, r.findings.map((x) => h('button', { type: 'button', class: `suggbtn ai ${x.severity}`, onclick: () => {
-            text.value = x.text; sev = x.severity; trade.value = x.trade || ''; inSum.checked = sev !== 'info'; libId = null; drawSev(); text.focus();
-            if (r.caption && opts.photoIds?.length) opts.caption = r.caption;
-          } }, x.text, h('span', { class: `conf ${x.confidence}` }, `${t(SEV.find(([k]) => k === x.severity)?.[1] || x.severity)} · ${t(`confidence ${x.confidence}`)}${x.trade ? ` · ${x.trade}` : ''}`)))) : null,
+          r.findings.length && !mine ? h('p', { class: 'small aidone' }, t('Filled in below from the photo. Edit it, or tap another suggestion.')) : null,
+          r.findings.length ? h('div', { class: 'sugg' }, btns) : null,
           r.note ? h('p', { class: 'small muted' }, r.note) : null,
           h('button', { class: 'btn alt sm', type: 'button', onclick: askAi }, t('Try again')));
       } catch (e) { fill(aiBox, h('p', { class: 'small bad' }, e.message), h('button', { class: 'btn alt sm', type: 'button', onclick: askAi }, t('Try again'))); }

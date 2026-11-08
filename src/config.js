@@ -20,6 +20,8 @@ export function loadConfig(env = process.env) {
     require2fa: env.REQUIRE_2FA !== 'false',
     // Adds demo users, inspectors, equipment and a valuation partner so every screen has something to show.
     seedDemo: env.SEED_DEMO === 'true',
+    // APP_ENV=test marks a separate TEST system: red banner, no real emails or phone notifications, can be reset any time.
+    appEnv: (env.APP_ENV || '').toLowerCase() === 'test' ? 'test' : 'live',
     demoPassword: env.DEMO_PASSWORD || '',
     paymentProvider: (env.PAYMENT_PROVIDER || 'mock').toLowerCase(),
     // AI photo suggestions (Claude). Leave ANTHROPIC_API_KEY empty to hide the feature.
@@ -27,7 +29,7 @@ export function loadConfig(env = process.env) {
     // Nightly database backup (Google Drive when set up). BACKUP_KEY encrypts the copies; keep it safe, it is needed to restore.
     backup: { key: env.BACKUP_KEY || '', keep: Number(env.BACKUP_KEEP) || 30 },
     // Phone notifications for the mobile app (Android: FCM_SERVICE_ACCOUNT, iPhone: APNS_*). Optional.
-    push: pushConfig(env),
+    push: (env.APP_ENV || '').toLowerCase() === 'test' ? pushConfig({}) : pushConfig(env),
     stripe: { secretKey: env.STRIPE_SECRET_KEY || '', webhookSecret: env.STRIPE_WEBHOOK_SECRET || '' },
     smtp: {
       host: (env.SMTP_HOST || '').trim(),

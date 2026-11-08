@@ -25,7 +25,7 @@ export function registerRoutes(app, ctx) {
   app.get('/api/health', (req, res) => res.json({ ok: true }));
   app.get('/api/config', (req, res) => {
     const s = ctx.settings();
-    res.json({ company: s.company_name, short: s.company_short, tagline: s.tagline, lang: s.ui_default_lang, payments: config.paymentProvider, email: !!config.smtp.host, storage: config.drive.refreshToken ? 'drive' : 'disk', ai: !!config.ai?.apiKey, ai_provider: config.ai?.apiKey ? ctx.ai.label() : '', push: ctx.push.enabled() });
+    res.json({ company: s.company_name, short: s.company_short, tagline: s.tagline, lang: s.ui_default_lang, payments: config.paymentProvider, email: !!config.smtp.host, storage: config.drive.refreshToken ? 'drive' : 'disk', ai: !!config.ai?.apiKey, ai_provider: config.ai?.apiKey ? ctx.ai.label() : '', push: ctx.push.enabled(), env: config.appEnv, go_live_at: ctx.golive.status().go_live_at });
   });
 
   app.post('/api/login', async (req, res) => {
@@ -58,11 +58,12 @@ export function registerRoutes(app, ctx) {
   // ---------- public website: catalogue, instant estimate, enquiry form ----------
   app.get('/api/public/site', (req, res) => {
     const s = ctx.settings();
+    if (config.appEnv === 'test') res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     const svc = db.prepare("SELECT code, name, name_ar, segment, is_addon, includes_reinspection, default_sla_hours FROM services WHERE active=1 AND (segment='owner' OR is_addon=1) ORDER BY sort").all();
     const from = (code) => db.prepare("SELECT MIN(r.price) p FROM price_rules r JOIN services s ON s.id=r.service_id WHERE s.code=?").get(code)?.p ?? null;
     const branch = db.prepare('SELECT address, phone FROM branches WHERE is_default=1 AND active=1').get();
     const lk = (list) => db.prepare('SELECT value FROM lookups WHERE list=? AND active=1 ORDER BY sort, value').all(list).map((r) => r.value);
-    res.json({
+    res.json({ env: config.appEnv,
       company: s.company_name, tagline: s.tagline, phone: s.phone || branch?.phone || '', mobile: s.mobile, email: s.email, website: s.website,
       address: branch?.address || '', rera: s.rera_reg_no, licence: s.det_licence_no, vat_registered: s.vat_registered === '1', vat_rate: Number(s.vat_rate),
       services: svc.map((x) => ({ ...x, from: from(x.code) })), communities: lk('community'),

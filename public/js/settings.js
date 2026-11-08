@@ -25,7 +25,7 @@ const NAV = () => [
   ['Catalogue & pricing', [['list/services', 'Services'], ['list/price_rules', 'Prices'], ['list/surcharges', 'Surcharges'], ['list/lookups', 'Picklists'], ['list/valuation_partners', 'Valuation partners']]],
   ['Field team', [['list/inspectors', 'Inspectors'], ['list/equipment', 'Equipment']]],
   ['Report content', [['list/checklists', 'Checklists'], ['list/section_templates', 'Checklist sections'], ['list/item_templates', 'Checklist items'], ['list/comment_library', 'Comment library'], ['list/glossary', 'Glossary']]],
-  ['System', [...(can('messages.view') ? [['messages', 'Messages']] : []), ...(can('audit.view') ? [['audit', 'Audit log']] : []), ...(can('settings.edit') ? [['backups', 'Backups']] : [])]],
+  ['System', [...(can('messages.view') ? [['messages', 'Messages']] : []), ...(can('audit.view') ? [['audit', 'Audit log']] : []), ...(can('settings.edit') ? [['backups', 'Backups']] : []), ...(can('system.reset') ? [['golive', 'Go live / reset']] : [])]],
 ];
 
 export async function settingsView(el, parts) {
@@ -39,6 +39,7 @@ export async function settingsView(el, parts) {
   if (sub === 'messages') return messages(body);
   if (sub === 'audit') return audit(body);
   if (sub === 'backups' && can('settings.edit')) return backups(body);
+  if (sub === 'golive' && can('system.reset')) return golive(body);
   if (parts[0] === 'list') return listView(body, parts[1]);
   fill(body, h('p', {}, t('Not found')));
 }
@@ -239,6 +240,33 @@ async function audit(el) {
 
 function debounce(fn, ms) { let tm; return (...a) => { clearTimeout(tm); tm = setTimeout(() => fn(...a), ms); }; }
 function addDays(iso, n) { const d = new Date(`${iso}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+
+// ---------- go-live reset ----------
+async function golive(el) {
+  const d = await A('GET', '/golive');
+  const test = d.env === 'test';
+  const c = d.counts;
+  const pw = h('input', { type: 'password', autocomplete: 'current-password' });
+  const phrase = h('input', { placeholder: 'RESET', autocomplete: 'off' });
+  const demo = h('input', { type: 'checkbox', checked: true });
+  fill(el, h('div', { class: 'card' },
+    h('h1', {}, t(test ? 'Reset the test system' : 'Go live: start the business')),
+    d.go_live_at ? h('p', { class: 'ok' }, t('This system went live on'), ' ', fmtStamp(d.go_live_at), '. ', t('It cannot be reset again, so real business data is safe.')) : null,
+    h('div', { class: 'kpis' }, [['Leads', c.leads], ['Clients', c.clients], ['Jobs', c.jobs], ['Quotations', c.quotations], ['Reports', c.reports], ['Invoices', c.invoices], ['Payments', c.payments], ['Expenses', c.expenses]].map(([k, v]) => h('div', { class: 'kpi' }, h('b', {}, String(v)), h('span', {}, t(k))))),
+    !d.can_reset ? null : h('div', {},
+      h('p', {}, t('This clears all leads, clients, properties, jobs, quotations, agreements, reports and photos, invoices, payments, expenses, owner and loan entries and equipment purchases. Document numbers start again at 1.')),
+      h('p', {}, t('It keeps staff logins, services and prices, checklists, wording, settings and the audit log.')),
+      h('p', { class: 'small muted' }, t('A backup is saved first (Settings, Backups). Files kept in Google Drive are not deleted.')),
+      !test ? h('p', { class: 'bad' }, t('On the live system this can be done only once.')) : null,
+      h('label', { class: 'check' }, demo, t('Also switch off the demo logins, demo inspectors and demo equipment')),
+      field('Your password', pw), field('Type RESET to confirm', phrase),
+      h('p', { class: 'actions' }, h('button', { class: 'btn danger', onclick: async (e) => {
+        if (!(await confirmBox(test ? 'Reset the test system?' : 'Delete all test data and go live?', t('This cannot be undone, except by restoring the backup.'), 'Reset'))) return;
+        e.target.disabled = true;
+        const r = await run(() => A('POST', '/golive/reset', { password: pw.value, phrase: phrase.value, remove_demo: demo.checked }), 'Reset done');
+        if (r) { golive(el); } else e.target.disabled = false;
+      } }, t(test ? 'Reset test data' : 'Reset and go live'))))));
+}
 
 // ---------- database backups ----------
 async function backups(el) {
