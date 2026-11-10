@@ -14,11 +14,13 @@ export function registerRoutes(app, ctx) {
   const { db, auth, admin, config } = ctx;
   const U = auth.requireUser;
   const P = (perm) => (req) => { if (!can(req.user.role, perm)) throw new HttpError(403, 'You do not have permission to do this.'); };
-  const ip = (req) => (config.trustProxy ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() : '') || req.ip_;
+  const ip = ctx.ip;
   const limit = (req, key, max, ms) => { if (!config.disableRateLimit) ctx.limit(`${key}:${ip(req)}`, max, ms); };
   const id = (req) => Number(req.params.id);
   // browsers must always use HTTPS for this site (only when the public address is https)
   if (config.secureCookies) app.use((req, res) => { res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains'); });
+  // one visitor cannot flood the API (normal use is far below this)
+  app.use((req, res) => { if (req.path.startsWith('/api/')) limit(req, 'api', 600, 60 * 1000); });
   const me = (u) => ({ ...u, role_label: ROLE_LABEL[u.role], permissions: permissionsOf(u.role), needs2fa: auth.needs2fa(u) });
 
   // ---------- public ----------
@@ -31,9 +33,13 @@ export function registerRoutes(app, ctx) {
   app.post('/api/login', async (req, res) => {
     limit(req, 'login', 10, 10 * 60 * 1000);
     const { email, password, lang } = await req.json();
-    const u = db.prepare('SELECT * FROM users WHERE email=? AND active=1').get(String(email || '').trim().toLowerCase());
+    const mail = String(email || '').trim().toLowerCase();
+    // shortcut: counts every try for this email, so someone guessing can lock the real user out for 15 minutes; fine for a small team
+    if (!config.disableRateLimit) ctx.limit(`acct:${mail}`, 10, 15 * 60 * 1000);
+    const u = db.prepare('SELECT * FROM users WHERE email=? AND active=1').get(mail);
     if (!u || !verifyPassword(String(password || ''), u.password_hash)) throw new HttpError(401, 'Wrong email or password.');
     // the language chosen on the sign-in page becomes the user's screen language
+    if (!ctx.ipAllowed(u.role, ip(req))) throw new HttpError(403, 'Admin access is not allowed from this network.');
     if (['en', 'ar'].includes(lang) && lang !== u.ui_lang) { db.prepare('UPDATE users SET ui_lang=? WHERE id=?').run(lang, u.id); u.ui_lang = lang; }
     if (u.totp_secret) return res.json({ need_code: true, token: auth.pendingToken(u) });
     auth.startSession(res, u, req);
@@ -46,6 +52,7 @@ export function registerRoutes(app, ctx) {
     const { token, code } = await req.json();
     const uid = auth.readPending(token);
     if (!uid) throw new HttpError(401, 'Your sign-in expired. Please enter your password again.');
+    if (!config.disableRateLimit) ctx.limit(`code:${uid}`, 10, 10 * 60 * 1000);
     const u = db.prepare('SELECT * FROM users WHERE id=? AND active=1').get(uid);
     if (!u || !verifyTotp(u.totp_secret, code, ctx.now())) throw new HttpError(401, 'That code is not right. Check the time on your phone and try the newest code.');
     auth.startSession(res, u, req);

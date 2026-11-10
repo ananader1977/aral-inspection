@@ -14,7 +14,7 @@ export function registerOpsRoutes(app, ctx) {
   const { db, auth, config } = ctx;
   const U = auth.requireUser;
   const P = (...perms) => (req) => { if (!perms.some((p) => can(req.user.role, p))) throw new HttpError(403, 'You do not have permission to do this.'); };
-  const ip = (req) => (config.trustProxy ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() : '') || req.ip_;
+  const ip = ctx.ip;
   const limit = (req, key, max, ms) => { if (!config.disableRateLimit) ctx.limit(`${key}:${ip(req)}`, max, ms); };
   const id = (req) => Number(req.params.id);
   const pdf = (res, buf, name, inline = true) => res.send(buf, 'application/pdf', 200, { 'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="${name}"` });
@@ -443,7 +443,7 @@ export function registerOpsRoutes(app, ctx) {
   app.delete('/api/app/devices', U, async (req, res) => res.json(ctx.push.unregister(req.user, (await req.json()).token)));
   app.post('/api/app/download-link', U, async (req, res) => res.json({ url: ctx.auth.downloadLink(req.user, (await req.json()).path) }));
   app.post('/api/app/devices/test', U, async (req, res) => {
-    ctx.limit(req, 'push-test', 5, 10 * 60 * 1000);
+    limit(req, 'push-test', 5, 10 * 60 * 1000);
     res.json(await ctx.push.toUsers([req.user.id], { title: 'A R A L', body: 'Notifications are working on this phone.', url: '/app/#dashboard' }));
   });
 

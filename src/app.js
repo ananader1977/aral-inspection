@@ -32,6 +32,9 @@ export function createContext({ config, now = () => Date.now() }) {
   const pub = db.prepare("SELECT value FROM settings WHERE key='_public_url'").get()?.value;
   if (pub && /^https?:\/\/[^/]+$/.test(pub)) config.baseUrl = pub;
   ctx.limit = createRateLimiter(() => now());
+  // Behind Render the real visitor is in a header added by the proxy. shortcut: trusts these headers whenever TRUST_PROXY=true, so only set it when hosted behind a proxy.
+  ctx.ip = (req) => (config.trustProxy ? String(req.headers['cf-connecting-ip'] || req.headers['true-client-ip'] || req.headers['x-forwarded-for'] || '').split(',')[0].trim() : '') || req.ip_;
+  ctx.ipAllowed = (role, ip) => !config.adminAllowedIps.length || !['super_admin', 'admin'].includes(role) || config.adminAllowedIps.includes(ip);
   ctx.mailer = createMailer(ctx);
   ctx.admin = createAdmin(ctx);
   ctx.auth = createAuth(ctx);

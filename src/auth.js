@@ -143,6 +143,7 @@ export function createAuth(ctx) {
     const user = currentUser(req);
     if (!user) throw new HttpError(401, 'Please sign in.');
     if (!STAFF_ROLES.includes(user.role)) throw new HttpError(403, 'This account cannot use the staff app.');
+    if (!ctx.ipAllowed(user.role, ctx.ip(req))) throw new HttpError(403, 'Admin access is not allowed from this network.');
     if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers['x-requested-with'] !== 'aral') throw new HttpError(403, 'Missing CSRF header.');
     if (user.must_setup_2fa && !req.path.startsWith('/api/me')) throw new HttpError(403, 'Set up two-step sign-in first.', { setup_2fa: true });
     req.user = user;

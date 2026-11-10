@@ -49,6 +49,8 @@ export function loadConfig(env = process.env) {
     uploadDir: env.UPLOAD_DIR || '',
     disableRateLimit: env.DISABLE_RATE_LIMIT === 'true',
     trustProxy: env.TRUST_PROXY === 'true',
+    // optional: only these addresses may sign in as Super Admin / Admin (comma separated). Empty = anywhere.
+    adminAllowedIps: (env.ADMIN_ALLOWED_IPS || '').split(',').map((x) => x.trim()).filter(Boolean),
   };
 }
 
