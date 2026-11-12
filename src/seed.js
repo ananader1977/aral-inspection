@@ -302,6 +302,28 @@ const COMMENTS = [
   ['Counters/Cabinets Condition', 'Chipping on the edge of the countertop.', 'attention', 'qualified contractor', null],
 ];
 
+/** One time: a unit type (studio, 1 bed, 2 bed, 3 bed, townhouse, villa) charges the same price for every inspection service: the highest of them. */
+export function unifyPrices(db) {
+  if (db.prepare("SELECT 1 FROM settings WHERE key='_prices_unified2'").get()) return 0;
+  const svc = db.prepare("SELECT id FROM services WHERE code IN ('OWN-PPI','OWN-SNG','OWN-MIO')").all().map((x) => x.id);
+  const find = db.prepare('SELECT * FROM price_rules WHERE service_id=? AND property_type=? AND bedrooms_min<=? AND bedrooms_max>=?');
+  const ins = db.prepare('INSERT INTO price_rules(service_id,property_type,bedrooms_min,bedrooms_max,price) VALUES(?,?,?,?,?)');
+  let n = 0;
+  for (const [type, b] of [['apartment', 0], ['apartment', 1], ['apartment', 2], ['apartment', 3], ['townhouse', 3], ['villa', 4], ['villa', 5]]) {
+    const rules = svc.map((id) => find.get(id, type, b, b)).filter(Boolean);
+    for (const r of rules) { // give this unit its own band so its neighbours keep their price
+      if (type === 'townhouse' || (r.bedrooms_min === b && r.bedrooms_max === b)) continue;
+      db.prepare('UPDATE price_rules SET bedrooms_min=?, bedrooms_max=? WHERE id=?').run(b, b, r.id);
+      if (r.bedrooms_min < b) ins.run(r.service_id, type, r.bedrooms_min, b - 1, r.price);
+      if (r.bedrooms_max > b) ins.run(r.service_id, type, b + 1, r.bedrooms_max, r.price);
+    }
+    const top = Math.max(...rules.map((r) => r.price));
+    n += db.prepare(`UPDATE price_rules SET price=? WHERE id IN (${rules.map((r) => r.id).join(',')})`).run(top).changes;
+  }
+  db.prepare("INSERT INTO settings(key,value) VALUES('_prices_unified2','1')").run();
+  return n;
+}
+
 export function seedReference(db, now) {
   // existing databases: replace the one-line placeholder agreement with the full draft
   try {

@@ -15,7 +15,7 @@ test('the website is served at / and gets live prices from the price list', asyn
     assert.equal(row('studio')['OWN-PPI'], 1200);
     assert.equal(row('apt3')['OWN-SNG'], 2400);
     assert.equal(row('villa5')['OWN-SNG'], 6000);
-    assert.equal(row('apt2')['OWN-MIO'], 1300);
+    assert.equal(row('apt2')['OWN-MIO'], 1800);
     assert.equal(site.addon_prices['ADD-THM'], 500);
     assert.deepEqual(site.services.map((s) => s.code), ['OWN-PPI', 'OWN-SNG', 'OWN-MIO', 'ADD-THM']);
     // a price change in Settings shows on the website straight away
@@ -31,11 +31,11 @@ test('instant estimate: base price, add-ons, urgent surcharge, VAT and commercia
   const t = await startTestApp();
   try {
     let r = await post(t, '/api/public/estimate', { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2 });
-    assert.equal(r.body.total, 1700);
+    assert.equal(r.body.total, 1800);
     assert.equal(r.body.vat, 0);
     r = await post(t, '/api/public/estimate', { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2, addons: ['ADD-THM', 'NOPE'], urgent: true });
-    assert.deepEqual(r.body.lines.map((l) => l.amount), [1700, 500]); // no surcharges in the price list
-    assert.equal(r.body.total, 2200);
+    assert.deepEqual(r.body.lines.map((l) => l.amount), [1800, 500]); // no surcharges in the price list
+    assert.equal(r.body.total, 2300);
     // removed services are not offered
     assert.equal((await post(t, '/api/public/estimate', { service: 'OWN-DLP', property_type: 'apartment', bedrooms: 2 })).status, 400);
     r = await post(t, '/api/public/estimate', { service: 'OWN-SNG', property_type: 'studio' });
@@ -49,15 +49,15 @@ test('instant estimate: base price, add-ons, urgent surcharge, VAT and commercia
     await t.login('sa', SA.email, SA.password);
     await t.call('sa', 'PUT', '/api/app/settings', { vat_registered: '1', trn: '100000000000003' });
     r = await post(t, '/api/public/estimate', { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2 });
-    assert.equal(r.body.vat, 85);
-    assert.equal(r.body.total, 1785);
+    assert.equal(r.body.vat, 90);
+    assert.equal(r.body.total, 1890);
   } finally { await t.close(); }
 });
 
 test('booking request becomes a lead, emails the office and the client, and is managed by the admin', async () => {
   const t = await startTestApp();
   try {
-    const good = { name: 'Sara Buyer', mobile: '050 123 4567', email: 'sara@example.com', service_code: 'OWN-PPI', property_type: 'apartment', bedrooms: 2, community: 'Dubai Hills Estate', preferred_date: '2026-10-25', estimate_total: 1700, referral_code: 'agent7', consent: true };
+    const good = { name: 'Sara Buyer', mobile: '050 123 4567', email: 'sara@example.com', service_code: 'OWN-PPI', property_type: 'apartment', bedrooms: 2, community: 'Dubai Hills Estate', preferred_date: '2026-10-25', estimate_total: 1800, referral_code: 'agent7', consent: true };
     assert.equal((await post(t, '/api/public/leads', { ...good, name: '' })).status, 400);
     assert.equal((await post(t, '/api/public/leads', { ...good, mobile: 'abc' })).status, 400);
     assert.equal((await post(t, '/api/public/leads', { ...good, consent: false })).status, 400);
@@ -108,4 +108,12 @@ test('every browser script parses', async () => {
   const dir = new URL('../public/js/', import.meta.url).pathname;
   const files = ['app.js', 'common.js', 'i18n.js', 'settings.js', 'leads.js', 'jobs.js', 'calendar.js', 'inspect.js', 'reviews.js', 'finance.js', 'pub/shared.js', 'pub/quote.js', 'pub/pay.js', 'pub/pay-demo.js', 'pub/verify.js', 'pub/report.js', '../sw.js', '../site/site.js'];
   for (const f of files) execFileSync(process.execPath, ['--check', dir + f]);
+});
+
+test('a unit type costs the same for every inspection service', async () => {
+  const t = await startTestApp();
+  try {
+    const site = await (await fetch(t.url + '/api/public/site')).json();
+    for (const r of site.price_table) assert.equal(new Set(['OWN-PPI', 'OWN-SNG', 'OWN-MIO'].map((c) => r.prices[c])).size, 1, r.key);
+  } finally { await t.close(); }
 });
