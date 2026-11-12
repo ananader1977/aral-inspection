@@ -302,6 +302,15 @@ const COMMENTS = [
   ['Counters/Cabinets Condition', 'Chipping on the edge of the countertop.', 'attention', 'qualified contractor', null],
 ];
 
+/** One time: every price band of the same service and property type charges that type's highest price. */
+export function unifyPrices(db) {
+  const flag = "SELECT value FROM settings WHERE key='_prices_unified'";
+  if (db.prepare(flag).get()) return 0;
+  const n = db.prepare('UPDATE price_rules SET price=(SELECT MAX(p.price) FROM price_rules p WHERE p.service_id=price_rules.service_id AND p.property_type=price_rules.property_type)').run().changes;
+  db.prepare("INSERT INTO settings(key,value) VALUES('_prices_unified','1')").run();
+  return n;
+}
+
 export function seedReference(db, now) {
   // existing databases: replace the one-line placeholder agreement with the full draft
   try {

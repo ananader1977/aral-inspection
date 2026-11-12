@@ -52,7 +52,7 @@ test('individual client: website lead to issued report, invoice and commission',
 
     // quotation from the price list (2BR resale 1,700 + thermal 500)
     const dflt = await call('sa', 'GET', `/api/app/jobs/${jobId}/quote-defaults`);
-    assert.equal(dflt.body.total, 2200);
+    assert.equal(dflt.body.total, 2800);
     const q = await call('sa', 'POST', `/api/app/jobs/${jobId}/quote`, {});
     assert.equal(q.status, 200, JSON.stringify(q.body));
     // inspector cannot see the job list
@@ -73,7 +73,7 @@ test('individual client: website lead to issued report, invoice and commission',
     pub = await call(null, 'POST', `/api/public/quote/${tok}/sign`, { name: 'Sara Buyer', agree: true }, { csrf: false });
     assert.equal(pub.status, 200, JSON.stringify(pub.body));
     assert.equal(pub.body.agreement.signed, true);
-    assert.equal(pub.body.due_now, 2200);
+    assert.equal(pub.body.due_now, 2800);
     assert.equal(ctx.db.prepare('SELECT status FROM jobs WHERE id=?').get(jobId).status, 'payment_pending');
     assert.ok(ctx.db.prepare("SELECT 1 FROM outbox WHERE template_code='agreement'").get());
 
@@ -81,7 +81,7 @@ test('individual client: website lead to issued report, invoice and commission',
     const co = await call(null, 'POST', `/api/public/quote/${tok}/pay`, {}, { csrf: false });
     assert.equal(co.status, 200, JSON.stringify(co.body));
     const sid = new URL(co.body.url).searchParams.get('s');
-    assert.equal((await call(null, 'GET', `/api/public/pay-demo/${sid}`)).body.amount, 2200);
+    assert.equal((await call(null, 'GET', `/api/public/pay-demo/${sid}`)).body.amount, 2800);
     assert.equal((await call(null, 'POST', `/api/public/pay-demo/${sid}`, { card: '4000 0000 0000 0002', expiry: '12/30', cvc: '123' }, { csrf: false })).status, 402);
     const paid = await call(null, 'POST', `/api/public/pay-demo/${sid}`, { card: '4242 4242 4242 4242', expiry: '12/30', cvc: '123' }, { csrf: false });
     assert.equal(paid.status, 200, JSON.stringify(paid.body));
@@ -221,11 +221,11 @@ test('individual client: website lead to issued report, invoice and commission',
     // invoice (already paid in advance) → job closed, commission 42% of 2,200
     const inv = ctx.db.prepare('SELECT * FROM invoices').get();
     assert.equal(inv.status, 'paid');
-    assert.equal(inv.total, 2200);
+    assert.equal(inv.total, 2800);
     assert.equal(inv.is_tax_invoice, 0);
     assert.equal(ctx.db.prepare('SELECT status FROM jobs WHERE id=?').get(jobId).status, 'closed');
     const com = ctx.db.prepare('SELECT * FROM commissions WHERE job_id=?').get(jobId);
-    assert.equal(com.amount, 924);
+    assert.equal(com.amount, 1176);
     assert.equal(com.status, 'payable');
 
     // public online report, QR verification, media through the report token only
@@ -263,7 +263,7 @@ test('individual client: website lead to issued report, invoice and commission',
     // dashboard and exports
     const k = await call('sa', 'GET', '/api/app/kpis');
     assert.equal(k.body.reports_month, 1);
-    assert.equal(k.body.collected_month, 2200);
+    assert.equal(k.body.collected_month, 2800);
     for (const f of ['jobs', 'invoices', 'payments', 'aging', 'commissions', 'quotations', 'sla', 'calibration', 'clients']) {
       const r = await call('sa', 'GET', `/api/app/export/${f}.xlsx`, undefined, { raw: true });
       assert.equal(r.status, 200, f);
@@ -356,7 +356,7 @@ test('quotation revisions, rejection, expiry and VAT', async () => {
     const job = await call('sa', 'POST', '/api/app/jobs', { service_code: 'OWN-SNG', client: { name: 'Ali', email: 'ali@example.com', mobile: '0551112222' }, property: { property_type: 'studio' } });
     const q1 = await call('sa', 'POST', `/api/app/jobs/${job.body.id}/quote`, {});
     let q = ctx.db.prepare('SELECT * FROM quotations WHERE id=?').get(q1.body.id);
-    assert.equal(q.net, 1200); assert.equal(q.vat, 60); assert.equal(q.total, 1260);
+    assert.equal(q.net, 2400); assert.equal(q.vat, 120); assert.equal(q.total, 2520);
     await call('sa', 'POST', `/api/app/quotes/${q1.body.id}/send`);
     const r = await call(null, 'POST', `/api/public/quote/${q.public_token}/decide`, { action: 'reject', note: 'Too expensive' }, { csrf: false });
     assert.equal(r.body.status, 'rejected');

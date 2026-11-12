@@ -12,7 +12,7 @@ test('the website is served at / and gets live prices from the price list', asyn
     assert.match(await home.text(), /Know exactly what you're buying/);
     const site = await (await fetch(t.url + '/api/public/site')).json();
     const row = (k) => site.price_table.find((r) => r.key === k).prices;
-    assert.equal(row('studio')['OWN-PPI'], 1200);
+    assert.equal(row('studio')['OWN-PPI'], 2300);
     assert.equal(row('apt3')['OWN-SNG'], 2400);
     assert.equal(row('villa5')['OWN-SNG'], 6000);
     assert.equal(row('apt2')['OWN-MIO'], 1300);
@@ -31,15 +31,15 @@ test('instant estimate: base price, add-ons, urgent surcharge, VAT and commercia
   const t = await startTestApp();
   try {
     let r = await post(t, '/api/public/estimate', { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2 });
-    assert.equal(r.body.total, 1700);
+    assert.equal(r.body.total, 2300);
     assert.equal(r.body.vat, 0);
     r = await post(t, '/api/public/estimate', { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2, addons: ['ADD-THM', 'NOPE'], urgent: true });
-    assert.deepEqual(r.body.lines.map((l) => l.amount), [1700, 500]); // no surcharges in the price list
-    assert.equal(r.body.total, 2200);
+    assert.deepEqual(r.body.lines.map((l) => l.amount), [2300, 500]); // no surcharges in the price list
+    assert.equal(r.body.total, 2800);
     // removed services are not offered
     assert.equal((await post(t, '/api/public/estimate', { service: 'OWN-DLP', property_type: 'apartment', bedrooms: 2 })).status, 400);
     r = await post(t, '/api/public/estimate', { service: 'OWN-SNG', property_type: 'studio' });
-    assert.equal(r.body.total, 1200);
+    assert.equal(r.body.total, 2400);
     r = await post(t, '/api/public/estimate', { service: 'OWN-SNG', property_type: 'villa', bedrooms: 6 });
     assert.equal(r.body.total, 6000);
     r = await post(t, '/api/public/estimate', { service: 'OWN-PPI', property_type: 'office', sqft: 2000 });
@@ -49,8 +49,8 @@ test('instant estimate: base price, add-ons, urgent surcharge, VAT and commercia
     await t.login('sa', SA.email, SA.password);
     await t.call('sa', 'PUT', '/api/app/settings', { vat_registered: '1', trn: '100000000000003' });
     r = await post(t, '/api/public/estimate', { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2 });
-    assert.equal(r.body.vat, 85);
-    assert.equal(r.body.total, 1785);
+    assert.equal(r.body.vat, 115);
+    assert.equal(r.body.total, 2415);
   } finally { await t.close(); }
 });
 
