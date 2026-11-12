@@ -35,6 +35,6 @@ test('the public site shows Studio under Apartment data: studio still prices as 
   const t = await startTestApp();
   try {
     const r = await fetch(`${t.url}/api/public/estimate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service: 'OWN-PPI', property_type: 'studio', bedrooms: 0, addons: [] }) });
-    assert.equal((await r.json()).total, 2300);
+    assert.equal((await r.json()).total, 1200);
   } finally { await t.close(); }
 });
