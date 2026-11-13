@@ -304,6 +304,15 @@ const COMMENTS = [
 
 /** One time: a unit type (studio, 1 bed, 2 bed, 3 bed, townhouse, villa) charges the same price for every inspection service: the highest of them. */
 export function unifyPrices(db) {
+  // Repair: an earlier release (flag _prices_unified) flattened whole property types to one price. Restore the list once, then unify by unit type below.
+  if (db.prepare("SELECT 1 FROM settings WHERE key='_prices_unified'").get() && !db.prepare("SELECT 1 FROM settings WHERE key='_prices_repaired'").get()) {
+    const ids = db.prepare("SELECT id, code FROM services WHERE code IN ('OWN-PPI','OWN-SNG','OWN-MIO')").all();
+    db.prepare(`DELETE FROM price_rules WHERE service_id IN (${ids.map((x) => x.id).join(',') || 0})`).run();
+    const pr = db.prepare('INSERT INTO price_rules(service_id,property_type,bedrooms_min,bedrooms_max,price) VALUES(?,?,?,?,?)');
+    for (const [c, pt, bmin, bmax, price] of PRICES) { const sv = ids.find((x) => x.code === c); if (sv) pr.run(sv.id, pt, bmin, bmax, price); }
+    db.prepare("DELETE FROM settings WHERE key='_prices_unified2'").run();
+    db.prepare("INSERT INTO settings(key,value) VALUES('_prices_repaired','1')").run();
+  }
   if (db.prepare("SELECT 1 FROM settings WHERE key='_prices_unified2'").get()) return 0;
   const svc = db.prepare("SELECT id FROM services WHERE code IN ('OWN-PPI','OWN-SNG','OWN-MIO')").all().map((x) => x.id);
   const find = db.prepare('SELECT * FROM price_rules WHERE service_id=? AND property_type=? AND bedrooms_min<=? AND bedrooms_max>=?');

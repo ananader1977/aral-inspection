@@ -117,3 +117,17 @@ test('a unit type costs the same for every inspection service', async () => {
     for (const r of site.price_table) assert.equal(new Set(['OWN-PPI', 'OWN-SNG', 'OWN-MIO'].map((c) => r.prices[c])).size, 1, r.key);
   } finally { await t.close(); }
 });
+
+test('prices flattened by the earlier release are restored by unit type', async () => {
+  const t = await startTestApp();
+  try {
+    t.ctx.db.prepare("UPDATE price_rules SET price=6000 WHERE property_type IN ('apartment','villa')").run();
+    t.ctx.db.prepare("DELETE FROM settings WHERE key IN ('_prices_unified2','_prices_repaired')").run();
+    t.ctx.db.prepare("INSERT OR IGNORE INTO settings(key,value) VALUES('_prices_unified','1')").run();
+    const { unifyPrices } = await import('../src/seed.js');
+    unifyPrices(t.ctx.db);
+    const site = await (await fetch(t.url + '/api/public/site')).json();
+    const p = (k) => site.price_table.find((r) => r.key === k).prices['OWN-PPI'];
+    assert.deepEqual(['studio', 'apt1', 'apt2', 'apt3', 'townhouse', 'villa4', 'villa5'].map(p), [1200, 1500, 1800, 2400, 3000, 4500, 6000]);
+  } finally { await t.close(); }
+});
