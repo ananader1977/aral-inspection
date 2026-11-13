@@ -41,7 +41,8 @@ export const $ = (s, r = document) => r.querySelector(s);
 export const fill = (el, ...kids) => { el.replaceChildren(...kids.flat(9).filter((k) => k != null && k !== false)); return el; };
 export function toast(msg, ms = 3500) {
   const el = h('div', { class: 'toast', role: 'status' }, msg);
-  document.body.append(el);
+  // a modal <dialog> sits above everything else, so a message must go inside it or it is hidden
+  (document.querySelector('dialog[open]') || document.body).append(el);
   setTimeout(() => el.remove(), ms);
 }
 export const pill = (text, kind = '') => h('span', { class: `pill ${kind}` }, /^[a-z_]+$/.test(String(text)) ? String(text).replace(/_/g, ' ') : text);

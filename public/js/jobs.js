@@ -312,6 +312,7 @@ function scheduleForm(j, reload) {
     const r = await run(() => A('GET', `/jobs/${j.id}/availability?date=${f.date.value}&time=${f.time.value}&hours=${f.hours.value}`));
     if (!r) return;
     if (!r.inspectors.length) return fill(box, h('div', { class: 'alert' }, t('There are no inspectors yet. Add one in Settings → Inspectors, then schedule the job.'), ' ', h('a', { class: 'btn alt sm', href: '#settings/list/inspectors', onclick: closeModal }, t('Add an inspector'))));
+    if (!r.inspectors.some((i) => i.id === chosenIns && i.ok)) chosenIns = r.inspectors.find((i) => i.ok)?.id || null; // the first free inspector is pre-selected
     fill(box, h('h3', {}, t('Inspector')), h('div', { class: 'pickgrid' }, r.inspectors.map((i) => h('label', { class: `pick ${i.ok ? '' : 'off'}` },
       h('input', { type: 'radio', name: 'ins', value: i.id, checked: chosenIns === i.id, disabled: !i.ok && !i.problems.every((p) => p === 'not thermal certified'), onchange: () => { chosenIns = i.id; } }),
       h('span', {}, h('b', {}, i.name), h('div', { class: 'small muted' }, i.ok ? i.areas || t('Available') : i.problems.map((p) => t(p)).join(', ')))))),
