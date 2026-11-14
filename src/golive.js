@@ -14,7 +14,7 @@ const WIPE = ['invoice_lines', 'payment_sessions', 'payments', 'commissions', 'j
   'report_attachments', 'report_versions', 'report_items', 'report_sections', 'reports', 'quote_lines', 'agreements', 'quotations',
   'equipment_bookings', 'job_events', 'jobs', 'properties', 'client_rates', 'leads', 'expenses', 'money_entries', 'fixed_assets', 'outbox'];
 // signatures, the logo and the database backups are not business data, so those files stay
-const KEEP_FILES = "purpose NOT IN ('signature','logo','backup') AND id NOT IN (SELECT signature_file_id FROM users WHERE signature_file_id IS NOT NULL)";
+const KEEP_FILES = "purpose NOT IN ('signature','logo','backup','company_doc') AND id NOT IN (SELECT signature_file_id FROM users WHERE signature_file_id IS NOT NULL)";
 
 export function createGoLive(ctx) {
   const { db, config } = ctx;

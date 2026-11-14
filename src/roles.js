@@ -23,6 +23,7 @@ const P = {
   'settings.view': ['super_admin', 'admin', 'reviewer', 'accountant'],
   'settings.edit': ['super_admin'],
   'system.reset': ['super_admin'],
+  'docs.manage': ['super_admin', 'admin'], // company documents (licence, MOA, IDs)
   'content.edit': ['super_admin'], // terms & conditions and report wording
   'catalogue.edit': ['super_admin'], // services, prices, surcharges, lookups, valuation partners
   'technical.edit': ['super_admin', 'reviewer'], // checklists, comment library, glossary

@@ -7,6 +7,7 @@ import { calendarView } from '/js/calendar.js';
 import { inspectView } from '/js/inspect.js';
 import { reviewsView } from '/js/reviews.js';
 import { financeView } from '/js/finance.js';
+import { docsView } from '/js/docs.js';
 import { isApp, startNative, forgetDevice, lockAvailable, lockOn, setLock, sendTestPush, canRemember, rememberOn, rememberLogin, forgetLogin, savedLogin, markFreshLogin } from '/js/native.js';
 
 const app = $('#app'), dlg = $('#dlg'), nav = $('#nav');
@@ -147,8 +148,9 @@ const TABS = () => [['dashboard', 'Dashboard'],
   ...(can('inspect') ? [['inspect', S.me.role === 'inspector' ? 'My inspections' : 'Inspections']] : []),
   ...(can('reports.review') ? [['reviews', 'Reviews']] : []),
   ...(can('finance.view') ? [['finance', 'Finance']] : []),
+  ...(can('docs.manage') ? [['documents', 'Documents']] : []),
   ...(can('settings.view') ? [['settings', 'Settings']] : [])];
-const VIEWS = { leads: ['leads.manage', (b) => leadsView(b)], jobs: ['jobs.view', jobsView], clients: ['jobs.view', clientsView], calendar: ['calendar.view', calendarView], inspect: ['inspect', inspectView], reviews: ['jobs.view', reviewsView], finance: ['finance.view', financeView], settings: ['settings.view', settingsView] };
+const VIEWS = { leads: ['leads.manage', (b) => leadsView(b)], jobs: ['jobs.view', jobsView], clients: ['jobs.view', clientsView], calendar: ['calendar.view', calendarView], inspect: ['inspect', inspectView], reviews: ['jobs.view', reviewsView], finance: ['finance.view', financeView], documents: ['docs.manage', docsView], settings: ['settings.view', settingsView] };
 async function route() {
   if (!S.me) return;
   const parts = (location.hash.slice(1) || 'dashboard').split('/');

@@ -386,6 +386,38 @@ export function registerOpsRoutes(app, ctx) {
     const to = q.to || dateKey(ctx.now());
     return { from: q.from || `${to.slice(0, 7)}-01`, to };
   };
+  // ---- company documents (trade licence, MOA, IDs ...) ----
+  const DOC_MIME = /^(application\/pdf|image\/(jpeg|png|webp)|application\/(msword|vnd\.openxmlformats-officedocument\.(wordprocessingml\.document|spreadsheetml\.sheet)|vnd\.ms-excel))$/;
+  app.get('/api/app/company-docs', U, P('docs.manage'), (req, res) => res.json({ rows: db.prepare('SELECT d.*, f.name file_name, f.mime FROM company_docs d LEFT JOIN files f ON f.id=d.file_id ORDER BY d.category, d.title').all() }));
+  app.post('/api/app/company-docs', U, P('docs.manage'), async (req, res) => {
+    const q = req.query, mime = String(req.headers['content-type'] || '').split(';')[0];
+    const clamp = (v, n) => String(v || '').trim().slice(0, n);
+    if (!clamp(q.title, 120) || !clamp(q.category, 60)) throw new HttpError(400, 'Choose a type and enter a title.');
+    if (!DOC_MIME.test(mime)) throw new HttpError(400, 'Attach a PDF, a photo (JPG, PNG) or a Word / Excel file.');
+    const buf = await req.rawBody(15 * 1024 * 1024 + 1024);
+    if (!buf?.length || buf.length > 15 * 1024 * 1024) throw new HttpError(400, 'The file is empty or larger than 15 MB.');
+    const date = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : null);
+    const fileId = await ctx.storage.save({ name: clamp(q.name, 120) || 'document', mime, buf, purpose: 'company_doc', userId: req.user.id });
+    const r = db.prepare('INSERT INTO company_docs(category,title,doc_no,issue_date,expiry_date,notes,file_id,uploaded_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)')
+      .run(clamp(q.category, 60), clamp(q.title, 120), clamp(q.doc_no, 60), date(q.issue_date), date(q.expiry_date), clamp(q.notes, 500), fileId, req.user.id, ctx.now());
+    ctx.admin.audit(req.user, 'company_docs', r.lastInsertRowid, 'create', null, { title: q.title }, ip(req));
+    res.json({ id: Number(r.lastInsertRowid) });
+  });
+  app.get('/api/app/company-docs/:id/file', U, P('docs.manage'), async (req, res) => {
+    const d = db.prepare('SELECT file_id FROM company_docs WHERE id=?').get(id(req));
+    const f = d?.file_id && db.prepare('SELECT name, mime FROM files WHERE id=?').get(d.file_id);
+    if (!f) throw new HttpError(404, 'Document not found');
+    const inline = /^(application\/pdf|image\/)/.test(f.mime);
+    res.send(await ctx.storage.read(d.file_id), f.mime, 200, { 'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="${String(f.name).replace(/[^\w.\- ]/g, '_')}"`, 'Cache-Control': 'private, no-store' });
+  });
+  app.delete('/api/app/company-docs/:id', U, P('docs.manage'), async (req, res) => {
+    const d = db.prepare('SELECT * FROM company_docs WHERE id=?').get(id(req));
+    if (!d) throw new HttpError(404, 'Document not found');
+    db.prepare('DELETE FROM company_docs WHERE id=?').run(d.id);
+    if (d.file_id) await ctx.storage.remove(d.file_id);
+    ctx.admin.audit(req.user, 'company_docs', d.id, 'delete', null, { title: d.title }, ip(req));
+    res.json({ ok: true });
+  });
   app.get('/api/app/books/meta', U, P('statements.view', 'books.manage'), (req, res) => res.json({ accounts: ACCOUNTS, expense_accounts: EXPENSE_ACCOUNTS, money_kinds: MONEY_KINDS, fy_start: B.fyStart(dateKey(ctx.now())), vat_registered: ctx.settings().vat_registered === '1' }));
   app.get('/api/app/books/statements', U, P('statements.view'), (req, res) => {
     const { from, to } = period(req.query);

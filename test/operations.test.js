@@ -415,3 +415,19 @@ test('after acceptance the client is emailed the signing link; the office can re
     assert.equal((await call('i2', 'POST', `/api/app/quotes/${q.body.id}/card-pay`)).status, 403);
   } finally { await t.close(); fs.rmSync(t.uploadDir, { recursive: true, force: true }); }
 });
+
+test('company documents: upload, list, download and delete (admin only)', async () => {
+  const t = await startTestApp();
+  try {
+    await t.login('sa', SA.email, SA.password);
+    const send = (method, path, body, type) => fetch(t.url + path, { method, headers: { Cookie: t.jars.sa, 'X-Requested-With': 'aral', 'Content-Type': type }, body });
+    assert.equal((await send('POST', '/api/app/company-docs?name=licence.pdf&category=Trade%20licence&title=Trade%20licence%202026&expiry_date=2027-01-01', Buffer.from('%PDF-1.4 test'), 'application/pdf')).status, 200);
+    const list = await t.call('sa', 'GET', '/api/app/company-docs');
+    assert.equal(list.body.rows.length, 1);
+    assert.equal((await t.call('sa', 'GET', `/api/app/company-docs/${list.body.rows[0].id}/file`, undefined, { raw: true })).status, 200);
+    assert.equal((await send('POST', '/api/app/company-docs?name=x.exe&category=Other&title=x', Buffer.from('MZ'), 'application/x-msdownload')).status, 400);
+    await t.addUser('insp', 'inspector');
+    assert.equal((await t.call('insp', 'GET', '/api/app/company-docs')).status, 403);
+    assert.equal((await t.call('sa', 'DELETE', `/api/app/company-docs/${list.body.rows[0].id}`)).status, 200);
+  } finally { await t.close(); }
+});

@@ -699,3 +699,16 @@ CREATE TABLE IF NOT EXISTS fixed_assets (          -- equipment, thermal cameras
   created_by INTEGER REFERENCES users(id),
   created_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS company_docs (          -- company papers: trade licence, MOA, IDs, insurance...
+  id INTEGER PRIMARY KEY,
+  category TEXT NOT NULL,
+  title TEXT NOT NULL,
+  doc_no TEXT,
+  issue_date TEXT,
+  expiry_date TEXT,
+  notes TEXT,
+  file_id INTEGER REFERENCES files(id),
+  uploaded_by INTEGER,
+  created_at INTEGER NOT NULL
+);
