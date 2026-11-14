@@ -75,9 +75,10 @@ export function createStorage(ctx) {
       if (driveOn) {
         let parent = null;
         if (jobId) { const f = await jobFolders(jobId); parent = f && (f[SUB[purpose] || (purpose.startsWith('pdf') ? 'pdf' : 'root')] || f.root); }
-        else if (purpose === 'backup') {
-          parent = db.prepare("SELECT value FROM settings WHERE key='_drive_backup_folder'").get()?.value;
-          if (!parent) { parent = await driveFolder('ARAL Backups', d.folderId || null); db.prepare("INSERT OR REPLACE INTO settings(key,value) VALUES('_drive_backup_folder',?)").run(parent); }
+        else if (purpose === 'backup' || purpose === 'company_doc') {
+          const key = purpose === 'backup' ? '_drive_backup_folder' : '_drive_docs_folder';
+          parent = db.prepare('SELECT value FROM settings WHERE key=?').get(key)?.value;
+          if (!parent) { parent = await driveFolder(purpose === 'backup' ? 'ARAL Backups' : 'ARAL Documents', d.folderId || null); db.prepare('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)').run(key, parent); }
         }
         const up = await driveUpload(name, mime, buf, parent);
         rec = { storage: 'drive', drive_id: up.drive_id, link: up.link, local_path: null };
