@@ -265,7 +265,25 @@ async function golive(el) {
         e.target.disabled = true;
         const r = await run(() => A('POST', '/golive/reset', { password: pw.value, phrase: phrase.value, remove_demo: demo.checked }), 'Reset done');
         if (r) { golive(el); } else e.target.disabled = false;
-      } }, t(test ? 'Reset test data' : 'Reset and go live'))))));
+      } }, t(test ? 'Reset test data' : 'Reset and go live'))))),
+    !d.can_reset_docs ? h('div', { class: 'card' }, h('h2', {}, t('Reset quotations and invoices')), h('p', { class: 'ok' }, t('Quotations and invoices were already reset on this system. It cannot be done again.'))) : docsReset(el, d, test));
+}
+
+function docsReset(el, d, test) {
+  const pw = h('input', { type: 'password', autocomplete: 'current-password' });
+  const phrase = h('input', { placeholder: 'RESET', autocomplete: 'off' });
+  return h('div', { class: 'card' }, h('h2', {}, t('Reset quotations and invoices')),
+    h('p', {}, t('This clears all jobs, quotations, agreements, reports and photos, invoices, credit notes and payments, because each belongs to a job. Numbers start again at 1.')),
+    h('p', {}, t('It keeps leads, clients, properties, expenses, owner and loan entries, equipment, documents, staff logins, prices and settings.')),
+    h('p', { class: 'small muted' }, t('A backup is saved first (Settings, Backups).')),
+    !test ? h('p', { class: 'bad' }, t('On the live system this can be done only once.')) : null,
+    field('Your password', pw), field('Type RESET to confirm', phrase),
+    h('p', { class: 'actions' }, h('button', { class: 'btn danger', onclick: async (e) => {
+      if (!(await confirmBox('Delete all quotations and invoices?', t('This cannot be undone, except by restoring the backup.'), 'Reset'))) return;
+      e.target.disabled = true;
+      const r = await run(() => A('POST', '/golive/reset-docs', { password: pw.value, phrase: phrase.value }), 'Reset done');
+      if (r) { golive(el); } else e.target.disabled = false;
+    } }, t('Reset quotations and invoices'))));
 }
 
 // ---------- database backups ----------

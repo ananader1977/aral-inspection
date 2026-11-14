@@ -57,3 +57,19 @@ test('test system: banner flag, no real emails, and it can be reset again and ag
     assert.equal((await call('sa', 'GET', '/api/app/golive')).body.can_reset, true);
   } finally { await t.close(); }
 });
+
+test('resetting only quotations and invoices keeps leads, clients and expenses, restarts numbers, and runs once on live', async () => {
+  const t = await startTestApp({ appEnv: 'live' });
+  try {
+    await t.login('sa', SA.email, SA.password);
+    t.ctx.db.prepare("INSERT INTO clients(type,name,created_at) VALUES('individual','Keep Me',1)").run();
+    t.ctx.db.prepare("UPDATE settings SET value='9' WHERE key='next_quote_no'").run();
+    const bad = await t.call('sa', 'POST', '/api/app/golive/reset-docs', { password: SA.password, phrase: 'nope' });
+    assert.equal(bad.status, 400);
+    const ok = await t.call('sa', 'POST', '/api/app/golive/reset-docs', { password: SA.password, phrase: 'RESET' });
+    assert.equal(ok.status, 200);
+    assert.equal(t.ctx.db.prepare('SELECT COUNT(*) n FROM clients').get().n >= 1, true);
+    assert.equal(t.ctx.db.prepare("SELECT 1 FROM settings WHERE key='next_quote_no'").get(), undefined);
+    assert.equal((await t.call('sa', 'POST', '/api/app/golive/reset-docs', { password: SA.password, phrase: 'RESET' })).status, 409);
+  } finally { await t.close(); }
+});

@@ -1382,5 +1382,11 @@
 "Tenancy contract (Ejari)": "عقد الإيجار (إيجاري)",
 "Bank documents": "مستندات البنك",
 "Certificate": "شهادة",
-"Other": "أخرى"
+"Other": "أخرى",
+"Reset quotations and invoices": "إعادة ضبط عروض الأسعار والفواتير",
+"Quotations and invoices were already reset on this system. It cannot be done again.": "سبق إعادة ضبط عروض الأسعار والفواتير في هذا النظام ولا يمكن تكرارها.",
+"This clears all jobs, quotations, agreements, reports and photos, invoices, credit notes and payments, because each belongs to a job. Numbers start again at 1.": "يمسح هذا جميع الأعمال وعروض الأسعار والاتفاقيات والتقارير والصور والفواتير والإشعارات الدائنة والمدفوعات لأن كلًا منها تابع لعمل. تبدأ الأرقام من 1 مجددًا.",
+"It keeps leads, clients, properties, expenses, owner and loan entries, equipment, documents, staff logins, prices and settings.": "يُبقي العملاء المحتملين والعملاء والعقارات والمصروفات وقيود المالك والقروض والمعدات والمستندات وحسابات الموظفين والأسعار والإعدادات.",
+"A backup is saved first (Settings, Backups).": "تُحفظ نسخة احتياطية أولًا (الإعدادات، النسخ الاحتياطية).",
+"Delete all quotations and invoices?": "حذف جميع عروض الأسعار والفواتير؟"
 }

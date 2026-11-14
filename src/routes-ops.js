@@ -481,6 +481,7 @@ export function registerOpsRoutes(app, ctx) {
 
   // ---------- database backups (Super Admin) ----------
   app.get('/api/app/golive', U, P('system.reset'), (req, res) => res.json(ctx.golive.status()));
+  app.post('/api/app/golive/reset-docs', U, P('system.reset'), async (req, res) => res.json(await ctx.golive.resetDocs(req.user, (await req.json()) || {}, ip(req))));
   app.post('/api/app/golive/reset', U, P('system.reset'), async (req, res) => res.json(await ctx.golive.reset(req.user, (await req.json()) || {}, ip(req))));
   app.get('/api/app/backups', U, P('settings.edit'), (req, res) => res.json({ rows: ctx.backup.list(), ...ctx.backup.status() }));
   app.post('/api/app/backups', U, P('settings.edit'), async (req, res) => res.json(await ctx.backup.run(req.user, 'manual')));
