@@ -82,6 +82,8 @@ export function createGoLive(ctx) {
     const before = status().counts;
     tx(db, () => {
       db.exec('PRAGMA defer_foreign_keys=ON');
+      // kept records must not point at jobs that are about to go
+      db.exec('UPDATE leads SET job_id=NULL; UPDATE expenses SET job_id=NULL; DELETE FROM outbox WHERE job_id IS NOT NULL');
       for (const t of DOC_WIPE) { try { db.exec(`DELETE FROM ${t}`); } catch (e) { if (!/no such table/.test(e.message)) throw e; } }
       db.exec(`DELETE FROM files WHERE ${gone}`);
       db.exec("DELETE FROM settings WHERE key IN ('next_job_no','next_quote_no','next_report_no','next_invoice_no','next_credit_no')");

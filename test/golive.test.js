@@ -64,6 +64,13 @@ test('resetting only quotations and invoices keeps leads, clients and expenses, 
     await t.login('sa', SA.email, SA.password);
     t.ctx.db.prepare("INSERT INTO clients(type,name,created_at) VALUES('individual','Keep Me',1)").run();
     t.ctx.db.prepare("UPDATE settings SET value='9' WHERE key='next_quote_no'").run();
+    const db = t.ctx.db;
+    const cid = Number(db.prepare("SELECT id FROM clients LIMIT 1").get().id);
+    const prop = Number(db.prepare("INSERT INTO properties(property_type,created_at) VALUES('apartment',1)").run().lastInsertRowid);
+    const svc = db.prepare('SELECT id FROM services LIMIT 1').get().id;
+    const job = Number(db.prepare("INSERT INTO jobs(number,client_id,property_id,service_id,status,created_at,updated_at,client_kind) VALUES('J1',?,?,?,'paid',1,1,'individual')").run(cid, prop, svc).lastInsertRowid);
+    db.prepare("INSERT INTO expenses(date,account,net,paid_from,job_id,created_at) VALUES('2026-11-01','5100',10,'bank',?,1)").run(job);
+    db.prepare("UPDATE leads SET job_id=?").run(job);
     const bad = await t.call('sa', 'POST', '/api/app/golive/reset-docs', { password: SA.password, phrase: 'nope' });
     assert.equal(bad.status, 400);
     const ok = await t.call('sa', 'POST', '/api/app/golive/reset-docs', { password: SA.password, phrase: 'RESET' });
