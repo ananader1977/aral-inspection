@@ -4,51 +4,44 @@ import { startTestApp, SA } from './helpers.js';
 
 const post = (t, path, body) => fetch(t.url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(async (r) => ({ status: r.status, body: await r.json() }));
 
-test('the website is served at / and gets live prices from the price list', async () => {
+const price = (t, o) => t.ctx.pricing.estimate({ service: o.service, propertyType: o.property_type, bedrooms: o.bedrooms, sqft: o.sqft, addons: o.addons, urgent: o.urgent });
+
+test('the website is served at / and the public data carries no prices', async () => {
   const t = await startTestApp();
   try {
     const home = await fetch(t.url + '/');
     assert.equal(home.status, 200);
     assert.match(await home.text(), /Know exactly what you're buying/);
     const site = await (await fetch(t.url + '/api/public/site')).json();
-    const row = (k) => site.price_table.find((r) => r.key === k).prices;
-    assert.equal(row('studio')['OWN-PPI'], 1200);
-    assert.equal(row('apt3')['OWN-SNG'], 2400);
-    assert.equal(row('villa5')['OWN-SNG'], 6000);
-    assert.equal(row('apt2')['OWN-MIO'], 1800);
-    assert.equal(site.addon_prices['ADD-THM'], 500);
     assert.deepEqual(site.services.map((s) => s.code), ['OWN-PPI', 'OWN-SNG', 'OWN-MIO', 'ADD-THM']);
-    // a price change in Settings shows on the website straight away
-    await t.login('sa', SA.email, SA.password);
-    const ppi = t.ctx.db.prepare("SELECT r.id FROM price_rules r JOIN services s ON s.id=r.service_id WHERE s.code='OWN-PPI' AND r.bedrooms_min=0 AND r.property_type='apartment'").get().id;
-    await t.call('sa', 'PUT', `/api/app/list/price_rules/${ppi}`, { price: 1250 });
-    const site2 = await (await fetch(t.url + '/api/public/site')).json();
-    assert.equal(site2.price_table.find((r) => r.key === 'studio').prices['OWN-PPI'], 1250);
+    assert.equal(JSON.stringify(site).includes('price'), false);
+    assert.equal(site.services.some((s) => 'from' in s), false);
+    assert.equal((await post(t, '/api/public/estimate', { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2 })).status, 404);
   } finally { await t.close(); }
 });
 
-test('instant estimate: base price, add-ons, urgent surcharge, VAT and commercial quotes', async () => {
+test('price calculation: base price, add-ons, urgent surcharge, VAT and commercial quotes', async () => {
   const t = await startTestApp();
   try {
-    let r = await post(t, '/api/public/estimate', { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2 });
+    let r = { body: price(t, { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2 }) };
     assert.equal(r.body.total, 1800);
     assert.equal(r.body.vat, 0);
-    r = await post(t, '/api/public/estimate', { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2, addons: ['ADD-THM', 'NOPE'], urgent: true });
+    r = { body: price(t, { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2, addons: ['ADD-THM', 'NOPE'], urgent: true }) };
     assert.deepEqual(r.body.lines.map((l) => l.amount), [1800, 500]); // no surcharges in the price list
     assert.equal(r.body.total, 2300);
     // removed services are not offered
-    assert.equal((await post(t, '/api/public/estimate', { service: 'OWN-DLP', property_type: 'apartment', bedrooms: 2 })).status, 400);
-    r = await post(t, '/api/public/estimate', { service: 'OWN-SNG', property_type: 'studio' });
+    assert.equal((() => { try { price(t, { service: 'OWN-DLP', property_type: 'apartment', bedrooms: 2 }); return 200; } catch (e) { return e.status; } })(), 400);
+    r = { body: price(t, { service: 'OWN-SNG', property_type: 'studio' }) };
     assert.equal(r.body.total, 1200);
-    r = await post(t, '/api/public/estimate', { service: 'OWN-SNG', property_type: 'villa', bedrooms: 6 });
+    r = { body: price(t, { service: 'OWN-SNG', property_type: 'villa', bedrooms: 6 }) };
     assert.equal(r.body.total, 6000);
-    r = await post(t, '/api/public/estimate', { service: 'OWN-PPI', property_type: 'office', sqft: 2000 });
+    r = { body: price(t, { service: 'OWN-PPI', property_type: 'office', sqft: 2000 }) };
     assert.equal(r.body.quote_needed, true);
-    assert.equal((await post(t, '/api/public/estimate', { service: 'BAD' })).status, 400);
+    assert.equal((() => { try { price(t, { service: 'BAD' }); return 200; } catch (e) { return e.status; } })(), 400);
     // VAT once registered
     await t.login('sa', SA.email, SA.password);
     await t.call('sa', 'PUT', '/api/app/settings', { vat_registered: '1', trn: '100000000000003' });
-    r = await post(t, '/api/public/estimate', { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2 });
+    r = { body: price(t, { service: 'OWN-PPI', property_type: 'apartment', bedrooms: 2 }) };
     assert.equal(r.body.vat, 90);
     assert.equal(r.body.total, 1890);
   } finally { await t.close(); }
@@ -110,11 +103,12 @@ test('every browser script parses', async () => {
   for (const f of files) execFileSync(process.execPath, ['--check', dir + f]);
 });
 
+const UNITS = [['studio', 0], ['apartment', 1], ['apartment', 2], ['apartment', 3], ['townhouse', 3], ['villa', 4], ['villa', 5]];
+
 test('a unit type costs the same for every inspection service', async () => {
   const t = await startTestApp();
   try {
-    const site = await (await fetch(t.url + '/api/public/site')).json();
-    for (const r of site.price_table) assert.equal(new Set(['OWN-PPI', 'OWN-SNG', 'OWN-MIO'].map((c) => r.prices[c])).size, 1, r.key);
+    for (const [type, beds] of UNITS) assert.equal(new Set(['OWN-PPI', 'OWN-SNG', 'OWN-MIO'].map((c) => price(t, { service: c, property_type: type, bedrooms: beds }).total)).size, 1, type + beds);
   } finally { await t.close(); }
 });
 
@@ -126,8 +120,21 @@ test('prices flattened by the earlier release are restored by unit type', async 
     t.ctx.db.prepare("INSERT OR IGNORE INTO settings(key,value) VALUES('_prices_unified','1')").run();
     const { unifyPrices } = await import('../src/seed.js');
     unifyPrices(t.ctx.db);
-    const site = await (await fetch(t.url + '/api/public/site')).json();
-    const p = (k) => site.price_table.find((r) => r.key === k).prices['OWN-PPI'];
-    assert.deepEqual(['studio', 'apt1', 'apt2', 'apt3', 'townhouse', 'villa4', 'villa5'].map(p), [1200, 1500, 1800, 2400, 3000, 4500, 6000]);
+    assert.deepEqual(UNITS.map(([type, beds]) => price(t, { service: 'OWN-PPI', property_type: type, bedrooms: beds }).total), [1200, 1500, 1800, 2400, 3000, 4500, 6000]);
+  } finally { await t.close(); }
+});
+
+test('the price is returned only after the enquiry is saved, and is worked out by the server', async () => {
+  const t = await startTestApp();
+  try {
+    const r = await post(t, '/api/public/leads', { name: 'Price Seeker', mobile: '050 111 2233', consent: true, service_code: 'OWN-PPI', property_type: 'apartment', bedrooms: 2, estimate_total: 1 });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.estimate.total, 1800);
+    await t.login('sa', SA.email, SA.password);
+    const leads = await t.call('sa', 'GET', '/api/app/leads');
+    assert.equal(leads.body.rows.find((l) => l.name === 'Price Seeker').estimate_total, 1800); // not the 1 the browser claimed
+    const bad = await post(t, '/api/public/leads', { name: 'No Consent', mobile: '050 111 2244', service_code: 'OWN-PPI' });
+    assert.equal(bad.status, 400);
+    assert.equal(bad.body.estimate, undefined);
   } finally { await t.close(); }
 });

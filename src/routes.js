@@ -67,32 +67,20 @@ export function registerRoutes(app, ctx) {
     const s = ctx.settings();
     if (config.appEnv === 'test') res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     const svc = db.prepare("SELECT code, name, name_ar, segment, is_addon, includes_reinspection, default_sla_hours FROM services WHERE active=1 AND (segment='owner' OR is_addon=1) ORDER BY sort").all();
-    const from = (code) => db.prepare("SELECT MIN(r.price) p FROM price_rules r JOIN services s ON s.id=r.service_id WHERE s.code=?").get(code)?.p ?? null;
     const branch = db.prepare('SELECT address, phone FROM branches WHERE is_default=1 AND active=1').get();
     const lk = (list) => db.prepare('SELECT value FROM lookups WHERE list=? AND active=1 ORDER BY sort, value').all(list).map((r) => r.value);
     res.json({ env: config.appEnv,
       company: s.company_name, tagline: s.tagline, phone: s.phone || branch?.phone || '', mobile: s.mobile, email: s.email, website: s.website,
       address: branch?.address || '', rera: s.rera_reg_no, licence: s.det_licence_no, vat_registered: s.vat_registered === '1', vat_rate: Number(s.vat_rate),
-      services: svc.map((x) => ({ ...x, from: from(x.code) })), communities: lk('community'),
+      services: svc, communities: lk('community'),
       residential_types: RESIDENTIAL_TYPES, commercial_types: COMMERCIAL_TYPES,
-      price_table: [['studio', 'studio', 0], ['apt1', 'apartment', 1], ['apt2', 'apartment', 2], ['apt3', 'apartment', 3], ['townhouse', 'townhouse', 3], ['villa4', 'villa', 4], ['villa5', 'villa', 5]].map(([key, type, beds]) => ({
-        key, prices: Object.fromEntries(['OWN-PPI', 'OWN-SNG', 'OWN-MIO'].map((code) => {
-          const sv = db.prepare('SELECT id FROM services WHERE code=? AND active=1').get(code);
-          return [code, sv ? ctx.pricing.basePrice(sv.id, type, beds, null)?.price ?? null : null];
-        })),
-      })),
-      addon_prices: Object.fromEntries(db.prepare("SELECT s.code, MIN(r.price) p FROM services s JOIN price_rules r ON r.service_id=s.id WHERE s.is_addon=1 AND s.active=1 GROUP BY s.code").all().map((r) => [r.code, r.p])),
     });
-  });
-  app.post('/api/public/estimate', async (req, res) => {
-    limit(req, 'estimate', 120, 10 * 60 * 1000);
-    const b = await req.json();
-    res.json(ctx.pricing.estimate({ service: b.service, propertyType: b.property_type, bedrooms: b.bedrooms, sqft: b.sqft, addons: b.addons, urgent: !!b.urgent }));
   });
   app.post('/api/public/leads', async (req, res) => {
     limit(req, 'lead', 8, 60 * 60 * 1000);
     const r = await ctx.leads.createPublic(await req.json(), ip(req));
-    res.json({ ok: true, ref: r.id ? `L-${String(r.id).padStart(5, '0')}` : '' });
+    // the price is calculated here and only returned once the lead is saved
+    res.json({ ok: true, ref: r.id ? `L-${String(r.id).padStart(5, '0')}` : '', estimate: r.estimate || null });
   });
 
   // ---------- leads (staff) ----------

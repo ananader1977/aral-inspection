@@ -34,7 +34,6 @@ test('new installs carry the scope wording; the upgrade adds a new version only 
 test('the public site shows Studio under Apartment data: studio still prices as a studio', async () => {
   const t = await startTestApp();
   try {
-    const r = await fetch(`${t.url}/api/public/estimate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service: 'OWN-PPI', property_type: 'studio', bedrooms: 0, addons: [] }) });
-    assert.equal((await r.json()).total, 1200);
+    assert.equal(t.ctx.pricing.estimate({ service: 'OWN-PPI', propertyType: 'studio', bedrooms: 0, addons: [] }).total, 1200);
   } finally { await t.close(); }
 });

@@ -84,7 +84,7 @@ function applyLang() {
   { const last = [...$('#communities').options].at(-1); if (last && [AR.communityOther, 'Other'].includes(last.value)) last.value = lang === 'ar' ? AR.communityOther : 'Other'; }
   for (const el of $$('[data-i18n-alt]')) { const k = el.dataset.i18nAlt; el.alt = lang === 'ar' ? AR[k] || '' : 'Registered with DLD / RERA'; }
   $('#lang').textContent = lang === 'ar' ? 'English' : 'العربية';
-  if (site) { fillSelects(); update(); }
+  if (site) { fillSelects(); }
 }
 
 $('#lang').addEventListener('click', () => {
@@ -138,18 +138,6 @@ function chosen() {
   return type === 'apartment' && b === '0' ? { type: 'studio', beds: 0 } : { type, beds: Number(b) };
 }
 
-let lastEstimate = null;
-let seq = 0;
-async function update() {
-  const c = chosen();
-  const my = ++seq;
-  if (!c) { lastEstimate = null; return; }
-  const body = { service: $('#service').value, property_type: c.type, bedrooms: c.beds, addons: $$('#addons input:checked').map((i) => i.value) };
-  try {
-    const r = await (await fetch('/api/public/estimate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
-    if (my === seq) lastEstimate = r;
-  } catch { /* keep last estimate */ }
-}
 // The price is only shown after the visitor has sent the enquiry, so we always capture the lead.
 function showEstimate(r) {
   const box = $('#doneEst');
@@ -170,8 +158,6 @@ function arLine(label) {
 }
 
 $('#ptype').addEventListener('change', fillBeds);
-$('#bookForm').addEventListener('input', (e) => { if (e.target.closest('.panel:not(.wide)')) update(); });
-$('#bookForm').addEventListener('change', (e) => { if (e.target.closest('.panel:not(.wide)')) update(); });
 
 $('#bookForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -188,7 +174,6 @@ $('#bookForm').addEventListener('submit', async (e) => {
     referral_code: f.referral_code.value, message: f.message.value, consent: true, website: f.website.value, pref_lang: lang,
     service_code: business ? '' : f.service_code.value, property_type: c.type, bedrooms: c.beds,
     addons: $$('#addons input:checked').map((i) => i.value), client_type: business ? 'company' : 'individual',
-    estimate_total: !business && lastEstimate && !lastEstimate.quote_needed ? lastEstimate.total : null,
   };
   const btn = $('#submit'); const label = btn.textContent; btn.disabled = true; btn.textContent = L(MSG.sending);
   try {
@@ -199,7 +184,7 @@ $('#bookForm').addEventListener('submit', async (e) => {
     $('#refno').textContent = r.ref || '';
     const wa = waLink(`${lang === 'ar' ? 'مرحبًا، أرسلت طلب حجز' : 'Hello, I sent a booking request'} ${r.ref || ''}`);
     if (wa) { $('#waDone').href = wa; $('#waDone').classList.remove('hide'); }
-    if (!business) showEstimate(lastEstimate);
+    if (!business) showEstimate(r.estimate);
     $('#done').classList.remove('hide'); $('#done').focus();
   } catch (x) { show(x.message || L(MSG.net)); }
   finally { btn.disabled = false; btn.textContent = label; }

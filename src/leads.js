@@ -47,8 +47,12 @@ export function createLeads(ctx) {
   async function createPublic(body, ip) {
     if (body.website) return { id: 0 }; // honeypot field filled in: a bot
     const v = clean(body, { publicForm: true });
+    // the price is worked out here, never trusted from the browser
+    let estimate = null;
+    try { if (v.service_code) estimate = ctx.pricing.estimate({ service: v.service_code, propertyType: v.property_type, bedrooms: v.bedrooms, sqft: v.sqft, addons: JSON.parse(v.addons), urgent: !!v.urgent }); } catch { /* no price: the team quotes by hand */ }
+    v.estimate_total = estimate && !estimate.quote_needed ? estimate.total : null;
     const dup = db.prepare('SELECT id FROM leads WHERE mobile=? AND created_at>? ORDER BY id DESC').get(v.mobile, ctx.now() - 10 * 60 * 1000);
-    if (dup) return { id: dup.id, duplicate: true }; // double submit
+    if (dup) return { id: dup.id, duplicate: true, estimate }; // double submit
     const keys = Object.keys(v);
     const id = Number(db.prepare(`INSERT INTO leads(${keys.join(',')},created_at,ip) VALUES(${keys.map(() => '?').join(',')},?,?)`).run(...keys.map((k) => v[k]), ctx.now(), ip).lastInsertRowid);
     ctx.admin.audit(null, 'leads', id, 'create', null, { source: v.source, service: v.service_code }, ip);
@@ -78,7 +82,7 @@ export function createLeads(ctx) {
         template: 'lead_ack',
       });
     }
-    return { id };
+    return { id, estimate };
   }
 
   function createManual(user, body, ip) {
