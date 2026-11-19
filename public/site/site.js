@@ -4,7 +4,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const fmt = (n) => Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
 
 const AR = {
-  skip: 'انتقل إلى الحجز', brandSub: 'خدمات فحص العقارات', navServices: 'الخدمات', navPrices: 'الأسعار', navHow: 'كيف نعمل', navAgents: 'للوسطاء', navBook: 'اعرف السعر',
+  skip: 'انتقل إلى الحجز', brandSub: 'خدمات فحص العقارات', navServices: 'الخدمات', navPrices: 'الأسعار', navHow: 'كيف نعمل', navBook: 'اعرف السعر',
   heroKick: 'فحص العقارات في دبي', heroTitle: 'اعرف حالة العقار بدقة قبل أن توقّع.',
   heroLead: 'فحص مستقل يقوده مهندسون للعقارات المعاد بيعها والتسليمات الجديدة والإيجارات. صور وفيديو وتصوير حراري في تقرير واضح خلال 24 ساعة.',
   heroCta: 'احصل على السعر فورًا', heroWa: 'تواصل عبر واتساب',
@@ -59,7 +59,6 @@ const MSG = {
   needName: ['Please enter your name.', 'يرجى إدخال الاسم.'], needMobile: ['Please enter your mobile number.', 'يرجى إدخال رقم الجوال.'], needConsent: ['Please tick the box to agree to be contacted.', 'يرجى الموافقة على التواصل معك.'],
   needType: ['Please choose the property type and bedrooms.', 'يرجى اختيار نوع العقار وعدد غرف النوم.'], choose: ['Select…', 'اختر…'],
   sending: ['Sending…', 'جارٍ الإرسال…'], net: ['Network problem. Please try again or WhatsApp us.', 'مشكلة في الاتصال. حاول مرة أخرى أو راسلنا عبر واتساب.'],
-  agentMsg: ['I am a broker / agent and would like a referral code.', 'أنا وسيط عقاري وأرغب في الحصول على رمز إحالة.'],
   bizMsg: ['Business enquiry (bank / developer / owners association): ', 'استفسار للشركات (بنك / مطور / جمعية ملاك): '],
 };
 
@@ -241,7 +240,6 @@ $('#bookForm').addEventListener('submit', async (e) => {
   finally { btn.disabled = false; btn.textContent = label; }
 });
 
-$('#agentBtn').addEventListener('click', () => { const m = $('#message'); if (!m.value) m.value = L(MSG.agentMsg); });
 let business = false;
 $('#bizBtn').addEventListener('click', () => { business = true; const m = $('#message'); if (!m.value) m.value = L(MSG.bizMsg); });
 
