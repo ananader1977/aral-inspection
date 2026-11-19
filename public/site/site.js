@@ -7,16 +7,16 @@ const AR = {
   skip: 'انتقل إلى الحجز', brandSub: 'خدمات فحص العقارات', navServices: 'الخدمات', navPrices: 'الأسعار', navHow: 'كيف نعمل', navBook: 'اعرف السعر',
   heroKick: 'فحص العقارات في دبي', heroTitle: 'اعرف حالة العقار بدقة قبل أن توقّع.',
   heroLead: 'فحص مستقل يقوده مهندسون للعقارات المعاد بيعها والتسليمات الجديدة والإيجارات. صور وفيديو وتصوير حراري في تقرير واضح خلال 24 ساعة.',
-  heroCta: 'احصل على السعر فورًا', heroWa: 'تواصل عبر واتساب',
+  heroCta: 'احصل على سعرك', heroWa: 'تواصل عبر واتساب',
   trust1: 'لا نبيع أعمال الإصلاح', trust2: 'كل تقرير يراجعه مهندس معتمد', trust3: 'التقرير خلال 24 ساعة', trust4: 'مسجلون لدى دائرة الأراضي / ريرا',
   sampleCap: 'كل ملاحظة مرفقة بالصور ودرجة الأهمية والجهة المختصة بإصلاحها.',
-  bookKick: 'سعر فوري', bookTitle: 'سعرك خلال 20 ثانية، ثم احجز بخطوة واحدة',
+  bookKick: 'سعرك', bookTitle: 'أخبرنا عن عقارك ثم شاهد سعرك',
   step1: '1. العقار', fService: 'الخدمة', fType: 'نوع العقار', fBeds: 'عدد غرف النوم', fCommunity: 'المنطقة', fAddons: 'خدمة إضافية',
-  estTitle: 'السعر التقديري', estEmpty: 'اختر الخدمة والعقار لمعرفة السعر.',
+  estTitle: 'السعر التقديري', estEmpty: 'أرسل بياناتك أدناه ليظهر لك السعر فورًا.',
   incl1: 'تقرير لكل غرفة مع الصور والفيديو', incl2: 'فحص التكييف والكهرباء والسباكة والرطوبة', incl3: 'يراجعه المدير الفني', incl4: 'مكالمة متابعة لشرح النتائج',
-  step2: '2. احجز', fName: 'الاسم الكامل', fMobile: 'الجوال (واتساب)', fEmail: 'البريد الإلكتروني (اختياري)', fDate: 'التاريخ المفضل', fBuilding: 'المبنى / المشروع ورقم الوحدة', fRef: 'رمز الوسيط (إن وجد)',
+  step2: '2. بياناتك', fName: 'الاسم الكامل', fMobile: 'الجوال (واتساب)', fEmail: 'البريد الإلكتروني (اختياري)', fDate: 'التاريخ المفضل', fBuilding: 'المبنى / المشروع ورقم الوحدة', fRef: 'رمز الوسيط (إن وجد)',
   fMsg: 'هل هناك ما يجب أن نعرفه؟ (موعد التسليم، الدخول للعقار، أسئلة)', fConsent: 'أوافق على تواصل A R A L معي هاتفيًا أو عبر واتساب أو البريد بخصوص هذا الطلب.',
-  fSubmit: 'أرسل طلب الحجز', fNote: 'لا دفع الآن. نؤكد الموعد ونرسل عرض السعر أولاً.',
+  fSubmit: 'أرسل واعرض سعري', fNote: 'لا دفع الآن. نؤكد الموعد ونرسل عرض السعر أولاً.',
   doneTitle: 'شكرًا لك، استلمنا طلبك', doneText: 'سنتصل بك أو نراسلك عبر واتساب قريبًا لتأكيد الموعد. رقم المرجع:', doneWa: 'راسلنا على واتساب الآن',
   svcKick: 'سكني', svcTitle: 'فحص لكل مرحلة من مراحل امتلاك المنزل',
   s1t: 'فحص قبل الشراء', s1d: 'قبل توقيع مذكرة التفاهم أو نقل الملكية: تقرير كامل عن الحالة تستخدمه للتفاوض مع البائع. يشمل إعادة فحص واحدة.',
@@ -84,7 +84,7 @@ function applyLang() {
   { const last = [...$('#communities').options].at(-1); if (last && [AR.communityOther, 'Other'].includes(last.value)) last.value = lang === 'ar' ? AR.communityOther : 'Other'; }
   for (const el of $$('[data-i18n-alt]')) { const k = el.dataset.i18nAlt; el.alt = lang === 'ar' ? AR[k] || '' : 'Registered with DLD / RERA'; }
   $('#lang').textContent = lang === 'ar' ? 'English' : 'العربية';
-  if (site) { fillSelects(); fillPrices(); update(); }
+  if (site) { fillSelects(); update(); }
 }
 
 $('#lang').addEventListener('click', () => {
@@ -113,7 +113,7 @@ function fillSelects() {
   box.replaceChildren(...site.services.filter((s) => s.is_addon).map((s) => {
     const l = document.createElement('label');
     const i = document.createElement('input'); i.type = 'checkbox'; i.name = 'addons'; i.value = s.code; i.checked = checked.has(s.code);
-    l.append(i, ` ${svcName(s)}${site.addon_prices[s.code] ? ` +${fmt(site.addon_prices[s.code])}` : ''}`);
+    l.append(i, ` ${svcName(s)}`);
     return l;
   }));
 }
@@ -138,49 +138,29 @@ function chosen() {
   return type === 'apartment' && b === '0' ? { type: 'studio', beds: 0 } : { type, beds: Number(b) };
 }
 
-function fillPrices() {
-  for (const s of site.services) { const el = document.getElementById(`p_${s.code}`); if (el && s.from != null) el.textContent = `AED ${fmt(s.from)}`; }
-  const rows = $$('.prices tbody tr');
-  site.price_table.forEach((r, i) => {
-    const tds = rows[i]?.querySelectorAll('td');
-    if (!tds) return;
-    ['OWN-PPI', 'OWN-SNG', 'OWN-MIO'].forEach((c, j) => { tds[j + 1].textContent = r.prices[c] != null ? fmt(r.prices[c]) : '–'; });
-  });
-  const ap = site.addon_prices;
-  const thm = ap['ADD-THM'] ? fmt(ap['ADD-THM']) : '';
-  $('#vatNote').textContent = lang === 'ar'
-    ? `الأسعار بالدرهم${site.vat_registered ? ` وقبل ضريبة القيمة المضافة ${site.vat_rate}%` : ''}.${thm ? ` خدمة إضافية: التصوير الحراري ${thm}.` : ''}`
-    : `Prices in AED${site.vat_registered ? `, before ${site.vat_rate}% VAT` : ''}.${thm ? ` Add-on: thermal imaging ${thm}.` : ''}`;
-}
-
 let lastEstimate = null;
 let seq = 0;
 async function update() {
   const c = chosen();
   const my = ++seq;
-  if (!c) {
-    lastEstimate = null;
-    const e = p((lang === 'ar' ? AR : EN).estEmpty || '', 'muted'); e.dataset.i18n = 'estEmpty';
-    $('#est').replaceChildren(e); $('#mbarPrice').textContent = ''; mbar.ready = false; mbar.sync();
-    return;
-  }
+  if (!c) { lastEstimate = null; return; }
   const body = { service: $('#service').value, property_type: c.type, bedrooms: c.beds, addons: $$('#addons input:checked').map((i) => i.value) };
   try {
     const r = await (await fetch('/api/public/estimate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
-    if (my !== seq) return;
-    lastEstimate = r;
-    const est = $('#est');
-    if (r.error) { est.replaceChildren(p(r.error, 'muted')); return; }
-    if (r.quote_needed) { est.replaceChildren(p(L(MSG.quote), 'meta')); mbar.ready = false; mbar.sync(); return; }
-    const ul = document.createElement('ul'); ul.className = 'lines';
-    for (const l of r.lines) { const li = document.createElement('li'); li.append(span(lang === 'ar' ? arLine(l.label) : l.label), span(fmt(l.amount))); ul.append(li); }
-    if (r.vat) { const li = document.createElement('li'); li.append(span(`${L(MSG.vat)} ${r.vat_rate}%`), span(fmt(r.vat))); ul.append(li); }
-    const price = document.createElement('p'); price.className = 'price'; price.append(Object.assign(document.createElement('small'), { textContent: 'AED' }), fmt(r.total));
-    $('#mbarPrice').textContent = `AED ${fmt(r.total)}`;
-    mbar.ready = true; mbar.sync();
-    est.replaceChildren(price, p(r.vat ? L(MSG.total) : L(MSG.noVat), 'meta'), ul,
-      p([L(MSG.report).replace('{h}', r.turnaround_hours), r.includes_reinspection ? L(MSG.reinsp) : ''].filter(Boolean).join(' · '), 'meta'));
+    if (my === seq) lastEstimate = r;
   } catch { /* keep last estimate */ }
+}
+// The price is only shown after the visitor has sent the enquiry, so we always capture the lead.
+function showEstimate(r) {
+  const box = $('#doneEst');
+  if (!r || r.error) { box.replaceChildren(); return; }
+  if (r.quote_needed) { box.replaceChildren(p(L(MSG.quote), 'meta')); return; }
+  const ul = document.createElement('ul'); ul.className = 'lines';
+  for (const l of r.lines) { const li = document.createElement('li'); li.append(span(lang === 'ar' ? arLine(l.label) : l.label), span(fmt(l.amount))); ul.append(li); }
+  if (r.vat) { const li = document.createElement('li'); li.append(span(`${L(MSG.vat)} ${r.vat_rate}%`), span(fmt(r.vat))); ul.append(li); }
+  const price = document.createElement('p'); price.className = 'price'; price.append(Object.assign(document.createElement('small'), { textContent: 'AED' }), fmt(r.total));
+  box.replaceChildren(price, p(r.vat ? L(MSG.total) : L(MSG.noVat), 'meta'), ul,
+    p([L(MSG.report).replace('{h}', r.turnaround_hours), r.includes_reinspection ? L(MSG.reinsp) : ''].filter(Boolean).join(' · '), 'meta'));
 }
 const p = (t, c) => Object.assign(document.createElement('p'), { textContent: t, className: c || '' });
 const span = (t) => Object.assign(document.createElement('span'), { textContent: t });
@@ -188,22 +168,6 @@ function arLine(label) {
   const s = site.services.find((x) => x.name === label || x.name.replace(/^Add-on:\s*/, '') === label);
   return s ? svcName(s) : label;
 }
-
-// Phone price bar: shown while the booking section is on screen, but never while typing in a field
-// and never when the full estimate panel is already visible, so it cannot cover any field.
-const mbar = { ready: false, inBook: false, quoteVisible: false, typing: false };
-mbar.sync = () => {
-  const show = mbar.ready && mbar.inBook && !mbar.quoteVisible && !mbar.typing;
-  $('#mbar').classList.toggle('hide', !show);
-  document.body.classList.toggle('has-mbar', show);
-};
-if ('IntersectionObserver' in window) {
-  new IntersectionObserver(([e]) => { mbar.inBook = e.isIntersecting; mbar.sync(); }).observe($('#book'));
-  new IntersectionObserver(([e]) => { mbar.quoteVisible = e.isIntersecting; mbar.sync(); }, { threshold: 0.25 }).observe($('.quote'));
-}
-document.addEventListener('focusin', (e) => { if (e.target.matches('input,select,textarea')) { mbar.typing = true; mbar.sync(); } });
-document.addEventListener('focusout', () => { setTimeout(() => { mbar.typing = !!document.activeElement?.matches?.('input,select,textarea'); mbar.sync(); }, 50); });
-$('#mbar a').addEventListener('click', (e) => { e.preventDefault(); $('#step2').scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('#name').focus({ preventScroll: true }), 450); });
 
 $('#ptype').addEventListener('change', fillBeds);
 $('#bookForm').addEventListener('input', (e) => { if (e.target.closest('.panel:not(.wide)')) update(); });
@@ -235,6 +199,7 @@ $('#bookForm').addEventListener('submit', async (e) => {
     $('#refno').textContent = r.ref || '';
     const wa = waLink(`${lang === 'ar' ? 'مرحبًا، أرسلت طلب حجز' : 'Hello, I sent a booking request'} ${r.ref || ''}`);
     if (wa) { $('#waDone').href = wa; $('#waDone').classList.remove('hide'); }
+    if (!business) showEstimate(lastEstimate);
     $('#done').classList.remove('hide'); $('#done').focus();
   } catch (x) { show(x.message || L(MSG.net)); }
   finally { btn.disabled = false; btn.textContent = label; }

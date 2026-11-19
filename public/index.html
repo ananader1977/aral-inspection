@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0A1F4A">
 <title>A R A L Property Inspection Dubai · Snagging, resale and handover inspections</title>
-<meta name="description" content="Independent, engineer-led property inspections in Dubai. Snagging, resale and move-in reports with photos, videos and thermal imaging, delivered within 24 hours. Get an instant price.">
+<meta name="description" content="Independent, engineer-led property inspections in Dubai. Snagging, resale and move-in reports with photos, videos and thermal imaging, delivered within 24 hours. Send your details and get your price.">
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/mark.png">
 <link rel="stylesheet" href="/site/site.css">
@@ -17,7 +17,6 @@
     <a class="logo" href="#top" aria-label="A R A L Property Inspection Services"><img src="/brand/aral-mark.png" alt="A R A L Property Inspection Services" width="130" height="38"><span><small data-i18n="brandSub">Property Inspection Services</small></span></a>
     <nav class="menu" aria-label="Main">
       <a href="#services" data-i18n="navServices">Services</a>
-      <a href="#prices" data-i18n="navPrices">Prices</a>
       <a href="#how" data-i18n="navHow">How it works</a>
     </nav>
     <div class="tools">
@@ -36,7 +35,7 @@
       <p class="lead" data-i18n="heroLead">Independent, engineer-led inspections for resale homes, new handovers and rentals. Photos, videos and thermal imaging in a clear report within 24 hours.</p>
       <p class="intro" data-i18n="heroIntro">A R A L Property Inspection Services is a Dubai company providing professional, non-invasive home inspections and snagging. We record every visible defect, minor or major, so you can buy, accept or rent with confidence.</p>
       <div class="cta">
-        <a class="btn cu" href="#book" data-i18n="heroCta">Get an instant price</a>
+        <a class="btn cu" href="#book" data-i18n="heroCta">Get your price</a>
         <a class="btn ghost wa hide" id="waHero" href="#" target="_blank" rel="noopener" data-i18n="heroWa">WhatsApp us</a>
       </div>
       <ul class="trust">
@@ -64,8 +63,8 @@
 <section class="book" id="book">
   <div class="in">
     <div class="head">
-      <p class="kick" data-i18n="bookKick">Instant price</p>
-      <h2 data-i18n="bookTitle">Your price in 20 seconds, then book in one step</h2>
+      <p class="kick" data-i18n="bookKick">Your price</p>
+      <h2 data-i18n="bookTitle">Tell us about your property, then see your price</h2>
     </div>
     <form class="grid" id="bookForm" novalidate>
       <fieldset class="panel">
@@ -86,7 +85,7 @@
 
       <aside class="panel quote" aria-live="polite">
         <p class="sub" data-i18n="estTitle">Your estimate</p>
-        <div id="est"><p class="muted" data-i18n="estEmpty">Choose a service and property to see the price.</p></div>
+        <div id="est"><p class="muted" data-i18n="estEmpty">Send your details below and your price appears straight away.</p></div>
         <ul class="incl">
           <li data-i18n="incl1">Room-by-room report with photos and videos</li>
           <li data-i18n="incl2">AC, electrical, plumbing and moisture checks</li>
@@ -96,7 +95,7 @@
       </aside>
 
       <fieldset class="panel wide" id="step2">
-        <legend data-i18n="step2">2. Book it</legend>
+        <legend data-i18n="step2">2. Your details</legend>
         <div class="three">
           <div><label for="name" data-i18n="fName">Full name</label><input id="name" name="name" autocomplete="name" required></div>
           <div><label for="mobile" data-i18n="fMobile">Mobile (WhatsApp)</label><input id="mobile" name="mobile" type="tel" autocomplete="tel" dir="ltr" placeholder="+971 50 123 4567" required></div>
@@ -110,15 +109,14 @@
         <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
         <label class="chk"><input type="checkbox" name="consent" id="consent" required> <span data-i18n="fConsent">I agree that A R A L may contact me by phone, WhatsApp or email about this enquiry.</span></label>
         <p class="err hide" id="err" role="alert"></p>
-        <div class="send"><button class="btn cu" type="submit" id="submit" data-i18n="fSubmit">Request booking</button><span class="note" data-i18n="fNote">No payment now. We confirm the date and send the quotation first.</span></div>
+        <div class="send"><button class="btn cu" type="submit" id="submit" data-i18n="fSubmit">Send and see my price</button><span class="note" data-i18n="fNote">No payment now. We confirm the date and send the quotation first.</span></div>
       </fieldset>
     </form>
-    <!-- phones: slim price bar at the bottom (hidden while typing or when the full estimate is on screen) -->
-    <div class="mbar hide" id="mbar" aria-hidden="true"><span><small data-i18n="estTitle">Your estimate</small><b id="mbarPrice"></b></span><a class="btn cu sm" href="#step2" data-i18n="fSubmit">Request booking</a></div>
     <div class="done hide" id="done" tabindex="-1">
       <h3 data-i18n="doneTitle">Thank you, we have your request</h3>
       <p data-i18n="doneText">We will call or WhatsApp you shortly to confirm the date. Your reference:</p>
       <p class="refno" id="refno"></p>
+      <div id="doneEst" class="quote"></div>
       <a class="btn ghost wa hide" id="waDone" href="#" target="_blank" rel="noopener" data-i18n="doneWa">Message us on WhatsApp now</a>
     </div>
   </div>
@@ -130,9 +128,9 @@
     <h2 data-i18n="svcTitle">Inspections for every stage of owning a home</h2>
     <p class="scope" data-i18n="scopeText">We carry out a non-invasive visual inspection and snagging of homes. We cover the non-structural, mechanical, electrical and plumbing systems unless agreed otherwise, and record every visible defect, minor or major, with photos, videos and clear descriptions in one structured report. It shows the condition on the day and is not a guarantee of future performance.</p>
     <div class="cards three">
-      <article><h3 data-i18n="s1t">Resale inspection</h3><p data-i18n="s1d">Before you sign the MOU or transfer: a full condition report you can use to negotiate with the seller. Includes one re-inspection.</p><p class="from"><span data-i18n="from">From</span> <b id="p_OWN-PPI">AED 1,200</b></p></article>
-      <article><h3 data-i18n="s2t">Snagging and handover</h3><p data-i18n="s2d">Before you accept the keys to a new unit: 200+ checks and a defect list in the developer's format, with a re-inspection after repairs.</p><p class="from"><span data-i18n="from">From</span> <b id="p_OWN-SNG">AED 1,200</b></p></article>
-      <article><h3 data-i18n="s4t">Move-in / move-out</h3><p data-i18n="s4d">A dated, photo-backed condition record that protects the deposit for tenants and landlords.</p><p class="from"><span data-i18n="from">From</span> <b id="p_OWN-MIO">AED 900</b></p></article>
+      <article><h3 data-i18n="s1t">Resale inspection</h3><p data-i18n="s1d">Before you sign the MOU or transfer: a full condition report you can use to negotiate with the seller. Includes one re-inspection.</p></article>
+      <article><h3 data-i18n="s2t">Snagging and handover</h3><p data-i18n="s2d">Before you accept the keys to a new unit: 200+ checks and a defect list in the developer's format, with a re-inspection after repairs.</p></article>
+      <article><h3 data-i18n="s4t">Move-in / move-out</h3><p data-i18n="s4d">A dated, photo-backed condition record that protects the deposit for tenants and landlords.</p></article>
     </div>
     <div class="biz">
       <div><p class="kick" data-i18n="bizKick">Commercial</p><h3 data-i18n="bizTitle">For banks, developers and owners associations</h3>
@@ -144,26 +142,6 @@
         </ul></div>
       <a class="btn ghost" href="#book" id="bizBtn" data-i18n="bizBtn">Ask for a business quote</a>
     </div>
-  </div>
-</section>
-
-<section class="prices" id="prices">
-  <div class="in">
-    <p class="kick" data-i18n="prKick">Prices</p>
-    <h2 data-i18n="prTitle">Clear prices, no surprises</h2>
-    <div class="tw"><table>
-      <thead><tr><th data-i18n="thProp">Property</th><th data-i18n="thResale">Resale</th><th data-i18n="thSnag">Snagging and handover</th><th data-i18n="thMove">Move-in / move-out</th></tr></thead>
-      <tbody>
-        <tr><td data-i18n="rStudio">Studio</td><td>1,200</td><td>1,200</td><td>900</td></tr>
-        <tr><td data-i18n="r1">1-bedroom apartment</td><td>1,500</td><td>1,400</td><td>900</td></tr>
-        <tr><td data-i18n="r2">2-bedroom apartment</td><td>1,700</td><td>1,800</td><td>1,300</td></tr>
-        <tr><td data-i18n="r3">3-bedroom apartment</td><td>1,860</td><td>2,400</td><td>1,300</td></tr>
-        <tr><td data-i18n="rTh">Townhouse</td><td>2,500</td><td>3,000</td><td>1,800</td></tr>
-        <tr><td data-i18n="rV4">Villa, up to 4 bedrooms</td><td>3,000</td><td>4,500</td><td>2,200</td></tr>
-        <tr><td data-i18n="rV5">Villa, 5+ bedrooms</td><td>3,500</td><td>6,000</td><td>2,200</td></tr>
-      </tbody>
-    </table></div>
-    <p class="fine" id="vatNote" data-i18n="prNote">Prices in AED. Add-on: thermal imaging 500.</p>
   </div>
 </section>
 
