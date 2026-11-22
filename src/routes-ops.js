@@ -186,6 +186,10 @@ export function registerOpsRoutes(app, ctx) {
     const a = await R.attachmentBytes(id(req), { user: can(req.user.role, 'jobs.view') ? null : req.user });
     res.send(a.buf, a.mime, 200, { 'Content-Disposition': `inline; filename="${a.name.replace(/"/g, '')}"`, 'Cache-Control': 'private, max-age=3600' });
   });
+  app.post('/api/app/ai/proofread', U, P('inspect'), async (req, res) => {
+    if (!config.disableRateLimit) ctx.limit(`proof:${req.user.id}`, 60, 10 * 60 * 1000);
+    res.json(await ctx.ai.proofread((await req.json())?.text));
+  });
   // AI: read the photos of an item and suggest findings (the inspector chooses and edits)
   app.post('/api/app/ai/suggest', U, P('inspect'), async (req, res) => {
     if (!config.disableRateLimit) ctx.limit(`ai:${req.user.id}`, 40, 10 * 60 * 1000);

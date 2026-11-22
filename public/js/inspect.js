@@ -466,6 +466,19 @@ async function inspectJob(el, jobId) {
     const drawSev = () => fill(sevBtns, SEV.map(([k, l]) => h('button', { type: 'button', class: `sevbtn ${k} ${sev === k ? 'on' : ''}`, onclick: () => { sev = k; inSum.checked = k !== 'info'; drawSev(); } }, t(l))));
     drawSev();
     const list = h('div', { class: 'sugg' }, sugg.rows.map((r) => h('button', { type: 'button', class: `suggbtn ${r.default_severity}`, onclick: () => { text.value = r.text; sev = r.default_severity; trade.value = r.default_trade || ''; if (r.glossary_id) gl.value = r.glossary_id; inSum.checked = sev !== 'info'; libId = r.id; drawSev(); text.focus(); } }, r.text)));
+    // ---- spell check: fixes the typed text in place (works on existing text too, on any phone) ----
+    const spellMsg = h('span', { class: 'small muted' });
+    const spell = S.cfg?.ai ? h('p', { class: 'actions' }, h('button', { class: 'btn alt sm', type: 'button', onclick: async (e) => {
+      const before = text.value;
+      if (!before.trim()) return;
+      e.target.disabled = true; spellMsg.textContent = '…';
+      try {
+        const r = await A('POST', '/ai/proofread', { text: before });
+        text.value = r.text;
+        fill(spellMsg, r.changed ? [t('Spelling fixed.'), ' ', h('a', { href: '#', onclick: (ev) => { ev.preventDefault(); text.value = before; fill(spellMsg); } }, t('Undo'))] : t('No spelling mistakes found.'));
+      } catch (err) { spellMsg.textContent = err.message; }
+      e.target.disabled = false;
+    } }, '✨ ', t('Check spelling')), ' ', spellMsg) : null;
     // ---- AI: read the photos and suggest wording ----
     const aiPhotos = opts.photoIds?.length ? opts.photoIds : [...(o ? o.media : []), ...(it.media || [])].filter((x) => typeof x === 'number');
     const aiBox = h('div', { class: 'aibox' });
@@ -517,7 +530,7 @@ async function inspectJob(el, jobId) {
     opts.photoIds?.length ? h('div', { class: 'strip' }, opts.photoIds.map((mid) => h('span', { class: 'thumb' }, h('img', { src: `/api/app/media/${mid}?thumb=1`, alt: '' })))) : null,
     aiBox,
     sugg.rows.length && !o ? h('details', { open: !S.cfg?.ai || !aiPhotos.length }, h('summary', {}, t('Ready-made findings')), list) : null,
-    field('Finding', text), h('label', {}, t('Severity')), sevBtns,
+    field('Finding', text), spell, h('label', {}, t('Severity')), sevBtns,
     h('div', { class: 'grid2' }, field('Recommended trade', trade), field('Glossary', gl)),
     h('datalist', { id: 'dl-trade' }, (sugg.trades.length ? sugg.trades : S.lk?.trade || []).map((v) => h('option', { value: v }))),
     J.parent_job_id ? field('Re-inspection result', re) : null,

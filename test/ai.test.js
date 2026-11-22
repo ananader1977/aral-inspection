@@ -114,3 +114,15 @@ test('Gemini provider (free tier): photos sent as inline data, reply parsed, rat
     assert.match(lim.body.error, /free AI limit/);
   } finally { await t.close(); await new Promise((r) => fake.close(r)); fs.rmSync(uploadDir, { recursive: true, force: true }); }
 });
+
+test('proofread returns corrected text, keeps the original when the AI gives nothing usable', async () => {
+  const { createAi } = await import('../src/ai.js');
+  const real = globalThis.fetch;
+  try {
+    const ai = createAi({ config: { ai: { provider: 'claude', apiKey: 'k' } } });
+    globalThis.fetch = async () => new Response(JSON.stringify({ content: [{ type: 'text', text: '{"text":"The tiles are cracked."}' }] }), { status: 200 });
+    assert.deepEqual(await ai.proofread('The tilles are crackd.'), { text: 'The tiles are cracked.', changed: true });
+    globalThis.fetch = async () => new Response(JSON.stringify({ content: [{ type: 'text', text: 'sorry' }] }), { status: 200 });
+    assert.deepEqual(await ai.proofread('Fine as is.'), { text: 'Fine as is.', changed: false });
+  } finally { globalThis.fetch = real; }
+});

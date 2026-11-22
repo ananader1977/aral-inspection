@@ -59,9 +59,9 @@ export function createAi(ctx) {
     if (!res.ok) throw new HttpError(502, `AI service error: ${data?.error?.message || res.status}`);
     return data;
   }
-  async function callClaude(imgs, context) {
+  async function callClaude(imgs, context, system = SYSTEM) {
     const data = await post(cfg.baseUrl || CLAUDE_API, { 'x-api-key': cfg.apiKey, 'anthropic-version': '2023-06-01' }, {
-      model: model(), max_tokens: 700, system: SYSTEM,
+      model: model(), max_tokens: 700, system,
       messages: [{ role: 'user', content: [
         ...imgs.map((x) => ({ type: 'image', source: { type: 'base64', media_type: x.mime, data: x.buf.toString('base64') } })),
         { type: 'text', text: context },
@@ -69,10 +69,10 @@ export function createAi(ctx) {
     });
     return (data.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
   }
-  async function callGemini(imgs, context) {
+  async function callGemini(imgs, context, system = SYSTEM) {
     const url = `${cfg.baseUrl || GEMINI_API}/${encodeURIComponent(model())}:generateContent`;
     const data = await post(url, { 'x-goog-api-key': cfg.apiKey }, {
-      systemInstruction: { parts: [{ text: SYSTEM }] },
+      systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts: [...imgs.map((x) => ({ inline_data: { mime_type: x.mime, data: x.buf.toString('base64') } })), { text: context }] }],
       generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 800, temperature: 0.3 },
     });
@@ -81,7 +81,20 @@ export function createAi(ctx) {
     return (c?.content?.parts || []).map((p) => p.text || '').join('');
   }
 
-  return { enabled, suggest, provider, model, label: () => PROVIDER_LABEL[provider] + (provider === 'gemini' && !cfg.paidTier ? ' (free tier)' : '') };
+  /** Fixes spelling and grammar only; the inspector's wording, numbers and technical terms stay as written. */
+  async function proofread(text) {
+    if (!enabled()) throw new HttpError(503, 'Spell check is not set up. Add GEMINI_API_KEY (or ANTHROPIC_API_KEY) on the server.');
+    const src = String(text || '').trim().slice(0, 2000);
+    if (!src) throw new HttpError(400, 'Write the finding first.');
+    const system = 'You correct spelling, capital letters and obvious grammar mistakes in a property inspection report written in English. Keep the meaning, wording, numbers, units, brand names and technical terms. Do not add or remove information and do not rephrase. Answer with JSON only: {"text":"the corrected text"}';
+    const out = provider === 'gemini' ? await callGemini([], src, system) : await callClaude([], src, system);
+    let fixed = '';
+    try { fixed = String(JSON.parse(/\{[\s\S]*\}/.exec(out)?.[0] || '{}').text || ''); } catch { /* keep the original */ }
+    fixed = fixed.trim().slice(0, 2200);
+    return { text: fixed || src, changed: !!fixed && fixed !== src };
+  }
+
+  return { enabled, suggest, proofread, provider, model, label: () => PROVIDER_LABEL[provider] + (provider === 'gemini' && !cfg.paidTier ? ' (free tier)' : '') };
 }
 
 /** Pulls the JSON object out of the reply and cleans every field. */
