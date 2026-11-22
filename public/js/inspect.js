@@ -2,6 +2,8 @@
 // queue in the phone's storage (IndexedDB) and is sent in order when there is signal. Nothing is lost if the app closes.
 import { hasCamera, takePhoto } from '/js/native.js';
 import { h, fill, toast, pill, t, fmtStamp, todayIso } from '/js/common.js';
+// Report text: red underline on misspelled words and a capital letter at the start of each sentence (reports are written in English)
+const SPELL = { spellcheck: 'true', lang: 'en', autocapitalize: 'sentences', autocorrect: 'on' };
 import { S, A, can, run, modal, closeModal, field, confirmBox, go } from '/js/app.js';
 
 const SYS_ITEMS = {
@@ -182,7 +184,7 @@ async function inspectJob(el, jobId) {
         field('Thermal imaging used', yn('thermal_used', R.thermal_used)),
         field('Overall condition (optional)', h('input', { name: 'overall_condition', value: R.overall_condition || '', disabled: !editable }))),
       h('label', {}, t('Persons present')), h('div', { class: 'chips' }, (S.lk?.attendance || ['Owner', 'Buyer', 'Agent', 'Tenant', 'None']).map((p) => h('label', { class: 'chip' }, h('input', { type: 'checkbox', disabled: !editable, checked: people.has(p), onchange: (e) => { e.target.checked ? people.add(p) : people.delete(p); } }), t(p)))),
-      field('Property note (printed under general information)', h('textarea', { name: 'property_note', rows: 2, disabled: !editable }, R.property_note || '')));
+      field('Property note (printed under general information)', h('textarea', { ...SPELL, name: 'property_note', rows: 2, disabled: !editable }, R.property_note || '')));
     let tm;
     const save = () => { clearTimeout(tm); tm = setTimeout(() => {
       const v = Object.fromEntries(new FormData(f));
@@ -233,14 +235,14 @@ async function inspectJob(el, jobId) {
     return new Promise((resolve) => {
       const f = h('form', { onsubmit: (e) => { e.preventDefault(); closeModal(); resolve({ title: f.ttl.value.trim(), description: f.desc.value.trim() }); } },
         h('h2', {}, t('Attachment')), field('Title (printed in the report)', h('input', { name: 'ttl', required: true, value: title, maxlength: 120 })),
-        field('Description (optional)', h('textarea', { name: 'desc', rows: 2, maxlength: 500 }, description)),
+        field('Description (optional)', h('textarea', { ...SPELL, name: 'desc', rows: 2, maxlength: 500 }, description)),
         h('p', { class: 'actions' }, h('button', { class: 'btn cu' }, t('Save')), h('button', { class: 'btn alt', type: 'button', onclick: () => { closeModal(); resolve(null); } }, t('Cancel'))));
       modal(f);
     });
   }
   function attachmentMenu(a, i) {
     const ttl = h('input', { value: a.title, maxlength: 120 });
-    const desc = h('textarea', { rows: 2, maxlength: 500 }, a.description || '');
+    const desc = h('textarea', { ...SPELL, rows: 2, maxlength: 500 }, a.description || '');
     const inPdf = h('input', { type: 'checkbox', checked: !!a.in_pdf });
     const mail = h('input', { type: 'checkbox', checked: !!a.send_with_report });
     const doit = async (fn, msg) => { if (await run(fn, msg)) { closeModal(); inspectJob(el, jobId); } };
@@ -455,7 +457,7 @@ async function inspectJob(el, jobId) {
     try { sugg = await A('GET', `/suggestions?item=${encodeURIComponent(it.name)}`); } catch { /* offline: free text only */ }
     let sev = o?.severity || 'attention';
     let libId = null;
-    const text = h('textarea', { rows: 4, required: true }, o?.text || '');
+    const text = h('textarea', { ...SPELL, rows: 4, required: true }, o?.text || '');
     const trade = h('input', { value: o?.trade || '', list: 'dl-trade' });
     const inSum = h('input', { type: 'checkbox', checked: o ? !!o.in_summary : true });
     const gl = h('select', {}, h('option', { value: '' }, t('No glossary term')), sugg.glossary.map((g) => h('option', { value: g.id, selected: g.id === o?.glossary_id }, g.term)));
@@ -570,7 +572,7 @@ async function inspectJob(el, jobId) {
 
   async function accessFailed() {
     const f = h('form', { onsubmit: async (e) => { e.preventDefault(); if (await run(() => A('POST', `/inspect/${jobId}/access-failed`, { note: f.note.value }), 'The office has been told.')) { closeModal(); go('inspect'); } } },
-      h('h2', {}, t('No access to the property')), field('What happened', h('textarea', { name: 'note', rows: 3, required: true })),
+      h('h2', {}, t('No access to the property')), field('What happened', h('textarea', { ...SPELL, name: 'note', rows: 3, required: true })),
       h('p', { class: 'actions' }, h('button', { class: 'btn danger' }, t('Report no access')), h('button', { class: 'btn alt', type: 'button', onclick: closeModal }, t('Cancel'))));
     modal(f);
   }
