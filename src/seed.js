@@ -362,20 +362,64 @@ export function upgradeRoomLayout(db) {
   return out;
 }
 
+// Walk-through order of the rooms in a report and in the checklist.
+const ORDER = ['Main Entrance', 'Kitchen', 'Living Room', 'Guest Washroom', ['Master Bedroom', 'Living / Sleeping Area'], ['Master Bathroom', 'Bathroom'], /^Bedroom (\d+|\{n\})$/, /^Bathroom (\d+|\{n\})$/, 'Wardrobe Room', 'Living Room Balcony', 'Laundry Area', "Maid's Room", "Maid's Bath", /^Exterior/];
+const roomRank = (name) => {
+  if (name === 'Property Services') return 99;
+  const i = ORDER.findIndex((o) => (o instanceof RegExp ? o.test(name) : Array.isArray(o) ? o.includes(name) : o === name));
+  return i < 0 ? 50 : i;
+};
+
+/** Rooms in walk-through order: Powder Room becomes Guest Washroom, Main Entrance and Wardrobe Room are added. Runs once. */
+export function reorderRooms(db) {
+  if (db.prepare("SELECT 1 FROM settings WHERE key='_rooms_order'").get()) return false;
+  tx(db, () => {
+    const q = (sql, ...a) => db.prepare(sql).run(...a);
+    const sortAll = (rows, table, where, id) => {
+      rows.sort((a, b) => roomRank(a.name) - roomRank(b.name) || a.sort - b.sort || a.id - b.id).forEach((r, i) => q(`UPDATE ${table} SET sort=? WHERE id=?`, i + 1, r.id));
+    };
+    for (const cl of db.prepare('SELECT id FROM checklists').all()) {
+      q("UPDATE section_templates SET name='Guest Washroom' WHERE checklist_id=? AND name='Powder Room'", cl.id);
+      for (const [name, , rule, intro, items] of SECTIONS.filter(([n]) => n === 'Main Entrance' || n === 'Wardrobe Room')) {
+        if (db.prepare('SELECT 1 FROM section_templates WHERE checklist_id=? AND name=?').get(cl.id, name)) continue;
+        const st = Number(q('INSERT INTO section_templates(checklist_id,name,kind,repeat_rule,intro_block_code,sort) VALUES(?,?,?,?,?,0)', cl.id, name, 'area', rule, intro).lastInsertRowid);
+        items.forEach((k) => { const [iname, attr, list] = ITEMS[k] || k; q('INSERT INTO item_templates(section_template_id,name,attr_label,attr_list,grp,sort) VALUES(?,?,?,?,?,?)', st, iname, attr, list, groupOf(iname), items.indexOf(k) + 1); });
+      }
+      sortAll(db.prepare('SELECT id, name, sort FROM section_templates WHERE checklist_id=?').all(cl.id), 'section_templates');
+    }
+    for (const r of db.prepare("SELECT id FROM reports WHERE status NOT IN ('issued','superseded')").all()) {
+      q("UPDATE report_sections SET name='Guest Washroom' WHERE report_id=? AND name='Powder Room'", r.id);
+      for (const [name, , , , items] of SECTIONS.filter(([n]) => n === 'Main Entrance' || n === 'Wardrobe Room')) {
+        if (db.prepare('SELECT 1 FROM report_sections WHERE report_id=? AND name=?').get(r.id, name)) continue;
+        const sid = Number(q("INSERT INTO report_sections(report_id,name,kind,intro,sort) VALUES(?,?,'area','',0)", r.id, name).lastInsertRowid);
+        items.forEach((k, i) => { const [iname, attr, list] = ITEMS[k] || k; q('INSERT INTO report_items(section_id,name,attr_label,attr_list,attr_value,grp,sort) VALUES(?,?,?,?,?,?,?)', sid, iname, attr, list, '', groupOf(iname), i + 1); });
+      }
+      sortAll(db.prepare('SELECT id, name, sort FROM report_sections WHERE report_id=?').all(r.id), 'report_sections');
+    }
+    q("INSERT INTO settings(key,value) VALUES('_rooms_order','1')");
+  });
+  return true;
+}
+
 const ROOM = ['location', 'floor', 'walls', 'ceiling', 'doors', 'windows', ...ROOM_AC, 'electrical', 'comments'];
 const BATH = ['location', 'floor', 'walls', 'doors', 'sink', 'sinkfaucet', 'shower', 'showerbase', 'drains', 'toilet', 'counters', ...BATH_AC, 'electrical'];
+const ENTRY = ['location', 'floor', 'walls', 'ceiling', 'doors', 'electrical', 'comments'];
+const GUEST_WC = ['location', 'floor', 'walls', 'doors', 'sink', 'sinkfaucet', 'toilet', ...BATH_AC, 'electrical'];
+// Walk-through order: entrance, kitchen, living room, guest washroom, master suite, other bedrooms, wardrobe; the rest after.
 const SECTIONS = [
+  ['Main Entrance', 'area', 'once', null, ENTRY],
   ['Kitchen', 'area', 'once', null, ['floor', 'walls', 'counters', 'sink', 'sinkfaucet', 'drains', 'electrical', 'comments']],
-  ['Laundry Area', 'area', 'once', null, ['location', 'floor', 'drains', 'electrical']],
   ['Living Room', 'area', 'once', null, ROOM],
-  ['Living Room Balcony', 'area', 'once', null, ['location', 'floor', 'walls', 'windows', 'drains']],
-  ["Maid's Room", 'area', 'if_maid', null, ROOM],
-  ["Maid's Bath", 'area', 'if_maid', null, BATH],
-  ['Powder Room', 'area', 'once', null, ['location', 'floor', 'doors', 'sink', 'sinkfaucet', 'toilet']],
+  ['Guest Washroom', 'area', 'once', null, GUEST_WC],
   ['Master Bedroom', 'area', 'once', null, ROOM],
   ['Master Bathroom', 'area', 'once', null, BATH],
   ['Bedroom {n}', 'area', 'per_extra_bedroom', null, ROOM],
   ['Bathroom {n}', 'area', 'per_extra_bedroom', null, BATH],
+  ['Wardrobe Room', 'area', 'once', null, ENTRY],
+  ['Living Room Balcony', 'area', 'once', null, ['location', 'floor', 'walls', 'windows', 'drains']],
+  ['Laundry Area', 'area', 'once', null, ['location', 'floor', 'drains', 'electrical']],
+  ["Maid's Room", 'area', 'if_maid', null, ROOM],
+  ["Maid's Bath", 'area', 'if_maid', null, BATH],
   ['Exterior, Garden & Roof', 'area', 'if_villa', null, ['location', 'walls', 'floor', 'drains', 'comments']],
   ['Property Services', 'area', 'once', 'sec_intro_property_services', SERVICE_ITEMS],
 ];

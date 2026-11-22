@@ -43,6 +43,7 @@ test('report is room by room: each room has Civil / AC / Plumbing / Electrical g
     await call('sa', 'POST', `/api/app/jobs/${job.body.id}/schedule`, { date: '2026-10-22', time: '15:00', hours: 2, inspector_id: ins, notify: false });
     const tree = (await call('sa', 'POST', `/api/app/inspect/${job.body.id}/checkin`)).body;
     assert.ok(!tree.sections.some((s) => s.kind === 'system'), 'no system sections');
+    assert.deepEqual(tree.sections.map((s) => s.name), ['Main Entrance', 'Kitchen', 'Living Room', 'Guest Washroom', 'Master Bedroom', 'Master Bathroom', 'Bedroom 2', 'Bathroom 2', 'Wardrobe Room', 'Living Room Balcony', 'Laundry Area', 'Property Services']);
     const room = tree.sections.find((s) => s.name === 'Master Bedroom');
     assert.deepEqual([...new Set(room.items.map((i) => i.grp))], ['Civil', 'Air Conditioning', 'Electrical', 'General']);
     assert.ok(room.items.some((i) => i.name === 'Cooling Performance (supply air temperature)' && i.grp === 'Air Conditioning'));
@@ -100,6 +101,15 @@ test('an older report with AC / Electrical sections is converted room by room, f
     assert.equal(addServicesIntro(db, () => Date.now()), 1);
     const intro = db.prepare("SELECT intro FROM report_sections WHERE report_id=? AND name='Property Services'").get(rid).intro;
     assert.match(intro, /air conditioning system[\s\S]*electrical installation[\s\S]*water heater/);
+    // room order and names, for an open report made before the change
+    db.prepare("UPDATE report_sections SET name='Powder Room' WHERE report_id=? AND name='Guest Washroom'").run(rid);
+    db.prepare("DELETE FROM report_sections WHERE report_id=? AND name IN ('Main Entrance','Wardrobe Room')").run(rid);
+    db.prepare("UPDATE report_sections SET sort=100-sort WHERE report_id=?").run(rid);
+    db.prepare("DELETE FROM settings WHERE key='_rooms_order'").run();
+    const { reorderRooms } = await import('../src/seed.js');
+    assert.equal(reorderRooms(db), true);
+    assert.deepEqual(db.prepare('SELECT name FROM report_sections WHERE report_id=? ORDER BY sort').all(rid).map((x) => x.name),
+      ['Main Entrance', 'Kitchen', 'Living Room', 'Guest Washroom', 'Master Bedroom', 'Master Bathroom', 'Wardrobe Room', 'Living Room Balcony', 'Laundry Area', 'Property Services']);
     // checklists for new reports follow the same layout
     assert.ok(!db.prepare("SELECT 1 FROM section_templates WHERE kind='system'").get());
     // an issued report is left alone

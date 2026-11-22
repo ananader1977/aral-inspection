@@ -165,7 +165,7 @@ test('admin lists: create, validate, edit, filter, delete; entries in use cannot
     assert.equal(t.ctx.db.prepare('SELECT COUNT(*) n FROM branches WHERE is_default=1').get().n, 1);
     // options for drop-downs
     const opts = await t.call('sa', 'GET', '/api/app/list/section_templates/options');
-    assert.match(opts.body.rows[0].label, /Residential .* · Kitchen/);
+    assert.match(opts.body.rows[0].label, /Residential .* · Main Entrance/);
   } finally { await t.close(); }
 });
 
