@@ -131,7 +131,7 @@ a.kpi{text-decoration:none;color:inherit;display:block}a.kpi:hover{border-color:
 /* ---------- inspection: one row per checklist item, camera button next to each field ---------- */
 .sect>summary{gap:10px}.sect .sname{font-weight:700;flex:1;min-width:0}
 .prog{font-size:.78rem;font-weight:700;color:var(--muted);background:var(--grey-bg);border-radius:99px;padding:2px 9px;font-variant-numeric:tabular-nums}.prog.full{background:var(--ok-bg);color:var(--ok)}
-.items{display:grid;gap:8px;margin-top:10px}
+.items{display:grid;gap:8px;margin-top:10px}.items .grp{margin:10px 0 0;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--copper,#8C5A36);border-bottom:1px solid var(--line,#DDE3EC);padding-bottom:3px}
 .irow{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;border-inline-start:4px solid var(--line)}
 .irow.attention{border-inline-start-color:var(--blue)}.irow.critical{border-inline-start-color:var(--bad)}
 .ihead{display:flex;align-items:center;gap:8px}

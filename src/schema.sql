@@ -352,6 +352,7 @@ CREATE TABLE IF NOT EXISTS item_templates (        -- default items inside a sec
   name TEXT NOT NULL,                              -- "Floor Condition", "Shower Faucet Condition"
   attr_label TEXT,                                 -- 'Type' | 'Materials' | 'Location' | NULL
   attr_list TEXT,                                  -- lookups.list to offer, e.g. 'material'
+  grp TEXT NOT NULL DEFAULT '',                    -- system inside the room: Civil | Air Conditioning | Plumbing | Electrical | General
   sort INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS comment_library (
@@ -422,6 +423,7 @@ CREATE TABLE IF NOT EXISTS report_items (
   attr_label TEXT,                                 -- Type / Materials / Location
   attr_value TEXT NOT NULL DEFAULT '',             -- "Cultured Marble"
   attr_list TEXT,                                  -- picklist offered for the detail (material, ac_type, pipe_material…)
+  grp TEXT NOT NULL DEFAULT '',                    -- system inside the room: Civil | Air Conditioning | Plumbing | Electrical | General
   sort INTEGER NOT NULL                            -- printed as item number 1,2,3...
 );
 

@@ -1391,5 +1391,11 @@
 "Delete all quotations and invoices?": "حذف جميع عروض الأسعار والفواتير؟",
 "Check spelling": "تدقيق الإملاء",
 "Spelling fixed.": "تم تصحيح الإملاء.",
-"No spelling mistakes found.": "لا توجد أخطاء إملائية."
+"No spelling mistakes found.": "لا توجد أخطاء إملائية.",
+  "Civil": "الأعمال المدنية",
+  "Air Conditioning": "التكييف",
+  "Electrical": "الكهرباء",
+  "General": "عام",
+  "Property Services": "خدمات العقار",
+  "Exhaust Fan / Ventilation": "مروحة الشفط / التهوية"
 }

@@ -6,6 +6,8 @@ import { tx } from './db.js';
 import { clampStr } from './util.js';
 import { dateKey, fmtStamp, HOUR, DAY, money } from './time.js';
 import { layout, rows } from './emails.js';
+import { GROUPS } from './seed.js';
+const groupRank = (g) => { const i = GROUPS.indexOf(g || 'General'); return i < 0 ? GROUPS.length - 1 : i; };
 
 const SEVERITIES = ['critical', 'attention', 'info'];
 const token = () => crypto.randomBytes(18).toString('base64url');
@@ -51,7 +53,7 @@ export function createReports(ctx) {
       for (const name of names) {
         const sid = Number(db.prepare('INSERT INTO report_sections(report_id,name,kind,intro,sort) VALUES(?,?,?,?,?)').run(rid, name, st.kind, intro, ++sort).lastInsertRowid);
         for (const it of db.prepare('SELECT * FROM item_templates WHERE section_template_id=? ORDER BY sort').all(st.id))
-          db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_list,attr_value,sort) VALUES(?,?,?,?,?,?)').run(sid, it.name, it.attr_label, it.attr_list, '', it.sort);
+          db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_list,attr_value,grp,sort) VALUES(?,?,?,?,?,?,?)').run(sid, it.name, it.attr_label, it.attr_list, '', it.grp, it.sort);
       }
     }
     return rid;
@@ -67,7 +69,7 @@ export function createReports(ctx) {
       if (!items.length) continue;
       const sid = Number(db.prepare('INSERT INTO report_sections(report_id,name,kind,intro,sort) VALUES(?,?,?,?,?)').run(rid, sc.name, sc.kind, '', ++sort).lastInsertRowid);
       for (const it of items) {
-        const iid = Number(db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_list,attr_value,sort) VALUES(?,?,?,?,?,?)').run(sid, it.name, it.attr_label, it.attr_list, it.attr_value, it.sort).lastInsertRowid);
+        const iid = Number(db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_list,attr_value,grp,sort) VALUES(?,?,?,?,?,?,?)').run(sid, it.name, it.attr_label, it.attr_list, it.attr_value, it.grp, it.sort).lastInsertRowid);
         for (const o of db.prepare("SELECT * FROM observations WHERE item_id=? AND severity IN ('critical','attention') ORDER BY sort").all(it.id))
           db.prepare('INSERT INTO observations(item_id,text,severity,trade,in_summary,responsible,glossary_id,library_id,sort,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)')
             .run(iid, o.text, o.severity, o.trade, 1, o.responsible, o.glossary_id, o.library_id, o.sort, ctx.now());
@@ -103,7 +105,7 @@ export function createReports(ctx) {
     const media = db.prepare('SELECT m.*, f.mime, f.size FROM media m JOIN files f ON f.id=m.file_id WHERE m.job_id=? ORDER BY m.sort, m.id').all(jobId);
     const sections = db.prepare('SELECT * FROM report_sections WHERE report_id=? ORDER BY sort, id').all(r.id).map((s) => ({
       ...s,
-      items: db.prepare('SELECT * FROM report_items WHERE section_id=? ORDER BY sort, id').all(s.id).map((it) => ({
+      items: db.prepare('SELECT * FROM report_items WHERE section_id=? ORDER BY sort, id').all(s.id).sort((a, b) => groupRank(a.grp) - groupRank(b.grp)).map((it) => ({
         ...it, media: media.filter((m) => m.item_id === it.id && !m.observation_id).map((m) => m.id), observations: db.prepare('SELECT * FROM observations WHERE item_id=? ORDER BY sort, id').all(it.id).map((o) => ({ ...o, media: media.filter((m) => m.observation_id === o.id).map((m) => m.id) })),
       })),
       media: media.filter((m) => m.section_id === s.id && !m.observation_id && !m.item_id).map((m) => m.id),
@@ -223,8 +225,8 @@ export function createReports(ctx) {
     // copy items from a matching template (e.g. "Bedroom 4" → the Bedroom items)
     const base = clampStr(name, 80).replace(/\s*\d+$/, '');
     const st = db.prepare("SELECT id FROM section_templates WHERE REPLACE(name,' {n}','')=? OR name=? ORDER BY id LIMIT 1").get(base, base);
-    const items = st ? db.prepare('SELECT name, attr_label, attr_list, sort FROM item_templates WHERE section_template_id=? ORDER BY sort').all(st.id) : [{ name: 'Comments', attr_label: null, attr_list: null, sort: 1 }];
-    for (const it of items) db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_list,attr_value,sort) VALUES(?,?,?,?,?,?)').run(sid, it.name, it.attr_label, it.attr_list, '', it.sort);
+    const items = st ? db.prepare('SELECT name, attr_label, attr_list, grp, sort FROM item_templates WHERE section_template_id=? ORDER BY sort').all(st.id) : [{ name: 'Comments', attr_label: null, attr_list: null, grp: 'General', sort: 1 }];
+    for (const it of items) db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_list,attr_value,grp,sort) VALUES(?,?,?,?,?,?,?)').run(sid, it.name, it.attr_label, it.attr_list, '', it.grp, it.sort);
     if (after) {
       const ids = db.prepare('SELECT id FROM report_sections WHERE report_id=? ORDER BY sort, id').all(r.id).map((x) => x.id).filter((x) => x !== sid);
       const pos = ids.indexOf(Number(after));
@@ -250,11 +252,11 @@ export function createReports(ctx) {
     if (db.prepare('SELECT COUNT(*) n FROM observations o JOIN report_items it ON it.id=o.item_id WHERE it.section_id=?').get(sid).n) throw new HttpError(409, 'This area has findings. Delete them first, or mark the area as not inspected.');
     db.prepare('DELETE FROM report_sections WHERE id=?').run(sid);
   }
-  function addItem(user, sid, { name, attr_label }) {
+  function addItem(user, sid, { name, attr_label, grp }) {
     guard(jobOfSection(sid), user);
     if (!clampStr(name, 80)) throw new HttpError(400, 'Give the item a name.');
     const max = db.prepare('SELECT COALESCE(MAX(sort),0) m FROM report_items WHERE section_id=?').get(sid).m;
-    return Number(db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_value,sort) VALUES(?,?,?,?,?)').run(sid, clampStr(name, 80), clampStr(attr_label, 30) || null, '', max + 1).lastInsertRowid);
+    return Number(db.prepare('INSERT INTO report_items(section_id,name,attr_label,attr_value,grp,sort) VALUES(?,?,?,?,?,?)').run(sid, clampStr(name, 80), clampStr(attr_label, 30) || null, '', GROUPS.includes(grp) ? grp : 'General', max + 1).lastInsertRowid);
   }
   function updateItem(user, iid, b) {
     guard(jobOfItem(iid), user);
@@ -520,7 +522,7 @@ export function createReports(ctx) {
     const glossary = db.prepare(`SELECT DISTINCT g.* FROM glossary g JOIN observations o ON o.glossary_id=g.id JOIN report_items it ON it.id=o.item_id JOIN report_sections s ON s.id=it.section_id WHERE s.report_id=?`).all(r.id);
     return {
       ...verify(tok), general: { ...t.report, verify_token: undefined, review_note: undefined }, client: t.job.client_name, service: t.job.service_name,
-      sections: t.sections.map((s) => ({ name: s.name, kind: s.kind, intro: s.intro, not_inspected_reason: s.not_inspected_reason, items: s.items.map((it) => ({ name: it.name, attr_label: it.attr_label, attr_value: it.attr_value, media: it.media, observations: it.observations.map((o) => ({ text: o.text, severity: o.severity, trade: o.trade, in_summary: o.in_summary, reinspect_status: o.reinspect_status, media: o.media })) })), media: s.media })),
+      sections: t.sections.map((s) => ({ name: s.name, kind: s.kind, intro: s.intro, not_inspected_reason: s.not_inspected_reason, items: s.items.map((it) => ({ name: it.name, grp: it.grp, attr_label: it.attr_label, attr_value: it.attr_value, media: it.media, observations: it.observations.map((o) => ({ text: o.text, severity: o.severity, trade: o.trade, in_summary: o.in_summary, reinspect_status: o.reinspect_status, media: o.media })) })), media: s.media })),
       media: t.media.filter((m) => m.in_pdf).map((m) => ({ id: m.id, kind: m.kind, caption: m.caption, has_thumb: m.has_thumb, temp_min_c: m.temp_min_c, temp_max_c: m.temp_max_c })),
       counts: t.counts, glossary, pdf: `/api/public/report/${encodeURIComponent(tok)}/pdf`,
       attachments: t.attachments.map((a) => ({ id: a.id, title: a.title, description: a.description, kind: a.kind, size: a.size })),

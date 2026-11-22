@@ -126,7 +126,7 @@ test('individual client: website lead to issued report, invoice and commission',
     let tree = (await call('insp', 'POST', `/api/app/inspect/${jobId}/checkin`)).body;
     assert.equal(tree.job.status, 'report_draft');
     const names = tree.sections.map((s) => s.name);
-    for (const n of ['Air Conditioning', 'Kitchen', "Maid's Room", 'Master Bedroom', 'Bedroom 2', 'Bathroom 2']) assert.ok(names.includes(n), n);
+    for (const n of ['Property Services', 'Kitchen', "Maid's Room", 'Master Bedroom', 'Bedroom 2', 'Bathroom 2']) assert.ok(names.includes(n), n);
     assert.ok(!names.includes('Bedroom 3'));
     assert.ok(tree.job.sla_due_at - tree.job.access_at === 24 * HOUR);
     // not allowed on someone else's job
@@ -141,7 +141,7 @@ test('individual client: website lead to issued report, invoice and commission',
     const floor = tree.sections.find((s) => s.name === 'Kitchen').items.find((i) => i.name === 'Floor Condition');
     await call('insp', 'PUT', `/api/app/items/${floor.id}`, { attr_value: 'Porcelain' });
     const o2 = await call('insp', 'POST', `/api/app/items/${floor.id}/observations`, { text: 'Hollow sound in two tiles near the sink.', severity: 'attention', trade: 'qualified contractor', glossary_id: ctx.db.prepare("SELECT id FROM glossary WHERE term='Hollow sound'").get().id });
-    const panel = tree.sections.find((s) => s.name === 'Electrical').items[1];
+    const panel = tree.sections.find((s) => s.name === 'Property Services').items.find((i) => i.name === 'Breakers and RCD Protection');
     await call('insp', 'POST', `/api/app/items/${panel.id}/observations`, { text: 'RCD tripped correctly when tested.', severity: 'info' });
 
     // submit is blocked: the critical finding has no photo

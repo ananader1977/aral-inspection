@@ -32,29 +32,72 @@ test('upgrading a Phase 2 database adds the new columns and jobs can be created'
   } finally { await t.close(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('system sections get their own items and picklists, also on older databases', async () => {
-  const { DatabaseSync: D } = await import('node:sqlite');
+test('report is room by room: each room has Civil / AC / Plumbing / Electrical groups, no separate AC section', async () => {
   const t = await startTestApp();
   try {
-    const db = t.ctx.db;
-    const items = (sec) => db.prepare("SELECT i.name, i.attr_list FROM item_templates i JOIN section_templates s ON s.id=i.section_template_id WHERE s.name=? ORDER BY i.sort").all(sec);
-    const ac = items('Air Conditioning');
-    assert.ok(ac.some((i) => i.name === 'Condensate Drain and Drip Tray'));
-    assert.ok(!ac.some((i) => /Floor|Wall|Tile|Door/.test(i.name)), 'no civil items in AC');
-    assert.equal(ac.find((i) => i.name === 'AC System Type').attr_list, 'ac_type');
-    assert.equal(items('Electrical').find((i) => i.name === 'Breakers and RCD Protection').attr_list, 'protection_device');
-    assert.equal(items('Water Heater').find((i) => i.name === 'Supply Lines Condition').attr_list, 'pipe_material');
-    assert.ok(db.prepare("SELECT COUNT(*) n FROM lookups WHERE list='ac_type'").get().n >= 5);
-    assert.ok(db.prepare("SELECT COUNT(*) n FROM comment_library WHERE item_name='Condensate Drain and Drip Tray'").get().n >= 1);
-    // simulate an older database: old AC items and an existing draft report, then run the upgrade
-    const { upgradeChecklists } = await import('../src/seed.js');
-    const st = db.prepare("SELECT id FROM section_templates WHERE name='Air Conditioning'").get().id;
-    db.prepare('DELETE FROM item_templates WHERE section_template_id=?').run(st);
-    db.prepare("INSERT INTO item_templates(section_template_id,name,attr_label,attr_list,sort) VALUES(?,'Air Conditioning Comments','Type','material',1)").run(st);
-    db.prepare("UPDATE settings SET value='1' WHERE key='_checklist_version'").run();
-    assert.equal(upgradeChecklists(db, () => Date.now()), true);
-    assert.equal(items('Air Conditioning').length, 10);
-    assert.equal(upgradeChecklists(db, () => Date.now()), false, 'runs once');
-    void D;
+    const { call, ctx } = t;
+    await t.login('sa', SA.email, SA.password);
+    const job = await call('sa', 'POST', '/api/app/jobs', { service_code: 'OWN-MIO', client: { name: 'Rooms', mobile: '0501112233', type: 'company' }, property: { property_type: 'apartment', bedrooms: 2 } });
+    ctx.db.prepare("UPDATE jobs SET status='paid' WHERE id=?").run(job.body.id);
+    const ins = Number(ctx.db.prepare("INSERT INTO inspectors(name,created_at) VALUES('R',?)").run(Date.now()).lastInsertRowid);
+    await call('sa', 'POST', `/api/app/jobs/${job.body.id}/schedule`, { date: '2026-10-22', time: '15:00', hours: 2, inspector_id: ins, notify: false });
+    const tree = (await call('sa', 'POST', `/api/app/inspect/${job.body.id}/checkin`)).body;
+    assert.ok(!tree.sections.some((s) => s.kind === 'system'), 'no system sections');
+    const room = tree.sections.find((s) => s.name === 'Master Bedroom');
+    assert.deepEqual([...new Set(room.items.map((i) => i.grp))], ['Civil', 'Air Conditioning', 'Electrical', 'General']);
+    assert.ok(room.items.some((i) => i.name === 'Cooling Performance (supply air temperature)' && i.grp === 'Air Conditioning'));
+    const bath = tree.sections.find((s) => s.name === 'Master Bathroom');
+    assert.ok(bath.items.some((i) => i.name === 'Toilet Condition' && i.grp === 'Plumbing'));
+    const svc = tree.sections.find((s) => s.name === 'Property Services');
+    assert.ok(svc.items.some((i) => i.name === 'Distribution Board Condition') && svc.items.some((i) => i.name === 'Water Heater Condition'));
+    assert.ok(!svc.items.some((i) => i.name === 'Cooling Performance (supply air temperature)'));
+    // a new item can be put in a group
+    const id = (await call('sa', 'POST', `/api/app/sections/${room.id}/items`, { name: 'Curtain track', grp: 'Civil' })).body.id;
+    assert.equal(ctx.db.prepare('SELECT grp FROM report_items WHERE id=?').get(id).grp, 'Civil');
+  } finally { await t.close(); }
+});
+
+test('an older report with AC / Electrical sections is converted room by room, findings follow their room', async () => {
+  const t = await startTestApp();
+  try {
+    const { call, ctx } = t;
+    const db = ctx.db;
+    await t.login('sa', SA.email, SA.password);
+    const job = await call('sa', 'POST', '/api/app/jobs', { service_code: 'OWN-MIO', client: { name: 'Old', mobile: '0501112233', type: 'company' }, property: { property_type: 'apartment', bedrooms: 1 } });
+    db.prepare("UPDATE jobs SET status='paid' WHERE id=?").run(job.body.id);
+    const ins = Number(db.prepare("INSERT INTO inspectors(name,created_at) VALUES('R',?)").run(Date.now()).lastInsertRowid);
+    await call('sa', 'POST', `/api/app/jobs/${job.body.id}/schedule`, { date: '2026-10-22', time: '15:00', hours: 2, inspector_id: ins, notify: false });
+    await call('sa', 'POST', `/api/app/inspect/${job.body.id}/checkin`);
+    const rid = db.prepare('SELECT id FROM reports WHERE job_id=?').get(job.body.id).id;
+    // turn the report back into the old shape: remove the new items, add AC + Electrical system sections with findings
+    db.prepare("DELETE FROM report_items WHERE name IN ('Cooling Performance (supply air temperature)','Air Outlets and Return Grilles','Thermostats and Controls','Exhaust Fan / Ventilation')").run();
+    db.prepare("UPDATE report_items SET grp=''").run();
+    const svc = db.prepare("SELECT id FROM report_sections WHERE report_id=? AND name='Property Services'").get(rid).id;
+    db.prepare('DELETE FROM report_sections WHERE id=?').run(svc);
+    const mk = (name, items) => { const sid = Number(db.prepare("INSERT INTO report_sections(report_id,name,kind,sort) VALUES(?,?,'system',99)").run(rid, name).lastInsertRowid); return items.map((n) => Number(db.prepare("INSERT INTO report_items(section_id,name,sort) VALUES(?,?,1)").run(sid, n).lastInsertRowid)); };
+    const [cool, filters] = mk('Air Conditioning', ['Cooling Performance (supply air temperature)', 'Filters']);
+    const [dist] = mk('Electrical', ['Distribution Board Condition']);
+    const obs = (item, text) => Number(db.prepare("INSERT INTO observations(item_id,text,severity,sort,created_at) VALUES(?,?,'attention',1,1)").run(item, text).lastInsertRowid);
+    const inMaster = obs(cool, 'No cold air in the Master Bedroom.');
+    const general = obs(cool, 'Supply air is warm at all outlets.');
+    const board = obs(dist, 'Circuits are not labelled.');
+    db.prepare("UPDATE settings SET value='2' WHERE key='_checklist_version'").run();
+    const { upgradeRoomLayout } = await import('../src/seed.js');
+    const r = upgradeRoomLayout(db);
+    assert.deepEqual(r, { reports: 1, moved: 1, left: 2 });
+    assert.equal(upgradeRoomLayout(db), null, 'runs once');
+    const sections = db.prepare('SELECT * FROM report_sections WHERE report_id=?').all(rid);
+    assert.ok(!sections.some((s) => s.kind === 'system'));
+    const roomOf = (obsId) => db.prepare('SELECT s.name sec, it.name item, it.grp FROM observations o JOIN report_items it ON it.id=o.item_id JOIN report_sections s ON s.id=it.section_id WHERE o.id=?').get(obsId);
+    assert.deepEqual({ ...roomOf(inMaster) }, { sec: 'Master Bedroom', item: 'Cooling Performance (supply air temperature)', grp: 'Air Conditioning' });
+    assert.equal(roomOf(general).sec, 'Property Services');
+    assert.equal(roomOf(board).sec, 'Property Services');
+    assert.equal(db.prepare('SELECT grp FROM report_items WHERE id=?').get(dist).grp, 'Electrical');
+    assert.equal(db.prepare('SELECT section_id FROM report_items WHERE id=?').get(filters).section_id, db.prepare("SELECT id FROM report_sections WHERE report_id=? AND name='Property Services'").get(rid).id);
+    // checklists for new reports follow the same layout
+    assert.ok(!db.prepare("SELECT 1 FROM section_templates WHERE kind='system'").get());
+    // an issued report is left alone
+    const t2 = (await call('sa', 'GET', `/api/app/inspect/${job.body.id}`)).body;
+    assert.ok(t2.sections.find((s) => s.name === 'Master Bedroom').items.some((i) => i.name === 'Cooling Performance (supply air temperature)'));
   } finally { await t.close(); }
 });

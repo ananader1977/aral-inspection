@@ -132,6 +132,7 @@ export const RESOURCES = {
       { k: 'name', t: 'text', label: 'Item name', req: true, list: true },
       { k: 'attr_label', t: 'enum', label: 'Detail label', options: ['', 'Type', 'Materials', 'Location'], list: true },
       { k: 'attr_list', t: 'enum', label: 'Detail picklist', options: ['', ...LOOKUP_LISTS] },
+      { k: 'grp', t: 'enum', label: 'System in the room', options: ['Civil', 'Air Conditioning', 'Plumbing', 'Electrical', 'General'], def: 'General', list: true },
       { k: 'sort', t: 'int', label: 'Order', def: 0, list: true },
     ],
   },

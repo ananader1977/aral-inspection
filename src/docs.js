@@ -433,8 +433,15 @@ export function createDocs(ctx) {
       if (sc.not_inspected_reason) d.para(`Not inspected: ${sc.not_inspected_reason}.`, { size: 9.5, bold: true, fill: C.copper });
       const anyDefect = sc.items.some((it) => it.observations.some((o) => o.severity !== 'info'));
       if (!anyDefect && !sc.not_inspected_reason) d.para('No defects observed at the time of inspection.', { size: 9.5, bold: true, fill: C.blue });
+      let lastGrp = null;
       sc.items.forEach((it, ii) => {
         if (!it.observations.length && !it.attr_value && !it.media.length) return;
+        const g = it.grp || 'General';
+        if (g !== lastGrp && sc.items.some((x) => (x.grp || 'General') !== g)) { // system inside the room: Civil, Air Conditioning…
+          lastGrp = g;
+          d.need(60);
+          d.para(g.toUpperCase(), { size: 9, bold: true, fill: C.copper, after: 3 });
+        }
         d.need(36);
         d.pdf.rect(d.x, d.y, d.width, 18, { fill: C.zebra });
         d.pdf.text(`${ii + 1}. ${it.name}`, d.x + 6, d.y + 12.5, { size: 10, bold: true, fill: C.navy });

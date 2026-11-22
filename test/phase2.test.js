@@ -12,7 +12,7 @@ test('first start loads the catalogue, checklists, wording and the super admin',
     assert.equal(n('SELECT COUNT(*) n FROM surcharges'), 0);
     assert.ok(n('SELECT COUNT(*) n FROM price_rules') > 20);
     assert.ok(n('SELECT COUNT(*) n FROM comment_library') >= 20);
-    assert.ok(n('SELECT COUNT(*) n FROM section_templates') >= 15);
+    assert.ok(n('SELECT COUNT(*) n FROM section_templates') >= 12);
     assert.ok(n("SELECT COUNT(*) n FROM content_blocks WHERE code='tc_report' AND body LIKE 'DRAFT%'") === 1);
     assert.equal(t.ctx.db.prepare("SELECT role FROM users WHERE email=?").get(SA.email).role, 'super_admin');
     // seeding is not repeated on a second start of the same database
@@ -165,7 +165,7 @@ test('admin lists: create, validate, edit, filter, delete; entries in use cannot
     assert.equal(t.ctx.db.prepare('SELECT COUNT(*) n FROM branches WHERE is_default=1').get().n, 1);
     // options for drop-downs
     const opts = await t.call('sa', 'GET', '/api/app/list/section_templates/options');
-    assert.match(opts.body.rows[0].label, /Residential .* · Air Conditioning/);
+    assert.match(opts.body.rows[0].label, /Residential .* · Kitchen/);
   } finally { await t.close(); }
 });
 

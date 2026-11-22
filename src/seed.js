@@ -146,6 +146,22 @@ export const SYSTEM_ITEMS = {
     ['Supply Lines Condition', 'Materials', 'pipe_material'], ['Pressure / Temperature Relief Valve', null, null], ['Water Heater Room Comments', null, null],
   ],
 };
+// Rooms come first; inside each room the items are grouped by system (Civil, AC, Plumbing, Electrical).
+export const GROUPS = ['Civil', 'Air Conditioning', 'Plumbing', 'Electrical', 'General'];
+const GRP = {};
+for (const [g, names] of Object.entries({
+  Civil: ['Location', 'Floor Condition', 'Walls Condition', 'Ceiling Condition', 'Door Condition', 'Window Condition', 'Counters/Cabinets Condition'],
+  'Air Conditioning': ['AC System Type', 'Thermostats and Controls', 'Cooling Performance (supply air temperature)', 'Air Outlets and Return Grilles', 'Indoor Units / Fan Coil Units', 'Condensate Drain and Drip Tray', 'Filters', 'Visible Ductwork and Insulation', 'Outdoor / Condensing Units', 'Exhaust Fan / Ventilation'],
+  Plumbing: ['Sink Condition', 'Sink Faucet Condition', 'Shower Faucet Condition', 'Shower Base Condition', 'Traps/Drains/Supply Condition', 'Toilet Condition', 'Water Heater Type', 'Water Heater Condition', 'Hot Water Temperature', 'Supply Lines Condition', 'Pressure / Temperature Relief Valve'],
+  Electrical: ['Electrical Condition', 'Main Service Condition', 'Distribution Board Condition', 'Breakers and RCD Protection', 'Sockets and Switches (sample tested)', 'Earthing and Bonding', 'Lighting'],
+})) for (const n of names) GRP[n] = g;
+export const groupOf = (name) => GRP[name] || 'General';
+// checked in every room, so they leave the whole-property section
+const ROOM_LEVEL = new Set(['Thermostats and Controls', 'Cooling Performance (supply air temperature)', 'Air Outlets and Return Grilles', 'Air Conditioning Comments', 'Electrical Comments', 'Water Heater Room Comments']);
+const SERVICE_ITEMS = [...Object.values(SYSTEM_ITEMS).flat().filter(([n]) => !ROOM_LEVEL.has(n)), ['Comments', null, null]];
+const ROOM_AC = [['Cooling Performance (supply air temperature)', null, null], ['Air Outlets and Return Grilles', null, null], ['Thermostats and Controls', null, null]];
+const BATH_AC = [['Exhaust Fan / Ventilation', null, null]];
+
 const SYSTEM_LOOKUPS = {
   ac_type: ['Split units', 'Ducted split', 'Chilled water fan coil units (district cooling)', 'VRF / VRV', 'Package unit', 'Window unit'],
   electrical_service: ['DEWA meter, underground supply', 'Building main distribution (apartment)', 'Sub-meter'],
@@ -245,12 +261,93 @@ export function upgradeChecklists(db, now) {
   return true;
 }
 
-const ROOM = ['location', 'floor', 'walls', 'ceiling', 'doors', 'windows', 'electrical', 'comments'];
-const BATH = ['location', 'floor', 'walls', 'doors', 'sink', 'sinkfaucet', 'shower', 'showerbase', 'drains', 'toilet', 'counters', 'electrical'];
+/**
+ * Existing systems: the report is organised room by room. Each room gets Civil / Air Conditioning / Plumbing / Electrical
+ * groups, and the three whole-property system sections become one "Property Services" section. Reports that are not yet
+ * issued are converted too: findings written in an AC / Electrical section that name one room move into that room.
+ * Issued reports are not touched. Runs once.
+ */
+export function upgradeRoomLayout(db) {
+  if (Number(db.prepare("SELECT value FROM settings WHERE key='_checklist_version'").get()?.value) >= 3) return null;
+  const out = { reports: 0, moved: 0, left: 0 };
+  tx(db, () => {
+    const q = (sql, ...a) => db.prepare(sql).run(...a);
+    const ROOM_FALLBACK = { 'Air Conditioning': 'Cooling Performance (supply air temperature)', Electrical: 'Electrical Condition' };
+    // 1. checklists: group every item, add the room AC items, merge the system sections
+    for (const cl of db.prepare('SELECT id FROM checklists').all()) {
+      const secs = db.prepare('SELECT * FROM section_templates WHERE checklist_id=? ORDER BY sort').all(cl.id);
+      const add = (sid, list) => list.forEach(([n, a, l]) => {
+        if (!db.prepare('SELECT 1 FROM item_templates WHERE section_template_id=? AND name=?').get(sid, n))
+          q('INSERT INTO item_templates(section_template_id,name,attr_label,attr_list,grp,sort) VALUES(?,?,?,?,?,?)', sid, n, a, l, groupOf(n), db.prepare('SELECT COALESCE(MAX(sort),0)+1 m FROM item_templates WHERE section_template_id=?').get(sid).m);
+      });
+      for (const st of secs.filter((x) => x.kind === 'area')) {
+        const has = (n) => db.prepare('SELECT 1 FROM item_templates WHERE section_template_id=? AND name=?').get(st.id, n);
+        if (has('Ceiling Condition')) add(st.id, ROOM_AC);
+        if (has('Toilet Condition')) add(st.id, BATH_AC);
+      }
+      const sys = secs.filter((x) => x.kind === 'system');
+      if (sys.length) {
+        const svc = Number(q("INSERT INTO section_templates(checklist_id,name,kind,repeat_rule,sort) VALUES(?,'Property Services','area','once',?)", cl.id, (secs.at(-1)?.sort || 0) + 1).lastInsertRowid);
+        for (const st of sys) { q('UPDATE item_templates SET section_template_id=? WHERE section_template_id=?', svc, st.id); q('DELETE FROM section_templates WHERE id=?', st.id); }
+        for (const n of ROOM_LEVEL) q('DELETE FROM item_templates WHERE section_template_id=? AND name=?', svc, n);
+        add(svc, [['Comments', null, null]]);
+      }
+    }
+    for (const it of db.prepare('SELECT id, name FROM item_templates').all()) q('UPDATE item_templates SET grp=? WHERE id=?', groupOf(it.name), it.id);
+    // 2. reports that are not issued yet
+    for (const r of db.prepare("SELECT id FROM reports WHERE status NOT IN ('issued','superseded')").all()) {
+      out.reports++;
+      const max = (sql, id) => db.prepare(sql).get(id).m;
+      const secs = () => db.prepare('SELECT * FROM report_sections WHERE report_id=? ORDER BY sort, id').all(r.id);
+      const addItems = (sid, list) => list.forEach(([n, a, l]) => {
+        if (!db.prepare('SELECT 1 FROM report_items WHERE section_id=? AND name=?').get(sid, n))
+          q('INSERT INTO report_items(section_id,name,attr_label,attr_list,attr_value,grp,sort) VALUES(?,?,?,?,?,?,?)', sid, n, a, l, '', groupOf(n), max('SELECT COALESCE(MAX(sort),0)+1 m FROM report_items WHERE section_id=?', sid));
+      });
+      for (const sc of secs().filter((x) => x.kind === 'area')) {
+        const has = (n) => db.prepare('SELECT 1 FROM report_items WHERE section_id=? AND name=?').get(sc.id, n);
+        if (has('Ceiling Condition')) addItems(sc.id, ROOM_AC);
+        if (has('Toilet Condition')) addItems(sc.id, BATH_AC);
+      }
+      const sys = secs().filter((x) => x.kind === 'system');
+      if (sys.length) {
+        const rooms = secs().filter((x) => x.kind === 'area');
+        const svc = Number(q("INSERT INTO report_sections(report_id,name,kind,intro,sort) VALUES(?,'Property Services','area','',?)", r.id, max('SELECT COALESCE(MAX(sort),0)+1 m FROM report_sections WHERE report_id=?', r.id)).lastInsertRowid);
+        for (const sc of sys) {
+          const grp = sc.name;
+          for (const it of db.prepare('SELECT * FROM report_items WHERE section_id=? ORDER BY sort, id').all(sc.id)) {
+            for (const o of db.prepare('SELECT * FROM observations WHERE item_id=?').all(it.id)) {
+              const named = rooms.filter((x) => new RegExp(`\\b${x.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(o.text));
+              const hit = named.filter((x) => !named.some((y) => y !== x && y.name.includes(x.name))); // "Living Room Balcony" is not also "Living Room"
+              const room = hit.length === 1 ? hit[0] : null;
+              const target = room && (db.prepare('SELECT id FROM report_items WHERE section_id=? AND name=?').get(room.id, it.name) || db.prepare('SELECT id FROM report_items WHERE section_id=? AND name=?').get(room.id, ROOM_FALLBACK[grp] || ''));
+              if (!target) { out.left++; continue; }
+              q('UPDATE observations SET item_id=? WHERE id=?', target.id, o.id);
+              q('UPDATE media SET item_id=?, section_id=? WHERE observation_id=?', target.id, room.id, o.id);
+              out.moved++;
+            }
+          }
+          // what is left moves to Property Services; room-level items that stayed empty are dropped
+          for (const it of db.prepare('SELECT * FROM report_items WHERE section_id=?').all(sc.id)) {
+            const used = it.attr_value || db.prepare('SELECT 1 FROM observations WHERE item_id=?').get(it.id) || db.prepare('SELECT 1 FROM media WHERE item_id=?').get(it.id);
+            if (ROOM_LEVEL.has(it.name) && !used) { q('DELETE FROM report_items WHERE id=?', it.id); continue; }
+            q('UPDATE report_items SET section_id=?, sort=? WHERE id=?', svc, max('SELECT COALESCE(MAX(sort),0)+1 m FROM report_items WHERE section_id=?', svc), it.id);
+            q('UPDATE media SET section_id=? WHERE item_id=?', svc, it.id);
+          }
+          q('UPDATE media SET section_id=? WHERE section_id=? AND item_id IS NULL AND observation_id IS NULL', svc, sc.id);
+          q('DELETE FROM report_sections WHERE id=?', sc.id);
+        }
+        addItems(svc, [['Comments', null, null]]);
+      }
+      for (const it of db.prepare('SELECT it.id, it.name FROM report_items it JOIN report_sections s ON s.id=it.section_id WHERE s.report_id=?').all(r.id)) q('UPDATE report_items SET grp=? WHERE id=?', groupOf(it.name), it.id);
+    }
+    q("INSERT INTO settings(key,value) VALUES('_checklist_version','3') ON CONFLICT(key) DO UPDATE SET value='3'");
+  });
+  return out;
+}
+
+const ROOM = ['location', 'floor', 'walls', 'ceiling', 'doors', 'windows', ...ROOM_AC, 'electrical', 'comments'];
+const BATH = ['location', 'floor', 'walls', 'doors', 'sink', 'sinkfaucet', 'shower', 'showerbase', 'drains', 'toilet', 'counters', ...BATH_AC, 'electrical'];
 const SECTIONS = [
-  ['Air Conditioning', 'system', 'once', 'sec_intro_air_conditioning', SYSTEM_ITEMS['Air Conditioning']],
-  ['Electrical', 'system', 'once', 'sec_intro_electrical', SYSTEM_ITEMS.Electrical],
-  ['Water Heater', 'system', 'once', 'sec_intro_water_heater', SYSTEM_ITEMS['Water Heater']],
   ['Kitchen', 'area', 'once', null, ['floor', 'walls', 'counters', 'sink', 'sinkfaucet', 'drains', 'electrical', 'comments']],
   ['Laundry Area', 'area', 'once', null, ['location', 'floor', 'drains', 'electrical']],
   ['Living Room', 'area', 'once', null, ROOM],
@@ -263,6 +360,7 @@ const SECTIONS = [
   ['Bedroom {n}', 'area', 'per_extra_bedroom', null, ROOM],
   ['Bathroom {n}', 'area', 'per_extra_bedroom', null, BATH],
   ['Exterior, Garden & Roof', 'area', 'if_villa', null, ['location', 'walls', 'floor', 'drains', 'comments']],
+  ['Property Services', 'area', 'once', null, SERVICE_ITEMS],
 ];
 
 const GLOSSARY = [
@@ -365,11 +463,11 @@ export function seedReference(db, now) {
       const st = db.prepare('INSERT INTO section_templates(checklist_id,name,kind,repeat_rule,intro_block_code,sort) VALUES(?,?,?,?,?,?)').run(clId, name, kind, rule, intro, si + 1);
       items.forEach((it, ii) => {
         const [iname, attr, list] = Array.isArray(it) ? it : ITEMS[it];
-        db.prepare('INSERT INTO item_templates(section_template_id,name,attr_label,attr_list,sort) VALUES(?,?,?,?,?)').run(Number(st.lastInsertRowid), iname, attr, list, ii + 1);
+        db.prepare('INSERT INTO item_templates(section_template_id,name,attr_label,attr_list,grp,sort) VALUES(?,?,?,?,?,?)').run(Number(st.lastInsertRowid), iname, attr, list, groupOf(iname), ii + 1);
       });
     });
     db.prepare("UPDATE services SET checklist_id=? WHERE is_addon=0").run(clId);
-    db.prepare("INSERT INTO settings(key,value) VALUES('_checklist_version','2') ON CONFLICT(key) DO UPDATE SET value='2'").run();
+    db.prepare("INSERT INTO settings(key,value) VALUES('_checklist_version','3') ON CONFLICT(key) DO UPDATE SET value='3'").run();
   });
   return true;
 }
