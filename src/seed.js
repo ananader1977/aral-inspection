@@ -363,12 +363,30 @@ export function upgradeRoomLayout(db) {
 }
 
 // Walk-through order of the rooms in a report and in the checklist.
-const ORDER = ['Main Entrance', 'Kitchen', 'Living Room', 'Guest Washroom', ['Master Bedroom', 'Living / Sleeping Area'], ['Master Bathroom', 'Bathroom'], /^Bedroom (\d+|\{n\})$/, /^Bathroom (\d+|\{n\})$/, 'Wardrobe Room', 'Living Room Balcony', 'Laundry Area', "Maid's Room", "Maid's Bath", /^Exterior/];
+const ORDER = ['Main Entrance', 'Kitchen', 'Living Room', 'Guest Washroom', ['Master Bedroom', 'Living / Sleeping Area'], ['Master Bathroom', 'Bathroom'], /^Bedroom (\d+|\{n\})$/, /^Bathroom (\d+|\{n\})$/, 'Living Room Balcony', 'Laundry Area', "Maid's Room", "Maid's Bath", /^Exterior/];
 const roomRank = (name) => {
   if (name === 'Property Services') return 99;
   const i = ORDER.findIndex((o) => (o instanceof RegExp ? o.test(name) : Array.isArray(o) ? o.includes(name) : o === name));
   return i < 0 ? 50 : i;
 };
+
+/** The Wardrobe Room section is dropped from the checklist and from open reports (a report where it holds findings or photos keeps it). Runs once. */
+export function removeWardrobeRoom(db) {
+  if (db.prepare("SELECT 1 FROM settings WHERE key='_wardrobe_removed'").get()) return 0;
+  let n = 0;
+  tx(db, () => {
+    db.prepare("DELETE FROM section_templates WHERE name='Wardrobe Room'").run();
+    for (const sc of db.prepare("SELECT s.id FROM report_sections s JOIN reports r ON r.id=s.report_id WHERE s.name='Wardrobe Room' AND r.status NOT IN ('issued','superseded')").all()) {
+      const used = db.prepare("SELECT 1 FROM report_items it WHERE it.section_id=? AND (it.attr_value<>'' OR EXISTS (SELECT 1 FROM observations o WHERE o.item_id=it.id) OR EXISTS (SELECT 1 FROM media m WHERE m.item_id=it.id))").get(sc.id)
+        || db.prepare('SELECT 1 FROM media WHERE section_id=?').get(sc.id) || db.prepare("SELECT 1 FROM report_sections WHERE id=? AND (COALESCE(not_inspected_reason,'')<>'')").get(sc.id);
+      if (used) continue;
+      db.prepare('DELETE FROM report_sections WHERE id=?').run(sc.id);
+      n++;
+    }
+    db.prepare("INSERT INTO settings(key,value) VALUES('_wardrobe_removed','1')").run();
+  });
+  return n;
+}
 
 /** Rooms in walk-through order: Powder Room becomes Guest Washroom, Main Entrance and Wardrobe Room are added. Runs once. */
 export function reorderRooms(db) {
@@ -380,7 +398,7 @@ export function reorderRooms(db) {
     };
     for (const cl of db.prepare('SELECT id FROM checklists').all()) {
       q("UPDATE section_templates SET name='Guest Washroom' WHERE checklist_id=? AND name='Powder Room'", cl.id);
-      for (const [name, , rule, intro, items] of SECTIONS.filter(([n]) => n === 'Main Entrance' || n === 'Wardrobe Room')) {
+      for (const [name, , rule, intro, items] of SECTIONS.filter(([n]) => n === 'Main Entrance')) {
         if (db.prepare('SELECT 1 FROM section_templates WHERE checklist_id=? AND name=?').get(cl.id, name)) continue;
         const st = Number(q('INSERT INTO section_templates(checklist_id,name,kind,repeat_rule,intro_block_code,sort) VALUES(?,?,?,?,?,0)', cl.id, name, 'area', rule, intro).lastInsertRowid);
         items.forEach((k) => { const [iname, attr, list] = ITEMS[k] || k; q('INSERT INTO item_templates(section_template_id,name,attr_label,attr_list,grp,sort) VALUES(?,?,?,?,?,?)', st, iname, attr, list, groupOf(iname), items.indexOf(k) + 1); });
@@ -389,7 +407,7 @@ export function reorderRooms(db) {
     }
     for (const r of db.prepare("SELECT id FROM reports WHERE status NOT IN ('issued','superseded')").all()) {
       q("UPDATE report_sections SET name='Guest Washroom' WHERE report_id=? AND name='Powder Room'", r.id);
-      for (const [name, , , , items] of SECTIONS.filter(([n]) => n === 'Main Entrance' || n === 'Wardrobe Room')) {
+      for (const [name, , , , items] of SECTIONS.filter(([n]) => n === 'Main Entrance')) {
         if (db.prepare('SELECT 1 FROM report_sections WHERE report_id=? AND name=?').get(r.id, name)) continue;
         const sid = Number(q("INSERT INTO report_sections(report_id,name,kind,intro,sort) VALUES(?,?,'area','',0)", r.id, name).lastInsertRowid);
         items.forEach((k, i) => { const [iname, attr, list] = ITEMS[k] || k; q('INSERT INTO report_items(section_id,name,attr_label,attr_list,attr_value,grp,sort) VALUES(?,?,?,?,?,?,?)', sid, iname, attr, list, '', groupOf(iname), i + 1); });
@@ -415,7 +433,6 @@ const SECTIONS = [
   ['Master Bathroom', 'area', 'once', null, BATH],
   ['Bedroom {n}', 'area', 'per_extra_bedroom', null, ROOM],
   ['Bathroom {n}', 'area', 'per_extra_bedroom', null, BATH],
-  ['Wardrobe Room', 'area', 'once', null, ENTRY],
   ['Living Room Balcony', 'area', 'once', null, ['location', 'floor', 'walls', 'windows', 'drains']],
   ['Laundry Area', 'area', 'once', null, ['location', 'floor', 'drains', 'electrical']],
   ["Maid's Room", 'area', 'if_maid', null, ROOM],

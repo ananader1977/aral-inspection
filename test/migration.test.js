@@ -43,7 +43,7 @@ test('report is room by room: each room has Civil / AC / Plumbing / Electrical g
     await call('sa', 'POST', `/api/app/jobs/${job.body.id}/schedule`, { date: '2026-10-22', time: '15:00', hours: 2, inspector_id: ins, notify: false });
     const tree = (await call('sa', 'POST', `/api/app/inspect/${job.body.id}/checkin`)).body;
     assert.ok(!tree.sections.some((s) => s.kind === 'system'), 'no system sections');
-    assert.deepEqual(tree.sections.map((s) => s.name), ['Main Entrance', 'Kitchen', 'Living Room', 'Guest Washroom', 'Master Bedroom', 'Master Bathroom', 'Bedroom 2', 'Bathroom 2', 'Wardrobe Room', 'Living Room Balcony', 'Laundry Area', 'Property Services']);
+    assert.deepEqual(tree.sections.map((s) => s.name), ['Main Entrance', 'Kitchen', 'Living Room', 'Guest Washroom', 'Master Bedroom', 'Master Bathroom', 'Bedroom 2', 'Bathroom 2', 'Living Room Balcony', 'Laundry Area', 'Property Services']);
     const room = tree.sections.find((s) => s.name === 'Master Bedroom');
     assert.deepEqual([...new Set(room.items.map((i) => i.grp))], ['Civil', 'Air Conditioning', 'Electrical', 'General']);
     assert.ok(room.items.some((i) => i.name === 'Cooling Performance (supply air temperature)' && i.grp === 'Air Conditioning'));
@@ -109,7 +109,19 @@ test('an older report with AC / Electrical sections is converted room by room, f
     const { reorderRooms } = await import('../src/seed.js');
     assert.equal(reorderRooms(db), true);
     assert.deepEqual(db.prepare('SELECT name FROM report_sections WHERE report_id=? ORDER BY sort').all(rid).map((x) => x.name),
-      ['Main Entrance', 'Kitchen', 'Living Room', 'Guest Washroom', 'Master Bedroom', 'Master Bathroom', 'Wardrobe Room', 'Living Room Balcony', 'Laundry Area', 'Property Services']);
+      ['Main Entrance', 'Kitchen', 'Living Room', 'Guest Washroom', 'Master Bedroom', 'Master Bathroom', 'Living Room Balcony', 'Laundry Area', 'Property Services']);
+    // Wardrobe Room: removed when empty, kept when it holds something
+    const wr = (name, content) => { const sid = Number(db.prepare("INSERT INTO report_sections(report_id,name,kind,sort) VALUES(?,?,'area',90)").run(rid, name).lastInsertRowid); const it = Number(db.prepare("INSERT INTO report_items(section_id,name,sort) VALUES(?,'Floor Condition',1)").run(sid).lastInsertRowid); if (content) obs(it, 'Scratched.'); return sid; };
+    const empty = wr('Wardrobe Room', false);
+    db.prepare("DELETE FROM settings WHERE key='_wardrobe_removed'").run();
+    const { removeWardrobeRoom } = await import('../src/seed.js');
+    assert.equal(removeWardrobeRoom(db), 1);
+    assert.ok(!db.prepare('SELECT 1 FROM report_sections WHERE id=?').get(empty));
+    assert.ok(!db.prepare("SELECT 1 FROM section_templates WHERE name='Wardrobe Room'").get());
+    const full = wr('Wardrobe Room', true);
+    db.prepare("DELETE FROM settings WHERE key='_wardrobe_removed'").run();
+    assert.equal(removeWardrobeRoom(db), 0);
+    assert.ok(db.prepare('SELECT 1 FROM report_sections WHERE id=?').get(full), 'a Wardrobe Room with findings is kept');
     // checklists for new reports follow the same layout
     assert.ok(!db.prepare("SELECT 1 FROM section_templates WHERE kind='system'").get());
     // an issued report is left alone
