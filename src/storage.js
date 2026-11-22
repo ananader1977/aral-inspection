@@ -72,7 +72,7 @@ export function createStorage(ctx) {
     async save({ name, mime, buf, jobId = null, purpose = 'attachment', userId = null }) {
       const sha = crypto.createHash('sha256').update(buf).digest('hex');
       let rec = null;
-      if (driveOn) try {
+      if (driveOn && (purpose === 'backup' || d.forFiles)) try {
         let parent = null;
         if (jobId) { const f = await jobFolders(jobId); parent = f && (f[SUB[purpose] || (purpose.startsWith('pdf') ? 'pdf' : 'root')] || f.root); }
         else if (purpose === 'backup' || purpose === 'company_doc') {

@@ -45,6 +45,8 @@ export function loadConfig(env = process.env) {
       clientSecret: (env.GOOGLE_CLIENT_SECRET || '').trim(),
       refreshToken: (env.GOOGLE_REFRESH_TOKEN || '').trim(),
       folderId: (env.GOOGLE_DRIVE_FOLDER_ID || '').trim(),
+      // photos, videos and PDFs stay on the server disk; set DRIVE_FOR_FILES=true to send them to Drive as well
+      forFiles: env.DRIVE_FOR_FILES === 'true',
     },
     uploadDir: env.UPLOAD_DIR || '',
     disableRateLimit: env.DISABLE_RATE_LIMIT === 'true',
