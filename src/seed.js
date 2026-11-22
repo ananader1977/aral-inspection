@@ -66,7 +66,7 @@ RED: critical. A safety risk, or a defect that significantly affects the value o
 BLUE: needs attention. Repair, adjust or replace.
 BLACK: for your information. Tested and working, or a note about the property.
 
-If a room or system has no findings, nothing needing attention was seen there on the day. The Report Summary at the end lists the red and blue findings with their page numbers.`],
+If a room or system has no findings, nothing needing attention was seen there on the day. The Report Summary on the next page lists the red and blue findings with their page numbers.`],
   ['rpt_summary_intro', 'Report summary', `This summary lists the findings that need your attention. It does not replace the full report, which contains the photos and details for each item. All repairs should be carried out by licensed and qualified professionals, and we recommend keeping receipts, warranties and permits for the work.`],
   ['rpt_conclusion', 'Report conclusion', `We hope this report gives you a clear picture of the property's condition. Because the inspection is visual, some defects may be hidden or may develop after our visit, and not every outlet, window or door may have been tested where access was limited.
 

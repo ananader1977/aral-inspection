@@ -366,7 +366,7 @@ export function createDocs(ctx) {
 
     // 5. contents (one page; page numbers come from the first pass)
     part('toc', 'Contents');
-    const tocEntries = [['General information', 'general'], ['Understanding the report', 'understanding'], ...t.sections.map((sc, i) => [`${i + 1}. ${sc.name}`, `s${sc.id}`]), ...(glossary.length ? [['Glossary', 'glossary']] : []), ['Report summary', 'summary'], ['Report conclusion', 'conclusion'], ['Terms and conditions', 'terms'], ...(r.thermal_used ? [['Thermal imaging addendum', 'thermal']] : []), ['Sign-off', 'signoff'], ...(atts.length ? [['Attachments', 'attachments'], ...atts.map((a, i) => [`   A${i + 1}. ${a.title}`, `a${a.id}`])] : [])];
+    const tocEntries = [['General information', 'general'], ['Understanding the report', 'understanding'], ['Report summary', 'summary'], ...t.sections.map((sc, i) => [`${i + 1}. ${sc.name}`, `s${sc.id}`]), ...(glossary.length ? [['Glossary', 'glossary']] : []), ['Report conclusion', 'conclusion'], ['Terms and conditions', 'terms'], ...(r.thermal_used ? [['Thermal imaging addendum', 'thermal']] : []), ['Sign-off', 'signoff'], ...(atts.length ? [['Attachments', 'attachments'], ...atts.map((a, i) => [`   A${i + 1}. ${a.title}`, `a${a.id}`])] : [])];
     const tocSize = tocEntries.length > 46 ? 7.5 : 9.5;
     const tocLine = tocSize * 1.55;
     for (const [label, key] of tocEntries) {
@@ -397,13 +397,27 @@ export function createDocs(ctx) {
     // 7. understanding the report + legend
     heading(d, 'Understanding the report');
     rec.parts.understanding = d.page;
-    bodyText(d, block('rpt_understanding', onDate));
+    bodyText(d, block('rpt_understanding', onDate).replace(/Report Summary at the end/, 'Report Summary on the next page')); // the summary now comes before the rooms
     d.need(30);
     d.need(70);
     findingTiles(d.pdf, d.x, d.y, d.width, 50, t.counts);
     d.y += 62;
     const c = t.counts;
     d.para(`This report contains ${c.critical} critical finding${c.critical === 1 ? '' : 's'}, ${c.attention} finding${c.attention === 1 ? '' : 's'} needing attention and ${c.info} for information.`, { size: 9.5, bold: true });
+
+    // 11. summary
+    part('summary', 'Report summary');
+    bodyText(d, block('rpt_summary_intro', onDate), { size: 9 });
+    const sumRows = [];
+    t.sections.forEach((sc, si) => sc.items.forEach((it, ii) => it.observations.forEach((o) => {
+      if (!o.in_summary || o.severity === 'info') return;
+      const pg = marks?.obs[o.id]?.page ?? '';
+      const row = [String(pg), `${si + 1}.${ii + 1}`, `${sc.name}: ${it.name}`, o.text];
+      row.fill = [C.text, C.text, C.text, SEV[o.severity].color];
+      sumRows.push(row);
+    })));
+    if (sumRows.length) d.table([{ label: 'Page', w: 0.7 }, { label: 'Item', w: 0.8 }, { label: 'Area and item', w: 3 }, { label: 'Finding', w: 7 }], sumRows, { size: 8.5 });
+    else d.para('No critical findings or findings needing attention were recorded.', { size: 10, bold: true, fill: C.blue });
 
     // 8–9. sections
     const photoW = (d.width - 12) / 2;
@@ -439,26 +453,21 @@ export function createDocs(ctx) {
         d.y += h + 8;
       }
     };
+    let prevHadContent = false;
     t.sections.forEach((sc, si) => {
       const hasContent = sc.items.some((it) => it.observations.length || it.attr_value || it.media.length) || sc.media.length || sc.not_inspected_reason || sc.intro;
-      const anyDefect0 = sc.items.some((it) => it.observations.some((o) => o.severity !== 'info'));
-      d.need(hasContent ? 120 : 44);
+      // every room starts at the top of a page; a run of clean rooms shares one page
+      if (hasContent || prevHadContent || si === 0) d.newPage(); else d.need(44);
+      prevHadContent = !!hasContent;
       rec.sections[sc.id] = d.page;
-      d.space(hasContent ? 6 : 3);
-      if (hasContent) {
-        d.pdf.rect(d.x, d.y, d.width, 26, { fill: C.navy });
-        d.pdf.rect(d.x, d.y, 30, 26, { fill: C.copper });
-        d.pdf.text(String(si + 1), d.x + 15, d.y + 18, { size: 13, bold: true, fill: '#FFFFFF', align: 'center' });
-        d.pdf.text(sc.name, d.x + 40, d.y + 18, { size: 13, bold: true, fill: '#FFFFFF' });
-        if (anyDefect0) { const n = sc.items.reduce((a, it) => a + it.observations.filter((o) => o.severity !== 'info').length, 0); d.pdf.text(`${n} finding${n === 1 ? '' : 's'}`, d.x + d.width - 10, d.y + 17, { size: 9, bold: true, fill: '#F0D3B8', align: 'right' }); }
-        d.y += 36;
-      } else { // nothing to report in this room: one slim row
-        d.pdf.rect(d.x, d.y, d.width, 22, { fill: C.zebra });
-        d.pdf.rect(d.x, d.y, 3, 22, { fill: C.blue });
-        d.pdf.text(`${si + 1}.  ${sc.name}`, d.x + 12, d.y + 15, { size: 10.5, bold: true, fill: C.navy });
-        d.pdf.text('No defects observed at the time of inspection', d.x + d.width - 8, d.y + 15, { size: 8.5, fill: C.blue, align: 'right' });
-        d.y += 26;
-      }
+      d.pdf.rect(d.x, d.y, d.width, 26, { fill: C.navy });
+      d.pdf.rect(d.x, d.y, 30, 26, { fill: C.copper });
+      d.pdf.text(String(si + 1), d.x + 15, d.y + 18, { size: 13, bold: true, fill: '#FFFFFF', align: 'center' });
+      d.pdf.text(sc.name, d.x + 40, d.y + 18, { size: 13, bold: true, fill: '#FFFFFF' });
+      const nDef = sc.items.reduce((a, it) => a + it.observations.filter((o) => o.severity !== 'info').length, 0);
+      const tag = nDef ? `${nDef} finding${nDef === 1 ? '' : 's'}` : hasContent ? '' : 'No defects observed at the time of inspection';
+      if (tag) d.pdf.text(tag, d.x + d.width - 10, d.y + 17, { size: nDef ? 9 : 8.5, bold: !!nDef, fill: '#F0D3B8', align: 'right' });
+      d.y += hasContent ? 36 : 32;
       const cont = `${si + 1}. ${sc.name} (continued)`;
       d.onNewPage = (doc) => { doc.pdf.text(cont, doc.x, doc.y + 9, { size: 9, bold: true, fill: C.muted }); doc.y += 18; };
       if (sc.intro) bodyText(d, sc.intro, { size: 9, fill: C.muted });
@@ -510,20 +519,6 @@ export function createDocs(ctx) {
       part('glossary', 'Glossary');
       for (const g of glossary) { d.para(g.term, { size: 10, bold: true, fill: C.navy, after: 2 }); d.para(g.definition, { size: 9.5, after: 2 }); if (g.references_text) d.para(`Reference: ${g.references_text}`, { size: 8, fill: C.muted }); d.space(4); }
     }
-
-    // 11. summary
-    part('summary', 'Report summary');
-    bodyText(d, block('rpt_summary_intro', onDate), { size: 9 });
-    const sumRows = [];
-    t.sections.forEach((sc, si) => sc.items.forEach((it, ii) => it.observations.forEach((o) => {
-      if (!o.in_summary || o.severity === 'info') return;
-      const pg = marks?.obs[o.id]?.page ?? '';
-      const row = [String(pg), `${si + 1}.${ii + 1}`, `${sc.name}: ${it.name}`, o.text];
-      row.fill = [C.text, C.text, C.text, SEV[o.severity].color];
-      sumRows.push(row);
-    })));
-    if (sumRows.length) d.table([{ label: 'Page', w: 0.7 }, { label: 'Item', w: 0.8 }, { label: 'Area and item', w: 3 }, { label: 'Finding', w: 7 }], sumRows, { size: 8.5 });
-    else d.para('No critical findings or findings needing attention were recorded.', { size: 10, bold: true, fill: C.blue });
 
     // 12–14. conclusion, terms, thermal
     part('conclusion', 'Report conclusion');
