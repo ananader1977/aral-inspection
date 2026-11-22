@@ -10,7 +10,7 @@ import { money, round2, fmtStamp, fmtDate } from './time.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const readImg = (rel) => { try { return loadImage(fs.readFileSync(path.join(here, '..', 'public', rel))); } catch { return null; } };
 const LOGO = readImg('logo.jpg');
-const C = { navy: '#0A1F4A', blue: '#0B4F8C', sky: '#2283C8', copper: '#8C5A36', tint: '#F4ECE4', red: '#C62828', text: '#16213A', muted: '#5B6782', line: '#DDE3EC', zebra: '#F5F7FA' };
+const C = { navy: '#0A1F4A', blue: '#0B4F8C', sky: '#2283C8', copper: '#8C5A36', tint: '#F4ECE4', red: '#C62828', text: '#16213A', muted: '#5B6782', line: '#DDE3EC', zebra: '#F5F7FA', redTint: '#FBEAEA', blueTint: '#E8F1FA', greyTint: '#EEF0F4' };
 const SEV = { critical: { label: 'Critical', color: C.red }, attention: { label: 'Needs attention', color: C.blue }, info: { label: 'For information', color: C.text } };
 const REINSPECT = { fixed: 'Fixed', not_fixed: 'Not fixed', partly_fixed: 'Partly fixed' };
 const dmy = (d) => (d ? String(d).split('-').reverse().join('/') : '');
@@ -291,6 +291,19 @@ export function createDocs(ctx) {
     return { buf: pass2.buf, pages: pass2.pages };
   }
 
+  /** Three tiles: critical / needs attention / for information, with the counts. */
+  function findingTiles(pdf, x, y, w, h, c) {
+    const gap = 10, tw = (w - gap * 2) / 3;
+    [['critical', C.redTint], ['attention', C.blueTint], ['info', C.greyTint]].forEach(([k, tint], i) => {
+      const tx = x + i * (tw + gap);
+      pdf.rect(tx, y, tw, h, { fill: tint });
+      pdf.rect(tx, y, 4, h, { fill: SEV[k].color });
+      pdf.text(String(c[k] ?? 0), tx + 18, y + h / 2 + 9, { size: 24, bold: true, fill: SEV[k].color });
+      pdf.text(SEV[k].label, tx + 60, y + h / 2 + 3, { size: 9.5, bold: true, fill: SEV[k].color });
+      pdf.text(k === 'critical' ? 'Safety risk, act first' : k === 'attention' ? 'Repair or adjust' : 'Noted, no action', tx + 60, y + h / 2 + 15, { size: 7.5, fill: C.muted });
+    });
+  }
+
   function layoutReport({ r, t, j, ins, reviewer, media, imgs, cover, revSig, insSig, glossary, onDate, atts = [], attImgs = new Map() }, marks) {
     const s = S();
     const base = ctx.config.baseUrl;
@@ -325,12 +338,15 @@ export function createDocs(ctx) {
     p.text(addr(j), 46, 206, { size: 12, fill: C.text });
     let cy = 224;
     if (cover) { const { w, h } = fit(cover, PAGE_W - 92, 330); p.image(cover, 46 + (PAGE_W - 92 - w) / 2, cy, w, h); cy += h + 18; } else cy += 10;
+    p.rect(46, cy - 14, PAGE_W - 92, 6 * 17 + 22, { fill: C.tint });
+    p.rect(46, cy - 14, 3, 6 * 17 + 22, { fill: C.copper });
     const coverRows = [['Prepared for', j.client_name], ['Report no.', r.number || 'DRAFT'], ['Inspection', `${dmy(r.inspection_date)}${r.time_in ? `, ${r.time_in}${r.time_out ? ` – ${r.time_out}` : ''}` : ''}`], ['Report date', r.issued_at ? fmtDate(r.issued_at) : 'Draft'], ['Inspector', ins?.name || j.inspector_name || ''], ['Service', j.service_name]];
-    coverRows.forEach(([k, v], i) => { p.text(k, 46, cy + i * 17, { size: 9.5, fill: C.muted }); p.text(String(v || ''), 150, cy + i * 17, { size: 10, bold: true, fill: C.text }); });
+    coverRows.forEach(([k, v], i) => { p.text(k, 60, cy + i * 17, { size: 9.5, fill: C.muted }); p.text(String(v || ''), 160, cy + i * 17, { size: 10, bold: true, fill: C.text }); });
     const qm = qrMatrix(verifyUrl);
     p.qr(qm, PAGE_W - 46 - 86, cy - 6, 86);
     p.link(verifyUrl, PAGE_W - 46 - 86, cy - 6, 86, 86);
     p.text('Scan to verify', PAGE_W - 46 - 43, cy + 92, { size: 7.5, fill: C.muted, align: 'center' });
+    findingTiles(p, 46, PAGE_H - 70 - 74, PAGE_W - 92, 50, t.counts);
     p.rect(0, PAGE_H - 70, PAGE_W, 70, { fill: C.navy });
     p.text(s.company_name, 46, PAGE_H - 42, { size: 10, bold: true, fill: '#FFFFFF' });
     p.text([s.tagline, s.phone, s.website].filter(Boolean).join('  ·  '), 46, PAGE_H - 27, { size: 8, fill: '#D3A57C' });
@@ -383,9 +399,9 @@ export function createDocs(ctx) {
     rec.parts.understanding = d.page;
     bodyText(d, block('rpt_understanding', onDate));
     d.need(30);
-    let lx = d.x;
-    for (const k of ['critical', 'attention', 'info']) { d.pdf.rect(lx, d.y, 10, 10, { fill: SEV[k].color }); d.pdf.text(SEV[k].label, lx + 15, d.y + 9, { size: 9.5, bold: true, fill: SEV[k].color }); lx += 150; }
-    d.y += 22;
+    d.need(70);
+    findingTiles(d.pdf, d.x, d.y, d.width, 50, t.counts);
+    d.y += 62;
     const c = t.counts;
     d.para(`This report contains ${c.critical} critical finding${c.critical === 1 ? '' : 's'}, ${c.attention} finding${c.attention === 1 ? '' : 's'} needing attention and ${c.info} for information.`, { size: 9.5, bold: true });
 
@@ -424,15 +440,31 @@ export function createDocs(ctx) {
       }
     };
     t.sections.forEach((sc, si) => {
-      d.need(120);
+      const hasContent = sc.items.some((it) => it.observations.length || it.attr_value || it.media.length) || sc.media.length || sc.not_inspected_reason || sc.intro;
+      const anyDefect0 = sc.items.some((it) => it.observations.some((o) => o.severity !== 'info'));
+      d.need(hasContent ? 120 : 44);
       rec.sections[sc.id] = d.page;
-      heading(d, `${si + 1}. ${sc.name}`, { size: 13.5 });
+      d.space(hasContent ? 6 : 3);
+      if (hasContent) {
+        d.pdf.rect(d.x, d.y, d.width, 26, { fill: C.navy });
+        d.pdf.rect(d.x, d.y, 30, 26, { fill: C.copper });
+        d.pdf.text(String(si + 1), d.x + 15, d.y + 18, { size: 13, bold: true, fill: '#FFFFFF', align: 'center' });
+        d.pdf.text(sc.name, d.x + 40, d.y + 18, { size: 13, bold: true, fill: '#FFFFFF' });
+        if (anyDefect0) { const n = sc.items.reduce((a, it) => a + it.observations.filter((o) => o.severity !== 'info').length, 0); d.pdf.text(`${n} finding${n === 1 ? '' : 's'}`, d.x + d.width - 10, d.y + 17, { size: 9, bold: true, fill: '#F0D3B8', align: 'right' }); }
+        d.y += 36;
+      } else { // nothing to report in this room: one slim row
+        d.pdf.rect(d.x, d.y, d.width, 22, { fill: C.zebra });
+        d.pdf.rect(d.x, d.y, 3, 22, { fill: C.blue });
+        d.pdf.text(`${si + 1}.  ${sc.name}`, d.x + 12, d.y + 15, { size: 10.5, bold: true, fill: C.navy });
+        d.pdf.text('No defects observed at the time of inspection', d.x + d.width - 8, d.y + 15, { size: 8.5, fill: C.blue, align: 'right' });
+        d.y += 26;
+      }
       const cont = `${si + 1}. ${sc.name} (continued)`;
       d.onNewPage = (doc) => { doc.pdf.text(cont, doc.x, doc.y + 9, { size: 9, bold: true, fill: C.muted }); doc.y += 18; };
       if (sc.intro) bodyText(d, sc.intro, { size: 9, fill: C.muted });
       if (sc.not_inspected_reason) d.para(`Not inspected: ${sc.not_inspected_reason}.`, { size: 9.5, bold: true, fill: C.copper });
       const anyDefect = sc.items.some((it) => it.observations.some((o) => o.severity !== 'info'));
-      if (!anyDefect && !sc.not_inspected_reason) d.para('No defects observed at the time of inspection.', { size: 9.5, bold: true, fill: C.blue });
+      if (!anyDefect && !sc.not_inspected_reason && hasContent) d.para('No defects observed at the time of inspection.', { size: 9.5, bold: true, fill: C.blue });
       let lastGrp = null;
       sc.items.forEach((it, ii) => {
         if (!it.observations.length && !it.attr_value && !it.media.length) return;
@@ -440,11 +472,15 @@ export function createDocs(ctx) {
         if (g !== lastGrp && sc.items.some((x) => (x.grp || 'General') !== g)) { // system inside the room: Civil, Air Conditioning…
           lastGrp = g;
           d.need(60);
-          d.para(g.toUpperCase(), { size: 9, bold: true, fill: C.copper, after: 3 });
+          d.space(4);
+          d.pdf.text(g.toUpperCase(), d.x, d.y + 9, { size: 8.5, bold: true, fill: C.copper });
+          d.pdf.line(d.x + d.pdf.textWidth(g.toUpperCase(), 8.5, true) + 8, d.y + 6.5, d.x + d.width, d.y + 6.5, { stroke: C.tint, lineWidth: 1 });
+          d.y += 16;
         }
         d.need(36);
         d.pdf.rect(d.x, d.y, d.width, 18, { fill: C.zebra });
-        d.pdf.text(`${ii + 1}. ${it.name}`, d.x + 6, d.y + 12.5, { size: 10, bold: true, fill: C.navy });
+        d.pdf.rect(d.x, d.y, 3, 18, { fill: C.copper });
+        d.pdf.text(`${ii + 1}. ${it.name}`, d.x + 10, d.y + 12.5, { size: 10, bold: true, fill: C.navy });
         if (it.attr_value) d.pdf.text(`${it.attr_label || 'Type'}: ${it.attr_value}`, d.x + d.width - 6, d.y + 12.5, { size: 8.5, fill: C.muted, align: 'right' });
         d.y += 24;
         if (it.media.length) mediaGrid(it.media);
@@ -454,15 +490,19 @@ export function createDocs(ctx) {
           rec.obs[o.id] = { page: d.page, section: si + 1, item: ii + 1 };
           const sev = SEV[o.severity];
           const text = `${o.text}${o.trade ? ` We recommend a ${o.trade} to assess and repair.` : ''}${o.reinspect_status ? `  [Re-inspection: ${REINSPECT[o.reinspect_status]}]` : ''}`;
-          d.need(14);
-          d.pdf.rect(d.x + 8, d.y + 4, 5, 5, { fill: sev.color });
-          d.para(text, { size: 9.5, fill: sev.color, bold: o.severity === 'critical', indent: 20, after: 5 });
+          d.need(26);
+          const y0 = d.y;
+          const lab = { critical: 'CRITICAL', attention: 'ATTENTION', info: 'INFO' }[o.severity];
+          d.pdf.rect(d.x + 6, y0 + 1, 52, 11, { fill: sev.color });
+          d.pdf.text(lab, d.x + 32, y0 + 9.2, { size: 6.8, bold: true, fill: '#FFFFFF', align: 'center' });
+          d.para(text, { size: 9.5, fill: o.severity === 'info' ? C.text : sev.color, bold: o.severity === 'critical', indent: 66, after: 6 });
+          d.pdf.rect(d.x + 2, y0, 1.5, Math.max(12, d.y - y0 - 5), { fill: sev.color });
           if (o.media.length) mediaGrid(o.media);
         });
       });
       if (sc.media.length) { d.para('Other photos', { size: 8.5, bold: true, fill: C.muted, after: 3 }); mediaGrid(sc.media); }
       d.onNewPage = null;
-      d.space(6);
+      d.space(hasContent ? 6 : 0);
     });
 
     // 10. glossary
