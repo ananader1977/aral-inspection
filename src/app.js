@@ -5,7 +5,7 @@ import { createApp, createRateLimiter } from './http.js';
 import { createAuth, ensureSuperAdmin } from './auth.js';
 import { createAdmin } from './admin.js';
 import { createMailer } from './mailer.js';
-import { seedReference, seedDemo, upgradeChecklists, upgradeRoomLayout, upgradeLookups, upgradeBlocks, unifyPrices } from './seed.js';
+import { seedReference, seedDemo, upgradeChecklists, upgradeRoomLayout, addServicesIntro, upgradeLookups, upgradeBlocks, unifyPrices } from './seed.js';
 import { createPricing } from './pricing.js';
 import { createLeads } from './leads.js';
 import { registerRoutes } from './routes.js';
@@ -57,6 +57,7 @@ export function createContext({ config, now = () => Date.now() }) {
   if (unifyPrices(db)) console.log('[setup] Prices unified: each unit type costs the same for every service.');
   if (upgradeChecklists(db, now)) console.log('[setup] Checklist upgraded: proper items for Air Conditioning, Electrical and Water Heater.');
   const lay = upgradeRoomLayout(db);
+  addServicesIntro(db, now);
   if (lay) console.log(`[setup] Reports are now room by room: ${lay.reports} open report(s) converted, ${lay.moved} finding(s) moved into their room, ${lay.left} left in Property Services.`);
   ctx.createdUsers = ensureSuperAdmin(ctx);
   if (config.seedDemo) ctx.createdUsers.push(...seedDemo(db, now, config.demoPassword));

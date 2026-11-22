@@ -120,7 +120,9 @@ Please review the proposal below. Once you accept it, you will receive the servi
   ['sec_intro_water_heater', 'Water Heater (section intro)', `We check the water heater, its supply and outlet pipes, valves and the hot water temperature at the taps.`],
 ];
 // Wording from the scope-of-service review lives in blocks.js; it replaces the older text of the same code.
-const BLOCKS = [...OLD_BLOCKS.filter(([c]) => !NEW_BLOCKS.some(([n]) => n === c)), ...NEW_BLOCKS];
+// One intro for Property Services: the old AC, Electrical and Water Heater intros together.
+const SERVICES_INTRO = ['sec_intro_property_services', 'Property Services (section intro)', OLD_BLOCKS.filter(([c]) => /^sec_intro_(air|electrical|water)/.test(c)).map((b) => b[2]).join('\n\n')];
+const BLOCKS = [...OLD_BLOCKS.filter(([c]) => !NEW_BLOCKS.some(([n]) => n === c)), ...NEW_BLOCKS, SERVICES_INTRO];
 
 // Checklist for apartments and villas: sections and the items inside them.
 const ITEMS = {
@@ -261,6 +263,21 @@ export function upgradeChecklists(db, now) {
   return true;
 }
 
+/** Property Services gets the AC, Electrical and Water Heater intro text, in checklists and in reports not yet issued. Runs once. */
+export function addServicesIntro(db, now) {
+  if (db.prepare("SELECT 1 FROM settings WHERE key='_services_intro'").get()) return 0;
+  let n = 0;
+  tx(db, () => {
+    const [code, title, body] = SERVICES_INTRO;
+    if (!db.prepare('SELECT 1 FROM content_blocks WHERE code=?').get(code))
+      db.prepare('INSERT INTO content_blocks(code,version,title,body,effective_from,created_at) VALUES(?,?,?,?,?,?)').run(code, 1, title, body, new Date(now()).toISOString().slice(0, 10), now());
+    db.prepare("UPDATE section_templates SET intro_block_code=? WHERE name='Property Services' AND intro_block_code IS NULL").run(code);
+    n = Number(db.prepare("UPDATE report_sections SET intro=? WHERE name='Property Services' AND COALESCE(intro,'')='' AND report_id IN (SELECT id FROM reports WHERE status NOT IN ('issued','superseded'))").run(body).changes);
+    db.prepare("INSERT INTO settings(key,value) VALUES('_services_intro','1')").run();
+  });
+  return n;
+}
+
 /**
  * Existing systems: the report is organised room by room. Each room gets Civil / Air Conditioning / Plumbing / Electrical
  * groups, and the three whole-property system sections become one "Property Services" section. Reports that are not yet
@@ -360,7 +377,7 @@ const SECTIONS = [
   ['Bedroom {n}', 'area', 'per_extra_bedroom', null, ROOM],
   ['Bathroom {n}', 'area', 'per_extra_bedroom', null, BATH],
   ['Exterior, Garden & Roof', 'area', 'if_villa', null, ['location', 'walls', 'floor', 'drains', 'comments']],
-  ['Property Services', 'area', 'once', null, SERVICE_ITEMS],
+  ['Property Services', 'area', 'once', 'sec_intro_property_services', SERVICE_ITEMS],
 ];
 
 const GLOSSARY = [

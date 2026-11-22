@@ -94,6 +94,12 @@ test('an older report with AC / Electrical sections is converted room by room, f
     assert.equal(roomOf(board).sec, 'Property Services');
     assert.equal(db.prepare('SELECT grp FROM report_items WHERE id=?').get(dist).grp, 'Electrical');
     assert.equal(db.prepare('SELECT section_id FROM report_items WHERE id=?').get(filters).section_id, db.prepare("SELECT id FROM report_sections WHERE report_id=? AND name='Property Services'").get(rid).id);
+    // the intro text of the three old sections is kept, once, on Property Services
+    db.prepare("DELETE FROM settings WHERE key='_services_intro'").run();
+    const { addServicesIntro } = await import('../src/seed.js');
+    assert.equal(addServicesIntro(db, () => Date.now()), 1);
+    const intro = db.prepare("SELECT intro FROM report_sections WHERE report_id=? AND name='Property Services'").get(rid).intro;
+    assert.match(intro, /air conditioning system[\s\S]*electrical installation[\s\S]*water heater/);
     // checklists for new reports follow the same layout
     assert.ok(!db.prepare("SELECT 1 FROM section_templates WHERE kind='system'").get());
     // an issued report is left alone
