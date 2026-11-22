@@ -71,8 +71,8 @@ export function createStorage(ctx) {
     /** Saves bytes and returns the new files.id. purpose: photo, video, thermal, thumb, pdf_quote, pdf_report, signature, proof, logo… */
     async save({ name, mime, buf, jobId = null, purpose = 'attachment', userId = null }) {
       const sha = crypto.createHash('sha256').update(buf).digest('hex');
-      let rec;
-      if (driveOn) {
+      let rec = null;
+      if (driveOn) try {
         let parent = null;
         if (jobId) { const f = await jobFolders(jobId); parent = f && (f[SUB[purpose] || (purpose.startsWith('pdf') ? 'pdf' : 'root')] || f.root); }
         else if (purpose === 'backup' || purpose === 'company_doc') {
@@ -82,7 +82,12 @@ export function createStorage(ctx) {
         }
         const up = await driveUpload(name, mime, buf, parent);
         rec = { storage: 'drive', drive_id: up.drive_id, link: up.link, local_path: null };
-      } else {
+      } catch (e) {
+        // a photo taken on site must never be lost because Drive is unreachable or the sign-in expired; backups still report the error
+        if (purpose === 'backup') throw e;
+        console.error('[storage] Google Drive failed, saved on the server disk instead:', e.message);
+      }
+      if (!rec) {
         const job = jobId ? db.prepare('SELECT number FROM jobs WHERE id=?').get(jobId)?.number : null;
         const rel = path.join(job ? `jobs/${job}` : purpose === 'backup' ? 'backups' : 'general', purpose === 'backup' ? '.' : SUB[purpose] || (purpose.startsWith('pdf') ? 'pdf' : 'other'), `${Date.now()}_${crypto.randomBytes(5).toString('hex')}${path.extname(name).replace(/[^.\w]/g, '').slice(0, 10)}`);
         fs.mkdirSync(path.dirname(path.join(baseDir, rel)), { recursive: true });
