@@ -129,3 +129,19 @@ test('an older report with AC / Electrical sections is converted room by room, f
     assert.ok(t2.sections.find((s) => s.name === 'Master Bedroom').items.some((i) => i.name === 'Cooling Performance (supply air temperature)'));
   } finally { await t.close(); }
 });
+
+test('studio price starts at AED 1,000 for every service, other prices stay', async () => {
+  const t = await startTestApp();
+  try {
+    const db = t.ctx.db;
+    const studio = "property_type='apartment' AND bedrooms_min=0 AND bedrooms_max=0 AND service_id IN (SELECT id FROM services WHERE code IN ('OWN-PPI','OWN-SNG','OWN-MIO'))";
+    db.prepare(`UPDATE price_rules SET price=1200 WHERE ${studio}`).run();
+    const oneBed = db.prepare("SELECT price FROM price_rules WHERE property_type='apartment' AND bedrooms_min=1 AND bedrooms_max=1").all().map((x) => x.price);
+    db.prepare("DELETE FROM settings WHERE key='_studio_1000'").run();
+    const { studioFrom1000 } = await import('../src/seed.js');
+    assert.equal(studioFrom1000(db), 3);
+    assert.deepEqual(db.prepare(`SELECT DISTINCT price FROM price_rules WHERE ${studio}`).all().map((x) => x.price), [1000]);
+    assert.deepEqual(db.prepare("SELECT price FROM price_rules WHERE property_type='apartment' AND bedrooms_min=1 AND bedrooms_max=1").all().map((x) => x.price), oneBed);
+    assert.equal(studioFrom1000(db), 0, 'runs once');
+  } finally { await t.close(); }
+});

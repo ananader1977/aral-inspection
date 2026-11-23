@@ -19,9 +19,9 @@ const SERVICES = [
 
 // Base prices (AED, excl. VAT) by service, property type and bedrooms. Developer services are priced per proposal.
 const PRICES = [
-  ['OWN-PPI', 'apartment', 0, 0, 1200], ['OWN-PPI', 'apartment', 1, 1, 1500], ['OWN-PPI', 'apartment', 2, 2, 1700], ['OWN-PPI', 'apartment', 3, 3, 1860], ['OWN-PPI', 'apartment', 4, 9, 2300],
+  ['OWN-PPI', 'apartment', 0, 0, 1000], ['OWN-PPI', 'apartment', 1, 1, 1500], ['OWN-PPI', 'apartment', 2, 2, 1700], ['OWN-PPI', 'apartment', 3, 3, 1860], ['OWN-PPI', 'apartment', 4, 9, 2300],
   ['OWN-PPI', 'townhouse', 0, 9, 2500], ['OWN-PPI', 'villa', 0, 4, 3000], ['OWN-PPI', 'villa', 5, 9, 3500],
-  ['OWN-SNG', 'apartment', 0, 0, 1200], ['OWN-SNG', 'apartment', 1, 1, 1400], ['OWN-SNG', 'apartment', 2, 2, 1800], ['OWN-SNG', 'apartment', 3, 9, 2400],
+  ['OWN-SNG', 'apartment', 0, 0, 1000], ['OWN-SNG', 'apartment', 1, 1, 1400], ['OWN-SNG', 'apartment', 2, 2, 1800], ['OWN-SNG', 'apartment', 3, 9, 2400],
   ['OWN-SNG', 'townhouse', 0, 9, 3000], ['OWN-SNG', 'villa', 0, 4, 4500], ['OWN-SNG', 'villa', 5, 9, 6000],
   ['OWN-MIO', 'apartment', 0, 1, 900], ['OWN-MIO', 'apartment', 2, 9, 1300], ['OWN-MIO', 'villa', 0, 9, 2200], ['OWN-MIO', 'townhouse', 0, 9, 1800],
   ['BNK-REP', '*', null, null, 1300], ['BNK-HND', '*', null, null, 2000],
@@ -477,6 +477,17 @@ const COMMENTS = [
   ['Counters/Cabinets Condition', 'A cabinet door hinge is broken.', 'attention', 'qualified carpenter', null],
   ['Counters/Cabinets Condition', 'Chipping on the edge of the countertop.', 'attention', 'qualified contractor', null],
 ];
+
+/** One time: a studio starts at AED 1,000 for every inspection service ("Studios from AED 1,000" on the website). Other prices are left alone. */
+export function studioFrom1000(db) {
+  if (db.prepare("SELECT 1 FROM settings WHERE key='_studio_1000'").get()) return 0;
+  let n = 0;
+  tx(db, () => {
+    n = Number(db.prepare("UPDATE price_rules SET price=1000 WHERE property_type='apartment' AND bedrooms_min=0 AND bedrooms_max=0 AND price<>1000 AND service_id IN (SELECT id FROM services WHERE code IN ('OWN-PPI','OWN-SNG','OWN-MIO'))").run().changes);
+    db.prepare("INSERT INTO settings(key,value) VALUES('_studio_1000','1')").run();
+  });
+  return n;
+}
 
 /** One time: a unit type (studio, 1 bed, 2 bed, 3 bed, townhouse, villa) charges the same price for every inspection service: the highest of them. */
 export function unifyPrices(db) {

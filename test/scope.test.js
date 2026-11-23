@@ -34,6 +34,6 @@ test('new installs carry the scope wording; the upgrade adds a new version only 
 test('the public site shows Studio under Apartment data: studio still prices as a studio', async () => {
   const t = await startTestApp();
   try {
-    assert.equal(t.ctx.pricing.estimate({ service: 'OWN-PPI', propertyType: 'studio', bedrooms: 0, addons: [] }).total, 1200);
+    assert.equal(t.ctx.pricing.estimate({ service: 'OWN-PPI', propertyType: 'studio', bedrooms: 0, addons: [] }).total, 1000);
   } finally { await t.close(); }
 });

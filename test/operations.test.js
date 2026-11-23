@@ -356,7 +356,7 @@ test('quotation revisions, rejection, expiry and VAT', async () => {
     const job = await call('sa', 'POST', '/api/app/jobs', { service_code: 'OWN-SNG', client: { name: 'Ali', email: 'ali@example.com', mobile: '0551112222' }, property: { property_type: 'studio' } });
     const q1 = await call('sa', 'POST', `/api/app/jobs/${job.body.id}/quote`, {});
     let q = ctx.db.prepare('SELECT * FROM quotations WHERE id=?').get(q1.body.id);
-    assert.equal(q.net, 1200); assert.equal(q.vat, 60); assert.equal(q.total, 1260);
+    assert.equal(q.net, 1000); assert.equal(q.vat, 50); assert.equal(q.total, 1050);
     await call('sa', 'POST', `/api/app/quotes/${q1.body.id}/send`);
     const r = await call(null, 'POST', `/api/public/quote/${q.public_token}/decide`, { action: 'reject', note: 'Too expensive' }, { csrf: false });
     assert.equal(r.body.status, 'rejected');

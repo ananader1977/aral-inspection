@@ -32,7 +32,7 @@ test('price calculation: base price, add-ons, urgent surcharge, VAT and commerci
     // removed services are not offered
     assert.equal((() => { try { price(t, { service: 'OWN-DLP', property_type: 'apartment', bedrooms: 2 }); return 200; } catch (e) { return e.status; } })(), 400);
     r = { body: price(t, { service: 'OWN-SNG', property_type: 'studio' }) };
-    assert.equal(r.body.total, 1200);
+    assert.equal(r.body.total, 1000);
     r = { body: price(t, { service: 'OWN-SNG', property_type: 'villa', bedrooms: 6 }) };
     assert.equal(r.body.total, 6000);
     r = { body: price(t, { service: 'OWN-PPI', property_type: 'office', sqft: 2000 }) };
@@ -120,7 +120,7 @@ test('prices flattened by the earlier release are restored by unit type', async 
     t.ctx.db.prepare("INSERT OR IGNORE INTO settings(key,value) VALUES('_prices_unified','1')").run();
     const { unifyPrices } = await import('../src/seed.js');
     unifyPrices(t.ctx.db);
-    assert.deepEqual(UNITS.map(([type, beds]) => price(t, { service: 'OWN-PPI', property_type: type, bedrooms: beds }).total), [1200, 1500, 1800, 2400, 3000, 4500, 6000]);
+    assert.deepEqual(UNITS.map(([type, beds]) => price(t, { service: 'OWN-PPI', property_type: type, bedrooms: beds }).total), [1000, 1500, 1800, 2400, 3000, 4500, 6000]);
   } finally { await t.close(); }
 });
 
